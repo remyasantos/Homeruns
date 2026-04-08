@@ -777,11 +777,11 @@ export default function App() {
                 <span style={{ color: p.matchupGrade.startsWith("A") ? "#4caf50" : "#ffd700", fontWeight: "bold" }}>{p.matchupGrade}</span>
               </td>
               <td style={{ padding: "14px 10px", color: "#ff8c00", fontWeight: "bold", whiteSpace: "nowrap" }}>{p.estOdds}</td>
-              <td style={{ padding: "14px 10px", color: "#666", fontSize: "11px", whiteSpace: "nowrap" }}>
-                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+              <td style={{ padding: "14px 10px", color: "#666", fontSize: "11px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                   {p.tags?.slice(0, 2).map((t, idx) => (
-                    <span key={idx}>
-                      {t}{idx === 0 && p.tags.length > 1 ? " • " : ""}
+                    <span key={idx} style={{ display: "block" }}>
+                      {t}
                     </span>
                   ))}
                 </div>
