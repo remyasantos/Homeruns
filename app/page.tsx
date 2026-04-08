@@ -610,12 +610,21 @@ export default function App() {
         borderBottom: "2px solid #ff4444",
         padding: "32px 24px 24px",
         position: "relative",
+        overflow: "hidden",
       }}>
+        <div style={{
+          position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+          background: "repeating-linear-gradient(0deg, transparent, transparent 24px, rgba(255,68,68,0.04) 24px, rgba(255,68,68,0.04) 25px)",
+          pointerEvents: "none",
+        }} />
         <div style={{ fontSize: "10px", color: "#ff4444", letterSpacing: "4px", marginBottom: "8px", textTransform: "uppercase" }}>
           ◆ SHARP STACKING SYSTEM ◆ APRIL 8, 2026 ◆ MLB SLATE
         </div>
-        <h1 style={{ fontSize: "clamp(22px, 5vw, 36px)", fontWeight: "900", margin: "0 0 8px", letterSpacing: "-1px" }}>
-          <span style={{ color: "#ff4444" }}>HR PARLAY</span> BOARD
+        <h1 style={{ fontSize: "clamp(22px, 5vw, 36px)", fontWeight: "900", margin: "0 0 8px", letterSpacing: "-1px",
+          lineHeight: 1.1,
+        }}>
+          <span style={{ color: "#ff4444" }}>HR PARLAY</span>{" "}
+          <span style={{ color: "#e8e8e8" }}>BOARD</span>
         </h1>
         
         <div style={{ display: "flex", gap: "24px", flexWrap: "wrap", marginTop: "16px" }}>
@@ -641,6 +650,7 @@ export default function App() {
           flexDirection: "column",
           gap: "16px", 
           marginBottom: "24px", 
+          flexWrap: "wrap",
           background: "rgba(255,255,255,0.02)", 
           padding: "16px", 
           borderRadius: "8px", 
@@ -649,7 +659,7 @@ export default function App() {
           {/* Row 1: Tier (Single) and Grade (Multi) */}
           <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
             <div style={{ display: "flex", gap: "8px" }}>
-              <span style={{ fontSize: "11px", color: "#555", alignSelf: "center" }}>TIER:</span>
+              <span style={{ fontSize: "11px", color: "#555", alignSelf: "center", letterSpacing: "1px" }}>TIER:</span>
               {['ALL', 'S', 'A', 'B'].map(t => (
                 <button key={t} onClick={() => setTierFilter(t)} style={{
                   background: tierFilter === t ? "#ff8c00" : "rgba(255,255,255,0.04)",
@@ -661,7 +671,7 @@ export default function App() {
             </div>
 
             <div style={{ display: "flex", gap: "8px" }}>
-              <span style={{ fontSize: "11px", color: "#555", alignSelf: "center" }}>GRADES:</span>
+              <span style={{ fontSize: "11px", color: "#555", alignSelf: "center", letterSpacing: "1px" }}>GRADES:</span>
               <button onClick={() => toggleGrade('ALL')} style={{
                 background: gradeFilter.length === 0 ? "#4caf50" : "rgba(255,255,255,0.04)",
                 border: "1px solid #333", color: gradeFilter.length === 0 ? "#000" : "#888",
@@ -708,49 +718,81 @@ export default function App() {
           borderRadius: "8px", padding: "16px", marginBottom: "24px",
           display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px",
         }}>
-          <ContextCard icon="🏔️" label="Coors Field" note="#1 HR Park Today" sub="HOU @ COL" />
-          <ContextCard icon="⚡" label="Angel Stadium" note="#2 HR Park Today" sub="ATL @ LAA" />
-          <ContextCard icon="💨" label="Oracle Park" note="11.5mph Wind Out CF" sub="PHI @ SF" />
-          <ContextCard icon="🏟️" label="GRF" note="#5 Park, Shallow Fences" sub="BAL @ CWS" />
+          <ContextCard icon="🏔️" label="Coors Field" note="#1 HR Park Today" sub="HOU @ COL — Javier/Lorenzen disaster" />
+          <ContextCard icon="⚡" label="Angel Stadium" note="#2 HR Park Today" sub="ATL @ LAA — Albies + Adell double" />
+          <ContextCard icon="💨" label="Oracle Park" note="11.5mph Wind Out CF" sub="PHI @ SF — 3rd-best wind today" />
+          <ContextCard icon="🏟️" label="GRF" note="#5 Park, Shallowest Fences" sub="BAL @ CWS — Henderson spot" />
         </div>
 
         {/* Candidates Table */}
-        <div style={{ marginBottom: "28px" }}>
-          <SectionHeader title="TARGET CANDIDATES" sub={`Showing ${filteredCandidates.length} results`} />
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid #333", color: "#666", textTransform: "uppercase" }}>
-                  {["#", "Player", "Team", "Tier", "Park", "Vs. Pitcher", "MU", "~Odds", "Notes"].map(h => (
-                    <th key={h} style={{ padding: "8px 10px", textAlign: "left" }}>{h}</th>
+<div style={{ marginBottom: "28px", width: "100%" }}>
+  <SectionHeader title="TARGET CANDIDATES" sub={`Showing ${filteredCandidates.length} results`} />
+  <div style={{ overflowX: "auto", border: "1px solid #222", borderRadius: "8px" }}>
+    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", tableLayout: "fixed", minWidth: "900px" }}>
+      <thead>
+        <tr style={{ borderBottom: "1px solid #333", color: "#666", textTransform: "uppercase", background: "#0f0f14" }}>
+          <th style={{ width: "40px", padding: "14px 10px", textAlign: "left" }}>#</th>
+          <th style={{ width: "180px", padding: "14px 10px", textAlign: "left" }}>Player</th>
+          <th style={{ width: "70px", padding: "14px 10px", textAlign: "left" }}>Team</th>
+          <th style={{ width: "100px", padding: "14px 10px", textAlign: "left" }}>Tier</th>
+          <th style={{ width: "120px", padding: "14px 10px", textAlign: "left" }}>Park</th>
+          <th style={{ width: "140px", padding: "14px 10px", textAlign: "left" }}>Vs. Pitcher</th>
+          <th style={{ width: "50px", padding: "14px 10px", textAlign: "left" }}>MU</th>
+          <th style={{ width: "80px", padding: "14px 10px", textAlign: "left" }}>~Odds</th>
+          <th style={{ width: "auto", padding: "14px 10px", textAlign: "left" }}>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {filteredCandidates.map((p, i) => {
+          const tier = TIERS[p.tier] || { bg: "#222", color: "#666", label: p.tier, border: "#333" };
+          return (
+            <tr key={p.id || i} style={{ 
+              borderBottom: "1px solid rgba(255,255,255,0.04)",
+              background: i % 2 === 0 ? "rgba(255,255,255,0.01)" : "transparent",
+            }}>
+              <td style={{ padding: "14px 10px", color: "#555", fontWeight: "bold" }}>{i + 1}</td>
+              <td style={{ padding: "14px 10px", fontWeight: "700", color: "#e8e8e8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {p.name}
+              </td>
+              <td style={{ padding: "14px 10px", color: "#888", whiteSpace: "nowrap" }}>{p.team}</td>
+              <td style={{ padding: "14px 10px", whiteSpace: "nowrap" }}>
+                <span style={{
+                  background: tier.bg,
+                  border: `1px solid ${tier.border}`,
+                  color: tier.color,
+                  padding: "2px 7px",
+                  borderRadius: "3px",
+                  fontSize: "10px",
+                  fontWeight: "bold",
+                  display: "inline-block"
+                }}>{tier.label}</span>
+              </td>
+              <td style={{ padding: "14px 10px", color: "#aaa", fontSize: "11px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {p.park.replace(" Field", "").replace(" Park", "").replace(" Stadium", " Stad.")}
+              </td>
+              <td style={{ padding: "14px 10px", color: "#aaa", fontSize: "11px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {p.pitcher}
+              </td>
+              <td style={{ padding: "14px 10px", whiteSpace: "nowrap" }}>
+                <span style={{ color: p.matchupGrade.startsWith("A") ? "#4caf50" : "#ffd700", fontWeight: "bold" }}>{p.matchupGrade}</span>
+              </td>
+              <td style={{ padding: "14px 10px", color: "#ff8c00", fontWeight: "bold", whiteSpace: "nowrap" }}>{p.estOdds}</td>
+              <td style={{ padding: "14px 10px", color: "#666", fontSize: "11px", whiteSpace: "nowrap" }}>
+                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                  {p.tags?.slice(0, 2).map((t, idx) => (
+                    <span key={idx}>
+                      {t}{idx === 0 && p.tags.length > 1 ? " • " : ""}
+                    </span>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredCandidates.map((p, i) => (
-                    <tr key={p.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                      <td style={{ padding: "9px 10px", color: "#555", fontWeight: "bold" }}>{i + 1}</td>
-                      <td style={{ padding: "9px 10px", fontWeight: "700", color: "#e8e8e8" }}>{p.name}</td>
-                      <td style={{ padding: "9px 10px", color: "#888" }}>{p.team}</td>
-                      <td style={{ padding: "9px 10px" }}>
-                        <span style={{
-                          background: TIERS[p.tier].bg, color: TIERS[p.tier].color,
-                          padding: "2px 7px", borderRadius: "3px", fontSize: "10px", fontWeight: "bold"
-                        }}>{TIERS[p.tier].label}</span>
-                      </td>
-                      <td style={{ padding: "9px 10px", color: "#aaa" }}>{p.park.split(' ')[0]}</td>
-                      <td style={{ padding: "9px 10px", color: "#aaa" }}>{p.pitcher}</td>
-                      <td style={{ padding: "9px 10px" }}>
-                        <span style={{ color: p.matchupGrade.startsWith("A") ? "#4caf50" : "#ffd700", fontWeight: "bold" }}>{p.matchupGrade}</span>
-                      </td>
-                      <td style={{ padding: "9px 10px", color: "#ff8c00", fontWeight: "bold" }}>{p.estOdds}</td>
-                      <td style={{ padding: "9px 10px", color: "#777", fontSize: "11px" }}>{p.tags[0]}</td>
-                    </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                </div>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+</div>
 
         {/* Parlay Legs Filter */}
         <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
@@ -783,7 +825,7 @@ export default function App() {
         </div>
          
          {/* Footer */}
-        <div style={{ marginTop: "32px", padding: "16px", borderTop: "1px solid #222", fontSize: "10px", color: "#444", lineHeight: 1.8 }}>
+        <div style={{ marginTop: "32px", padding: "16px", borderTop: "1px solid #222", fontSize: "10px", color: "#444", lineHeight: 1.8, letterSpacing: "0.5px", }}>
           ⚠️ DISCLAIMER: Informational and entertainment purposes only. Confirm odds on your sportsbook.
           <br />
           DATA SOURCES: Covers.com / THE BAT X · DraftKings · Baseball-Reference · StatMuse
@@ -831,7 +873,10 @@ function ParlayCard({ parlay, playerMap, isOpen, onToggle }) {
       transition: "border-color 0.2s",
     }}>
       <div
-        onClick={onToggle}
+        onClick={(e) => {
+          e.stopPropagation(); // Prevents event bubbling
+          onToggle();
+        }}
         style={{
           padding: "14px 16px",
           cursor: "pointer",
@@ -839,6 +884,7 @@ function ParlayCard({ parlay, playerMap, isOpen, onToggle }) {
           alignItems: "center",
           gap: "12px",
           flexWrap: "wrap",
+          userSelect: "none", // Prevents accidental text selection on double click
         }}
       >
         <div style={{
