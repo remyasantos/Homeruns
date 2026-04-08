@@ -534,21 +534,20 @@ const parlays = [
 const playerMap = Object.fromEntries(players.map(p => [p.id, p]));
 
 export default function App() {
-  // 1. Table Filters (Tier & Grade)
+  // --- 1. STATE & LOGIC ---
   const [tierFilter, setTierFilter] = useState('ALL');
   const [gradeFilter, setGradeFilter] = useState('ALL');
-
-  // Use "players" here instead of "candidates"
-  const filteredCandidates = players.filter(player => {
-    const matchesTier = tierFilter === 'ALL' || player.tier === tierFilter;
-    const matchesGrade = gradeFilter === 'ALL' || player.mu === gradeFilter;
-    return matchesTier && matchesGrade;
-  });
-
-  // 2. Existing Parlay State
   const [activeParlay, setActiveParlay] = useState(null);
   const [activeFilter, setActiveFilter] = useState("ALL");
 
+  // Logic: Filter the 50-player list based on Tier and MU Grade
+  const filteredCandidates = players.filter(player => {
+    const matchesTier = tierFilter === 'ALL' || player.tier === tierFilter;
+    const matchesGrade = gradeFilter === 'ALL' || player.matchupGrade === gradeFilter;
+    return matchesTier && matchesGrade;
+  });
+
+  // Logic: Filter the parlay cards based on leg count
   const filteredParlays = activeFilter === "ALL"
     ? parlays
     : parlays.filter(p => {
@@ -597,8 +596,8 @@ export default function App() {
         </h1>
         <div style={{ display: "flex", gap: "24px", flexWrap: "wrap", marginTop: "16px" }}>
           {[
-            { label: "PARLAYS", val: "15" },
-            { label: "CANDIDATES", val: "50" },
+            { label: "PARLAYS", val: filteredParlays.length },
+            { label: "CANDIDATES", val: filteredCandidates.length },
             { label: "LEGS", val: "4–10" },
             { label: "TOP PARK", val: "COORS #1" },
           ].map(s => (
@@ -611,6 +610,43 @@ export default function App() {
       </div>
 
       <div style={{ maxWidth: "960px", margin: "0 auto", padding: "24px 16px" }}>
+        
+        {/* --- NEW CANDIDATE FILTERS --- */}
+        <div style={{ 
+          display: "flex", 
+          gap: "20px", 
+          marginBottom: "24px", 
+          flexWrap: "wrap", 
+          background: "rgba(255,255,255,0.02)", 
+          padding: "16px", 
+          borderRadius: "8px", 
+          border: "1px solid #222" 
+        }}>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <span style={{ fontSize: "11px", color: "#555", alignSelf: "center", letterSpacing: "1px" }}>TIER:</span>
+            {['ALL', 'S', 'A', 'B'].map(t => (
+              <button key={t} onClick={() => setTierFilter(t)} style={{
+                background: tierFilter === t ? "#ff8c00" : "rgba(255,255,255,0.04)",
+                border: `1px solid ${tierFilter === t ? "#ff8c00" : "#333"}`,
+                color: tierFilter === t ? "#000" : "#888",
+                padding: "4px 12px", borderRadius: "4px", fontSize: "12px", cursor: "pointer", fontWeight: "bold"
+              }}>{t}</button>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", gap: "8px" }}>
+            <span style={{ fontSize: "11px", color: "#555", alignSelf: "center", letterSpacing: "1px" }}>GRADE:</span>
+            {['ALL', 'A+', 'A', 'B+'].map(g => (
+              <button key={g} onClick={() => setGradeFilter(g)} style={{
+                background: gradeFilter === g ? "#4caf50" : "rgba(255,255,255,0.04)",
+                border: `1px solid ${gradeFilter === g ? "#4caf50" : "#333"}`,
+                color: gradeFilter === g ? "#000" : "#888",
+                padding: "4px 12px", borderRadius: "4px", fontSize: "12px", cursor: "pointer", fontWeight: "bold"
+              }}>{g}</button>
+            ))}
+          </div>
+        </div>
+
         <div style={{
           background: "rgba(255,140,0,0.06)",
           border: "1px solid rgba(255,140,0,0.3)",
@@ -629,7 +665,7 @@ export default function App() {
 
         {/* Candidates Table */}
         <div style={{ marginBottom: "28px" }}>
-          <SectionHeader title="TOP 50 CANDIDATES" sub="Ranked by confidence tier · Park · Matchup" />
+          <SectionHeader title="TARGET CANDIDATES" sub={`Showing ${filteredCandidates.length} filtered results`} />
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
               <thead>
@@ -640,60 +676,57 @@ export default function App() {
                 </tr>
               </thead>
               <tbody>
-{players.map((p, i) => {
-  const tier = TIERS[p.tier as keyof typeof TIERS];
-  return (
-    <tr key={p.id} style={{
-      borderBottom: "1px solid rgba(255,255,255,0.04)",
-      background: i % 2 === 0 ? "rgba(255,255,255,0.01)" : "transparent",
-    }}>
-      <td style={{ padding: "9px 10px", color: "#555", fontWeight: "bold" }}>{i + 1}</td>
-      <td style={{ padding: "9px 10px", fontWeight: "700", color: "#e8e8e8", whiteSpace: "nowrap" }}>{p.name}</td>
-      <td style={{ padding: "9px 10px", color: "#888" }}>{p.team}</td>
-      
-      {/* --- UPDATED TIER COLUMN --- */}
-      <td style={{ padding: "9px 10px", minWidth: "85px", whiteSpace: "nowrap" }}>
-        <span style={{
-          background: tier.bg,
-          border: `1px solid ${tier.border}`,
-          color: tier.color,
-          padding: "2px 7px",
-          borderRadius: "3px",
-          fontSize: "10px",
-          fontWeight: "bold",
-          letterSpacing: "1px",
-          display: "inline-block" // Ensures padding/width are respected
-        }}>{tier.label}</span>
-      </td>
-      {/* --------------------------- */}
-
-      <td style={{ padding: "9px 10px", color: "#aaa", whiteSpace: "nowrap", fontSize: "11px" }}>{p.park.replace(" Field", "").replace(" Park", "").replace(" Stadium", " Stad.")}</td>
-      <td style={{ padding: "9px 10px", color: "#aaa", whiteSpace: "nowrap", fontSize: "11px" }}>{p.pitcher}</td>
-      <td style={{ padding: "9px 10px", whiteSpace: "nowrap" }}>
-        <span style={{
-          color: p.matchupGrade.startsWith("A") ? "#4caf50" : p.matchupGrade.startsWith("B") ? "#ffd700" : "#ff8c00",
-          fontWeight: "bold",
-        }}>{p.matchupGrade}</span>
-      </td>
-      <td style={{ padding: "9px 10px", color: "#ff8c00", fontWeight: "bold", whiteSpace: "nowrap" }}>{p.estOdds}</td>
-      <td style={{ padding: "9px 10px", color: "#777", fontSize: "11px", maxWidth: "200px" }}>
-        <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-          {p.tags.slice(0, 2).map(t => (
-            <span key={t} style={{ background: "rgba(255,255,255,0.06)", padding: "1px 5px", borderRadius: "2px", fontSize: "10px" }}>{t}</span>
-          ))}
-        </div>
-      </td>
-    </tr>
-  );
-})}              </tbody>
+                {filteredCandidates.map((p, i) => {
+                  const tier = TIERS[p.tier as keyof typeof TIERS];
+                  return (
+                    <tr key={p.id} style={{
+                      borderBottom: "1px solid rgba(255,255,255,0.04)",
+                      background: i % 2 === 0 ? "rgba(255,255,255,0.01)" : "transparent",
+                    }}>
+                      <td style={{ padding: "9px 10px", color: "#555", fontWeight: "bold" }}>{i + 1}</td>
+                      <td style={{ padding: "9px 10px", fontWeight: "700", color: "#e8e8e8", whiteSpace: "nowrap" }}>{p.name}</td>
+                      <td style={{ padding: "9px 10px", color: "#888" }}>{p.team}</td>
+                      <td style={{ padding: "9px 10px", minWidth: "85px", whiteSpace: "nowrap" }}>
+                        <span style={{
+                          background: tier.bg,
+                          border: `1px solid ${tier.border}`,
+                          color: tier.color,
+                          padding: "2px 7px",
+                          borderRadius: "3px",
+                          fontSize: "10px",
+                          fontWeight: "bold",
+                          letterSpacing: "1px",
+                          display: "inline-block"
+                        }}>{tier.label}</span>
+                      </td>
+                      <td style={{ padding: "9px 10px", color: "#aaa", whiteSpace: "nowrap", fontSize: "11px" }}>{p.park.replace(" Field", "").replace(" Park", "").replace(" Stadium", " Stad.")}</td>
+                      <td style={{ padding: "9px 10px", color: "#aaa", whiteSpace: "nowrap", fontSize: "11px" }}>{p.pitcher}</td>
+                      <td style={{ padding: "9px 10px", whiteSpace: "nowrap" }}>
+                        <span style={{
+                          color: p.matchupGrade.startsWith("A") ? "#4caf50" : p.matchupGrade.startsWith("B") ? "#ffd700" : "#ff8c00",
+                          fontWeight: "bold",
+                        }}>{p.matchupGrade}</span>
+                      </td>
+                      <td style={{ padding: "9px 10px", color: "#ff8c00", fontWeight: "bold", whiteSpace: "nowrap" }}>{p.estOdds}</td>
+                      <td style={{ padding: "9px 10px", color: "#777", fontSize: "11px", maxWidth: "200px" }}>
+                        <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                          {p.tags.slice(0, 2).map(t => (
+                            <span key={t} style={{ background: "rgba(255,255,255,0.06)", padding: "1px 5px", borderRadius: "2px", fontSize: "10px" }}>{t}</span>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
             </table>
           </div>
         </div>
 
-        {/* Filter */}
+        {/* Parlay Filter */}
         <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
-          <div style={{ fontSize: "11px", color: "#555", alignSelf: "center", marginRight: "4px", letterSpacing: "1px" }}>FILTER:</div>
-            {["ALL", "4", "5", "6", "7", "8", "9+"].map(f => ( // Added "4" and "5" here
+          <div style={{ fontSize: "11px", color: "#555", alignSelf: "center", marginRight: "4px", letterSpacing: "1px" }}>PARLAY LEGS:</div>
+            {["ALL", "4", "5", "6", "7", "8", "9+"].map(f => (
             <button
               key={f}
               onClick={() => setActiveFilter(f)}
@@ -714,46 +747,6 @@ export default function App() {
             </button>
           ))}
         </div>
-
-                {/* HR Candidate Filters */}
-<div className="flex flex-wrap gap-4 mb-6">
-  {/* Tier Filter Group */}
-  <div className="flex items-center gap-2 bg-zinc-900/50 p-1.5 rounded-lg border border-zinc-800">
-    <span className="text-[10px] font-black text-zinc-500 uppercase px-2 tracking-wider">Tier</span>
-    {['ALL', 'S', 'A', 'B'].map(t => (
-      <button 
-        key={t}
-        onClick={() => setTierFilter(t)}
-        className={`px-3 py-1 text-xs font-bold rounded transition-all duration-200 ${
-          tierFilter === t 
-            ? 'bg-orange-500 text-black shadow-[0_0_10px_rgba(249,115,22,0.3)]' 
-            : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
-        }`}
-      >
-        {t}
-      </button>
-    ))}
-  </div>
-
-  {/* Matchup Grade Filter Group */}
-  <div className="flex items-center gap-2 bg-zinc-900/50 p-1.5 rounded-lg border border-zinc-800">
-    <span className="text-[10px] font-black text-zinc-500 uppercase px-2 tracking-wider">MU Grade</span>
-    {['ALL', 'A+', 'A', 'B+'].map(g => (
-      <button 
-        key={g}
-        onClick={() => setGradeFilter(g)}
-        className={`px-3 py-1 text-xs font-bold rounded transition-all duration-200 ${
-          gradeFilter === g 
-            ? 'bg-blue-600 text-white shadow-[0_0_10px_rgba(37,99,235,0.3)]' 
-            : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
-        }`}
-      >
-        {g}
-      </button>
-    ))}
-  </div>
-</div>
-
 
         {/* Parlay Cards */}
         <SectionHeader title="10 SHARP PARLAYS" sub="Click any parlay to expand full breakdown" />
