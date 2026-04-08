@@ -1,11 +1,13 @@
 "use client";
+
 import React from 'react';
 
 export default function Page() {
+  // We use a simple array to avoid any TypeScript "shape" errors
   const players = [
-    { id: 1, name: "Yordan Alvarez", team: "HOU", odds: "+270" },
-    { id: 2, name: "Ozzie Albies", team: "ATL", odds: "+570" },
-    { id: 3, name: "Aaron Judge", team: "NYY", odds: "+310" }
+    { name: "Yordan Alvarez", odds: "+270" },
+    { name: "Ozzie Albies", odds: "+570" },
+    { name: "Aaron Judge", odds: "+310" }
   ];
 
   return (
@@ -13,20 +15,23 @@ export default function Page() {
       backgroundColor: '#0a0a0f', 
       color: 'white', 
       minHeight: '100vh', 
-      padding: '40px 20px', 
+      display: 'flex', 
+      flexDirection: 'column',
+      alignItems: 'center',
+      paddingTop: '50px',
       fontFamily: 'sans-serif' 
     }}>
-      <h1 style={{ textAlign: 'center', color: '#ff8c00' }}>HOMERUN DATA</h1>
-      <div style={{ maxWidth: '400px', margin: '20px auto' }}>
-        {players.map((p) => (
-          <div key={p.id} style={{ 
-            padding: '15px', 
-            borderBottom: '1px solid #222',
+      <h1 style={{ color: '#ff8c00', letterSpacing: '2px' }}>HOMERUN DATA</h1>
+      <div style={{ width: '100%', maxWidth: '400px', marginTop: '30px' }}>
+        {players.map((p, index) => (
+          <div key={index} style={{ 
+            padding: '20px', 
+            borderBottom: '1px solid #1f1f27',
             display: 'flex',
             justifyContent: 'space-between'
           }}>
             <span>{p.name}</span>
-            <span style={{ color: '#ff8c00' }}>{p.odds}</span>
+            <span style={{ color: '#ff8c00', fontWeight: 'bold' }}>{p.odds}</span>
           </div>
         ))}
       </div>
