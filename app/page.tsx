@@ -533,32 +533,68 @@ const parlays = [
 
 const playerMap = Object.fromEntries(players.map(p => [p.id, p]));
 
+// --- CONSTANTS (Defined once outside the component) ---
+const MLB_TEAMS = [
+  "AZ", "ATL", "BAL", "BOS", "CHC", "CWS", "CIN", "CLE", "COL", "DET", 
+  "HOU", "LAA", "LAD", "MIA", "MIL", "MIN", "NYM", "NYY", "OAK", "PHI", 
+  "PIT", "SD", "SF", "SEA", "STL", "TB", "TEX", "TOR", "WAS"
+];
+
+const MATCHUP_GRADES = ['A+', 'A', 'B+'];
+
 export default function App() {
   // --- 1. STATE & LOGIC ---
   const [tierFilter, setTierFilter] = useState('ALL');
-  const [gradeFilter, setGradeFilter] = useState('ALL');
-  const [activeParlay, setActiveParlay] = useState(null);
+  const [gradeFilter, setGradeFilter] = useState([]); // Multi-select Grade array
+  const [selectedTeams, setSelectedTeams] = useState([]); // Multi-select Team array
   const [activeFilter, setActiveFilter] = useState("ALL");
+  const [activeParlay, setActiveParlay] = useState(null);
 
-  // Logic: Filter the 50-player list based on Tier and MU Grade
+  // Helper: Toggle Teams
+  const toggleTeam = (team) => {
+    if (team === 'ALL') {
+      setSelectedTeams([]);
+    } else {
+      setSelectedTeams(prev => 
+        prev.includes(team) ? prev.filter(t => t !== team) : [...prev, team]
+      );
+    }
+  };
+
+  // Helper: Toggle Grades
+  const toggleGrade = (grade) => {
+    if (grade === 'ALL') {
+      setGradeFilter([]);
+    } else {
+      setGradeFilter(prev => 
+        prev.includes(grade) ? prev.filter(g => g !== grade) : [...prev, grade]
+      );
+    }
+  };
+
+  // Logic: Combined Filtering for Candidates
   const filteredCandidates = players.filter(player => {
     const matchesTier = tierFilter === 'ALL' || player.tier === tierFilter;
-    const matchesGrade = gradeFilter === 'ALL' || player.matchupGrade === gradeFilter;
-    return matchesTier && matchesGrade;
+    const matchesGrade = gradeFilter.length === 0 || gradeFilter.includes(player.matchupGrade);
+    const matchesTeam = selectedTeams.length === 0 || selectedTeams.includes(player.team);
+    return matchesTier && matchesGrade && matchesTeam;
   });
 
-  // Logic: Filter the parlay cards based on leg count
-  const filteredParlays = activeFilter === "ALL"
-    ? parlays
-    : parlays.filter(p => {
-        if (activeFilter === "4") return p.legs === 4;
-        if (activeFilter === "5") return p.legs === 5;
-        if (activeFilter === "6") return p.legs === 6;
-        if (activeFilter === "7") return p.legs === 7;
-        if (activeFilter === "8") return p.legs === 8;
-        if (activeFilter === "9+") return p.legs >= 9;
-        return true;
-      });
+  // --- FIX: Logic to filter Parlays based on both Leg Count AND Candidate Filters ---
+  const allowedPlayerIds = new Set(filteredCandidates.map(p => p.id));
+
+  const filteredParlays = parlays.filter(p => {
+    // 1. Filter by Leg Count
+    const count = parseInt(activeFilter);
+    const matchesLegCount = activeFilter === "ALL" 
+      ? true 
+      : (activeFilter === "9+" ? p.legs >= 9 : p.legs === count);
+
+    // 2. Filter by Player Availability (Every leg must match active filters)
+    const allLegsMatchFilters = p.playerIds.every(id => allowedPlayerIds.has(id));
+
+    return matchesLegCount && allLegsMatchFilters;
+  });
 
   return (
     <div style={{
@@ -568,32 +604,20 @@ export default function App() {
       fontFamily: "'Courier New', 'Consolas', monospace",
       padding: "0",
     }}>
-      {/* Header */}
+      {/* Header Section */}
       <div style={{
         background: "linear-gradient(135deg, #0f0f1a 0%, #1a0a0a 50%, #0f1520 100%)",
         borderBottom: "2px solid #ff4444",
         padding: "32px 24px 24px",
         position: "relative",
-        overflow: "hidden",
       }}>
-        <div style={{
-          position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
-          background: "repeating-linear-gradient(0deg, transparent, transparent 24px, rgba(255,68,68,0.04) 24px, rgba(255,68,68,0.04) 25px)",
-          pointerEvents: "none",
-        }} />
         <div style={{ fontSize: "10px", color: "#ff4444", letterSpacing: "4px", marginBottom: "8px", textTransform: "uppercase" }}>
           ◆ SHARP STACKING SYSTEM ◆ APRIL 8, 2026 ◆ MLB SLATE
         </div>
-        <h1 style={{
-          fontSize: "clamp(22px, 5vw, 36px)",
-          fontWeight: "900",
-          margin: "0 0 8px",
-          letterSpacing: "-1px",
-          lineHeight: 1.1,
-        }}>
-          <span style={{ color: "#ff4444" }}>HR PARLAY</span>{" "}
-          <span style={{ color: "#e8e8e8" }}>BOARD</span>
+        <h1 style={{ fontSize: "clamp(22px, 5vw, 36px)", fontWeight: "900", margin: "0 0 8px", letterSpacing: "-1px" }}>
+          <span style={{ color: "#ff4444" }}>HR PARLAY</span> BOARD
         </h1>
+        
         <div style={{ display: "flex", gap: "24px", flexWrap: "wrap", marginTop: "16px" }}>
           {[
             { label: "PARLAYS", val: filteredParlays.length },
@@ -611,170 +635,158 @@ export default function App() {
 
       <div style={{ maxWidth: "960px", margin: "0 auto", padding: "24px 16px" }}>
         
-        {/* --- NEW CANDIDATE FILTERS --- */}
+        {/* --- MULTI-SELECT FILTERS --- */}
         <div style={{ 
           display: "flex", 
-          gap: "20px", 
+          flexDirection: "column",
+          gap: "16px", 
           marginBottom: "24px", 
-          flexWrap: "wrap", 
           background: "rgba(255,255,255,0.02)", 
           padding: "16px", 
           borderRadius: "8px", 
           border: "1px solid #222" 
         }}>
-          <div style={{ display: "flex", gap: "8px" }}>
-            <span style={{ fontSize: "11px", color: "#555", alignSelf: "center", letterSpacing: "1px" }}>TIER:</span>
-            {['ALL', 'S', 'A', 'B'].map(t => (
-              <button key={t} onClick={() => setTierFilter(t)} style={{
-                background: tierFilter === t ? "#ff8c00" : "rgba(255,255,255,0.04)",
-                border: `1px solid ${tierFilter === t ? "#ff8c00" : "#333"}`,
-                color: tierFilter === t ? "#000" : "#888",
-                padding: "4px 12px", borderRadius: "4px", fontSize: "12px", cursor: "pointer", fontWeight: "bold"
-              }}>{t}</button>
-            ))}
+          {/* Row 1: Tier (Single) and Grade (Multi) */}
+          <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <span style={{ fontSize: "11px", color: "#555", alignSelf: "center" }}>TIER:</span>
+              {['ALL', 'S', 'A', 'B'].map(t => (
+                <button key={t} onClick={() => setTierFilter(t)} style={{
+                  background: tierFilter === t ? "#ff8c00" : "rgba(255,255,255,0.04)",
+                  border: `1px solid ${tierFilter === t ? "#ff8c00" : "#333"}`,
+                  color: tierFilter === t ? "#000" : "#888",
+                  padding: "4px 12px", borderRadius: "4px", fontSize: "12px", cursor: "pointer", fontWeight: "bold"
+                }}>{t}</button>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", gap: "8px" }}>
+              <span style={{ fontSize: "11px", color: "#555", alignSelf: "center" }}>GRADES:</span>
+              <button onClick={() => toggleGrade('ALL')} style={{
+                background: gradeFilter.length === 0 ? "#4caf50" : "rgba(255,255,255,0.04)",
+                border: "1px solid #333", color: gradeFilter.length === 0 ? "#000" : "#888",
+                padding: "4px 10px", borderRadius: "4px", fontSize: "12px", cursor: "pointer"
+              }}>ALL</button>
+              {MATCHUP_GRADES.map(g => (
+                <button key={g} onClick={() => toggleGrade(g)} style={{
+                  background: gradeFilter.includes(g) ? "#4caf50" : "rgba(255,255,255,0.04)",
+                  border: `1px solid ${gradeFilter.includes(g) ? "#4caf50" : "#333"}`,
+                  color: gradeFilter.includes(g) ? "#000" : "#888",
+                  padding: "4px 12px", borderRadius: "4px", fontSize: "12px", cursor: "pointer", fontWeight: "bold"
+                }}>{g}</button>
+              ))}
+            </div>
           </div>
 
-          <div style={{ display: "flex", gap: "8px" }}>
-            <span style={{ fontSize: "11px", color: "#555", alignSelf: "center", letterSpacing: "1px" }}>GRADE:</span>
-            {['ALL', 'A+', 'A', 'B+'].map(g => (
-              <button key={g} onClick={() => setGradeFilter(g)} style={{
-                background: gradeFilter === g ? "#4caf50" : "rgba(255,255,255,0.04)",
-                border: `1px solid ${gradeFilter === g ? "#4caf50" : "#333"}`,
-                color: gradeFilter === g ? "#000" : "#888",
-                padding: "4px 12px", borderRadius: "4px", fontSize: "12px", cursor: "pointer", fontWeight: "bold"
-              }}>{g}</button>
-            ))}
+          {/* Row 2: Team Selection (Multi) */}
+          <div style={{ borderTop: "1px solid #222", paddingTop: "12px" }}>
+            <div style={{ fontSize: "11px", color: "#555", marginBottom: "8px" }}>TEAMS (MULTI-SELECT):</div>
+            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+              <button onClick={() => toggleTeam('ALL')} style={{
+                  background: selectedTeams.length === 0 ? "#007bff" : "rgba(255,255,255,0.05)",
+                  border: "1px solid #444", color: selectedTeams.length === 0 ? "#fff" : "#777",
+                  padding: "4px 10px", borderRadius: "4px", fontSize: "10px", cursor: "pointer"
+                }}>ALL</button>
+              {MLB_TEAMS.map(team => {
+                const isActive = selectedTeams.includes(team);
+                return (
+                  <button key={team} onClick={() => toggleTeam(team)} style={{
+                      background: isActive ? "#007bff" : "rgba(255,255,255,0.02)",
+                      border: `1px solid ${isActive ? "#007bff" : "#333"}`,
+                      color: isActive ? "#fff" : "#555",
+                      padding: "4px 8px", borderRadius: "4px", fontSize: "10px", cursor: "pointer", fontWeight: "bold"
+                    }}>{team}</button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
+        {/* Info Context Cards */}
         <div style={{
-          background: "rgba(255,140,0,0.06)",
-          border: "1px solid rgba(255,140,0,0.3)",
-          borderRadius: "8px",
-          padding: "16px",
-          marginBottom: "24px",
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-          gap: "12px",
+          background: "rgba(255,140,0,0.06)", border: "1px solid rgba(255,140,0,0.3)",
+          borderRadius: "8px", padding: "16px", marginBottom: "24px",
+          display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px",
         }}>
-          <ContextCard icon="🏔️" label="Coors Field" note="#1 HR Park Today" sub="HOU @ COL — Javier/Lorenzen disaster" />
-          <ContextCard icon="⚡" label="Angel Stadium" note="#2 HR Park Today" sub="ATL @ LAA — Albies + Adell double" />
-          <ContextCard icon="💨" label="Oracle Park" note="11.5mph Wind Out CF" sub="PHI @ SF — 3rd-best wind today" />
-          <ContextCard icon="🏟️" label="GRF" note="#5 Park, Shallowest Fences" sub="BAL @ CWS — Henderson spot" />
+          <ContextCard icon="🏔️" label="Coors Field" note="#1 HR Park Today" sub="HOU @ COL" />
+          <ContextCard icon="⚡" label="Angel Stadium" note="#2 HR Park Today" sub="ATL @ LAA" />
+          <ContextCard icon="💨" label="Oracle Park" note="11.5mph Wind Out CF" sub="PHI @ SF" />
+          <ContextCard icon="🏟️" label="GRF" note="#5 Park, Shallow Fences" sub="BAL @ CWS" />
         </div>
 
         {/* Candidates Table */}
         <div style={{ marginBottom: "28px" }}>
-          <SectionHeader title="TARGET CANDIDATES" sub={`Showing ${filteredCandidates.length} filtered results`} />
+          <SectionHeader title="TARGET CANDIDATES" sub={`Showing ${filteredCandidates.length} results`} />
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
               <thead>
-                <tr style={{ borderBottom: "1px solid #333", color: "#666", textTransform: "uppercase", letterSpacing: "1px" }}>
+                <tr style={{ borderBottom: "1px solid #333", color: "#666", textTransform: "uppercase" }}>
                   {["#", "Player", "Team", "Tier", "Park", "Vs. Pitcher", "MU", "~Odds", "Notes"].map(h => (
-                    <th key={h} style={{ padding: "8px 10px", textAlign: "left", whiteSpace: "nowrap" }}>{h}</th>
+                    <th key={h} style={{ padding: "8px 10px", textAlign: "left" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filteredCandidates.map((p, i) => {
-                  const tier = TIERS[p.tier as keyof typeof TIERS];
-                  return (
-                    <tr key={p.id} style={{
-                      borderBottom: "1px solid rgba(255,255,255,0.04)",
-                      background: i % 2 === 0 ? "rgba(255,255,255,0.01)" : "transparent",
-                    }}>
+                {filteredCandidates.map((p, i) => (
+                    <tr key={p.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                       <td style={{ padding: "9px 10px", color: "#555", fontWeight: "bold" }}>{i + 1}</td>
-                      <td style={{ padding: "9px 10px", fontWeight: "700", color: "#e8e8e8", whiteSpace: "nowrap" }}>{p.name}</td>
+                      <td style={{ padding: "9px 10px", fontWeight: "700", color: "#e8e8e8" }}>{p.name}</td>
                       <td style={{ padding: "9px 10px", color: "#888" }}>{p.team}</td>
-                      <td style={{ padding: "9px 10px", minWidth: "85px", whiteSpace: "nowrap" }}>
+                      <td style={{ padding: "9px 10px" }}>
                         <span style={{
-                          background: tier.bg,
-                          border: `1px solid ${tier.border}`,
-                          color: tier.color,
-                          padding: "2px 7px",
-                          borderRadius: "3px",
-                          fontSize: "10px",
-                          fontWeight: "bold",
-                          letterSpacing: "1px",
-                          display: "inline-block"
-                        }}>{tier.label}</span>
+                          background: TIERS[p.tier].bg, color: TIERS[p.tier].color,
+                          padding: "2px 7px", borderRadius: "3px", fontSize: "10px", fontWeight: "bold"
+                        }}>{TIERS[p.tier].label}</span>
                       </td>
-                      <td style={{ padding: "9px 10px", color: "#aaa", whiteSpace: "nowrap", fontSize: "11px" }}>{p.park.replace(" Field", "").replace(" Park", "").replace(" Stadium", " Stad.")}</td>
-                      <td style={{ padding: "9px 10px", color: "#aaa", whiteSpace: "nowrap", fontSize: "11px" }}>{p.pitcher}</td>
-                      <td style={{ padding: "9px 10px", whiteSpace: "nowrap" }}>
-                        <span style={{
-                          color: p.matchupGrade.startsWith("A") ? "#4caf50" : p.matchupGrade.startsWith("B") ? "#ffd700" : "#ff8c00",
-                          fontWeight: "bold",
-                        }}>{p.matchupGrade}</span>
+                      <td style={{ padding: "9px 10px", color: "#aaa" }}>{p.park.split(' ')[0]}</td>
+                      <td style={{ padding: "9px 10px", color: "#aaa" }}>{p.pitcher}</td>
+                      <td style={{ padding: "9px 10px" }}>
+                        <span style={{ color: p.matchupGrade.startsWith("A") ? "#4caf50" : "#ffd700", fontWeight: "bold" }}>{p.matchupGrade}</span>
                       </td>
-                      <td style={{ padding: "9px 10px", color: "#ff8c00", fontWeight: "bold", whiteSpace: "nowrap" }}>{p.estOdds}</td>
-                      <td style={{ padding: "9px 10px", color: "#777", fontSize: "11px", maxWidth: "200px" }}>
-                        <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-                          {p.tags.slice(0, 2).map(t => (
-                            <span key={t} style={{ background: "rgba(255,255,255,0.06)", padding: "1px 5px", borderRadius: "2px", fontSize: "10px" }}>{t}</span>
-                          ))}
-                        </div>
-                      </td>
+                      <td style={{ padding: "9px 10px", color: "#ff8c00", fontWeight: "bold" }}>{p.estOdds}</td>
+                      <td style={{ padding: "9px 10px", color: "#777", fontSize: "11px" }}>{p.tags[0]}</td>
                     </tr>
-                  );
-                })}
+                ))}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* Parlay Filter */}
+        {/* Parlay Legs Filter */}
         <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
-          <div style={{ fontSize: "11px", color: "#555", alignSelf: "center", marginRight: "4px", letterSpacing: "1px" }}>PARLAY LEGS:</div>
             {["ALL", "4", "5", "6", "7", "8", "9+"].map(f => (
-            <button
-              key={f}
-              onClick={() => setActiveFilter(f)}
-              style={{
+            <button key={f} onClick={() => setActiveFilter(f)} style={{
                 background: activeFilter === f ? "#ff4444" : "rgba(255,255,255,0.06)",
                 border: `1px solid ${activeFilter === f ? "#ff4444" : "#333"}`,
                 color: activeFilter === f ? "#fff" : "#888",
-                padding: "5px 14px",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "12px",
-                fontFamily: "inherit",
-                fontWeight: activeFilter === f ? "bold" : "normal",
-                letterSpacing: "1px",
-              }}
-            >
-              {f === "ALL" ? "ALL" : `${f}-LEG`}
-            </button>
+                padding: "5px 14px", borderRadius: "4px", cursor: "pointer", fontSize: "12px",
+              }}>{f === "ALL" ? "ALL" : `${f}-LEG`}</button>
           ))}
         </div>
 
         {/* Parlay Cards */}
-        <SectionHeader title="10 SHARP PARLAYS" sub="Click any parlay to expand full breakdown" />
+        <SectionHeader title="SHARP PARLAYS" sub={`Showing ${filteredParlays.length} matching combos`} />
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          {filteredParlays.map(parlay => (
-            <ParlayCard
-              key={parlay.id}
-              parlay={parlay}
-              playerMap={playerMap}
-              isOpen={activeParlay === parlay.id}
-              onToggle={() => setActiveParlay(activeParlay === parlay.id ? null : parlay.id)}
-            />
-          ))}
+          {filteredParlays.length > 0 ? (
+            filteredParlays.map(parlay => (
+              <ParlayCard
+                key={parlay.id} parlay={parlay} playerMap={playerMap}
+                isOpen={activeParlay === parlay.id}
+                onToggle={() => setActiveParlay(activeParlay === parlay.id ? null : parlay.id)}
+              />
+            ))
+          ) : (
+            <div style={{ padding: "30px", textAlign: "center", color: "#666", border: "1px dashed #333", borderRadius: "8px" }}>
+              No parlays available for current player filters.
+            </div>
+          )}
         </div>
-
-        {/* Footer */}
-        <div style={{
-          marginTop: "32px",
-          padding: "16px",
-          borderTop: "1px solid #222",
-          fontSize: "10px",
-          color: "#444",
-          lineHeight: 1.8,
-          letterSpacing: "0.5px",
-        }}>
-          ⚠️ DISCLAIMER: For informational and entertainment purposes only. Confirm actual odds on your sportsbook. Please gamble responsibly.
+         
+         {/* Footer */}
+        <div style={{ marginTop: "32px", padding: "16px", borderTop: "1px solid #222", fontSize: "10px", color: "#444", lineHeight: 1.8 }}>
+          ⚠️ DISCLAIMER: Informational and entertainment purposes only. Confirm odds on your sportsbook.
           <br />
-          DATA SOURCES: Covers.com / THE BAT X · DraftKings Network · Baseball-Reference · StatMuse
+          DATA SOURCES: Covers.com / THE BAT X · DraftKings · Baseball-Reference · StatMuse
         </div>
       </div>
     </div>
