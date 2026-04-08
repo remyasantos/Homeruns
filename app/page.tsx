@@ -534,14 +534,26 @@ const parlays = [
 const playerMap = Object.fromEntries(players.map(p => [p.id, p]));
 
 export default function App() {
+  // 1. Table Filters (Tier & Grade)
+  const [tierFilter, setTierFilter] = useState('ALL');
+  const [gradeFilter, setGradeFilter] = useState('ALL');
+
+  // Use "players" here instead of "candidates"
+  const filteredCandidates = players.filter(player => {
+    const matchesTier = tierFilter === 'ALL' || player.tier === tierFilter;
+    const matchesGrade = gradeFilter === 'ALL' || player.mu === gradeFilter;
+    return matchesTier && matchesGrade;
+  });
+
+  // 2. Existing Parlay State
   const [activeParlay, setActiveParlay] = useState(null);
   const [activeFilter, setActiveFilter] = useState("ALL");
 
   const filteredParlays = activeFilter === "ALL"
     ? parlays
     : parlays.filter(p => {
-        if (activeFilter === "4") return p.legs === 4; // Added
-        if (activeFilter === "5") return p.legs === 5; // Added
+        if (activeFilter === "4") return p.legs === 4;
+        if (activeFilter === "5") return p.legs === 5;
         if (activeFilter === "6") return p.legs === 6;
         if (activeFilter === "7") return p.legs === 7;
         if (activeFilter === "8") return p.legs === 8;
@@ -702,6 +714,46 @@ export default function App() {
             </button>
           ))}
         </div>
+
+                {/* HR Candidate Filters */}
+<div className="flex flex-wrap gap-4 mb-6">
+  {/* Tier Filter Group */}
+  <div className="flex items-center gap-2 bg-zinc-900/50 p-1.5 rounded-lg border border-zinc-800">
+    <span className="text-[10px] font-black text-zinc-500 uppercase px-2 tracking-wider">Tier</span>
+    {['ALL', 'S', 'A', 'B'].map(t => (
+      <button 
+        key={t}
+        onClick={() => setTierFilter(t)}
+        className={`px-3 py-1 text-xs font-bold rounded transition-all duration-200 ${
+          tierFilter === t 
+            ? 'bg-orange-500 text-black shadow-[0_0_10px_rgba(249,115,22,0.3)]' 
+            : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
+        }`}
+      >
+        {t}
+      </button>
+    ))}
+  </div>
+
+  {/* Matchup Grade Filter Group */}
+  <div className="flex items-center gap-2 bg-zinc-900/50 p-1.5 rounded-lg border border-zinc-800">
+    <span className="text-[10px] font-black text-zinc-500 uppercase px-2 tracking-wider">MU Grade</span>
+    {['ALL', 'A+', 'A', 'B+'].map(g => (
+      <button 
+        key={g}
+        onClick={() => setGradeFilter(g)}
+        className={`px-3 py-1 text-xs font-bold rounded transition-all duration-200 ${
+          gradeFilter === g 
+            ? 'bg-blue-600 text-white shadow-[0_0_10px_rgba(37,99,235,0.3)]' 
+            : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
+        }`}
+      >
+        {g}
+      </button>
+    ))}
+  </div>
+</div>
+
 
         {/* Parlay Cards */}
         <SectionHeader title="10 SHARP PARLAYS" sub="Click any parlay to expand full breakdown" />
