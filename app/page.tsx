@@ -924,3 +924,23 @@ function hexToRgb(hex) {
     ? `${parseInt(result[1], 16)},${parseInt(result[2], 16)},${parseInt(result[3], 16)}`
     : "255,255,255";
 }
+
+function SectionHeader({ title, sub }) {
+  return (
+    <div style={{ marginBottom: "16px" }}>
+      <h2 style={{ fontSize: "14px", color: "#fff", margin: 0, letterSpacing: "2px", textTransform: "uppercase" }}>{title}</h2>
+      <div style={{ fontSize: "10px", color: "#555", marginTop: "2px", letterSpacing: "1px" }}>{sub}</div>
+    </div>
+  );
+}
+
+function ContextCard({ icon, label, note, sub }) {
+  return (
+    <div style={{ padding: "12px", background: "rgba(255,255,255,0.03)", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
+      <div style={{ fontSize: "18px" }}>{icon}</div>
+      <div style={{ fontSize: "13px", fontWeight: "bold", color: "#fff", marginTop: "4px" }}>{label}</div>
+      <div style={{ fontSize: "11px", color: "#ff8c00", fontWeight: "bold" }}>{note}</div>
+      <div style={{ fontSize: "10px", color: "#555", marginTop: "2px" }}>{sub}</div>
+    </div>
+  );
+}
