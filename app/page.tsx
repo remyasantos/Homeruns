@@ -1,30 +1,26 @@
 "use client";
 import { useState, useMemo, useEffect, useCallback } from "react";
 
-// ─── STATIC CONFIG — never touches data.js ───────────────────────────────────
+// ─── STATIC CONFIG ────────────────────────────────────────────────────────────
 const TIER_CONFIG = {
-  S: { label: "S-TIER",   color: "#FFD700", bg: "rgba(255,215,0,0.12)",   border: "#FFD700",  desc: "Elite HR Targets — highest probability" },
-  A: { label: "A-TIER",   color: "#00E5FF", bg: "rgba(0,229,255,0.08)",   border: "#00E5FF",  desc: "Strong Plays — solid HR potential" },
-  B: { label: "B-TIER",   color: "#76FF03", bg: "rgba(118,255,3,0.07)",   border: "#76FF03",  desc: "Value Plays — good odds vs probability" },
-  C: { label: "LONGSHOT", color: "#FF6D00", bg: "rgba(255,109,0,0.08)",   border: "#FF6D00",  desc: "High Risk, High Reward" },
+  S: { label: "S-TIER",   color: "#FFD700", bg: "rgba(255,215,0,0.12)",  border: "#FFD700", desc: "Elite HR Targets — highest probability" },
+  A: { label: "A-TIER",   color: "#00E5FF", bg: "rgba(0,229,255,0.08)",  border: "#00E5FF", desc: "Strong Plays — solid HR potential" },
+  B: { label: "B-TIER",   color: "#76FF03", bg: "rgba(118,255,3,0.07)",  border: "#76FF03", desc: "Value Plays — good odds vs probability" },
+  C: { label: "LONGSHOT", color: "#FF6D00", bg: "rgba(255,109,0,0.08)",  border: "#FF6D00", desc: "High Risk, High Reward" },
 } as const;
 
 const GRADE_ORDER = ["A+","A","A-","B+","B","B-","C+","C","C-","D+","D","F"] as const;
 
-// Derive a 1-100 edge score from matchupGrade so the broken-page UI features work
-// without requiring those fields in data.js
 function gradeToEdge(grade: string): number {
   const idx = GRADE_ORDER.indexOf(grade as typeof GRADE_ORDER[number]);
   if (idx === -1) return 40;
-  // A+ → 97, A → 90, A- → 85, B+ → 80 … F → 20
   return Math.max(20, 97 - idx * 7);
 }
 
-// Derive a rough HR probability % from matchupGrade + tier
 function gradeToHrProb(grade: string, tier: string): number {
   const base = gradeToEdge(grade);
-  const tierBonus = tier === "S" ? 6 : tier === "A" ? 3 : tier === "B" ? 1 : 0;
-  return Math.min(22, Math.max(4, Math.round((base / 100) * 18) + tierBonus));
+  const bonus = tier === "S" ? 6 : tier === "A" ? 3 : tier === "B" ? 1 : 0;
+  return Math.min(22, Math.max(4, Math.round((base / 100) * 18) + bonus));
 }
 
 function gradeColor(g = "") {
@@ -35,61 +31,556 @@ function gradeColor(g = "") {
 }
 
 function oddsToNum(odds: string): number {
-  const n = parseInt(odds.replace("+","").replace(",",""), 10);
+  const n = parseInt(odds.replace("+", "").replace(",", ""), 10);
   return isNaN(n) ? 400 : n;
 }
 
-// ─── DATA TYPES ───────────────────────────────────────────────────────────────
+// Convert American odds to implied probability %
+function oddsToImplied(oddsNum: number): number {
+  if (oddsNum > 0) return Math.round((100 / (oddsNum + 100)) * 100);
+  return Math.round((Math.abs(oddsNum) / (Math.abs(oddsNum) + 100)) * 100);
+}
+
+// ─── SPORTSBOOK DEEP LINKS ────────────────────────────────────────────────────
+// These land on the HR props page for each book — closest we can get without an API
+const BOOKS = [
+  {
+    id: "dk",
+    name: "DraftKings",
+    color: "#53D337",
+    logo: "DK",
+    url: "https://sportsbook.draftkings.com/leagues/baseball/mlb?category=batter-props&subcategory=home-run",
+    searchUrl: (name: string) =>
+      `https://sportsbook.draftkings.com/leagues/baseball/mlb?category=batter-props&subcategory=home-run&query=${encodeURIComponent(name)}`,
+  },
+  {
+    id: "fd",
+    name: "FanDuel",
+    color: "#1493FF",
+    logo: "FD",
+    url: "https://sportsbook.fanduel.com/navigation/mlb?tab=home-run",
+    searchUrl: (name: string) =>
+      `https://sportsbook.fanduel.com/navigation/mlb?tab=home-run&search=${encodeURIComponent(name)}`,
+  },
+  {
+    id: "mgm",
+    name: "BetMGM",
+    color: "#C9A84C",
+    logo: "MGM",
+    url: "https://sports.betmgm.com/en/sports/baseball-23/betting/usa-9/mlb-75",
+    searchUrl: (_name: string) =>
+      `https://sports.betmgm.com/en/sports/baseball-23/betting/usa-9/mlb-75`,
+  },
+  {
+    id: "czr",
+    name: "Caesars",
+    color: "#B5962B",
+    logo: "CZR",
+    url: "https://sportsbook.caesars.com/us/nj/bet/baseball/mlb",
+    searchUrl: (_name: string) =>
+      `https://sportsbook.caesars.com/us/nj/bet/baseball/mlb`,
+  },
+];
+
+// ─── TYPES ────────────────────────────────────────────────────────────────────
 interface Player {
-  id: number;
-  name: string;
-  team: string;
-  tier: string;
-  park: string;
-  pitcher: string;
-  pitcherNote: string;
-  matchupGrade: string;
-  estOdds: string;
-  note: string;
-  tags: string[];
-  // derived
-  edgeScore: number;
-  hrProb: number;
-  oddsNum: number;
-  isLongshot: boolean;
+  id: number; name: string; team: string; tier: string;
+  park: string; pitcher: string; pitcherNote: string;
+  matchupGrade: string; estOdds: string; note: string; tags: string[];
+  edgeScore: number; hrProb: number; oddsNum: number; isLongshot: boolean;
 }
 
 interface Parlay {
-  id: string;
-  legs: number;
-  label: string;
-  risk: string;
-  riskColor: string;
-  estPayout: string;
-  description: string;
-  playerIds: number[];
-  strategy: string;
+  id: string; legs: number; label: string; risk: string; riskColor: string;
+  estPayout: string; description: string; playerIds: number[]; strategy: string;
 }
 
-interface SlateData {
-  slateDate: string;
-  slateLabel: string;
-  contextCards: { icon: string; label: string; note: string; sub: string }[];
-  parkFactors: Record<string, { rank: number; label: string; color: string }>;
-  players: Player[];
+// ─── SPORTSBOOK CARD (deep link + market button) ──────────────────────────────
+function BookButton({ book, playerName }: { book: typeof BOOKS[0]; playerName?: string }) {
+  return (
+    <a
+      href={playerName ? book.searchUrl(playerName) : book.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        display: "flex", alignItems: "center", gap: 8,
+        background: `${book.color}15`, border: `1px solid ${book.color}50`,
+        borderRadius: 8, padding: "8px 12px", textDecoration: "none",
+        transition: "background 0.15s", cursor: "pointer", flex: 1,
+        minWidth: 100,
+      }}
+      onClick={e => e.stopPropagation()}
+    >
+      <span style={{
+        background: book.color, color: "#000", borderRadius: 4,
+        padding: "1px 5px", fontSize: 9, fontWeight: 900, letterSpacing: 0.5,
+        flexShrink: 0,
+      }}>{book.logo}</span>
+      <span style={{ fontSize: 11, color: book.color, fontWeight: 700 }}>{book.name}</span>
+      <span style={{ marginLeft: "auto", fontSize: 10, color: "#555" }}>→</span>
+    </a>
+  );
+}
+
+// ─── ODDS COMPARISON ROW ──────────────────────────────────────────────────────
+function OddsComparisonRow({ player }: { player: Player }) {
+  const [open, setOpen] = useState(false);
+  const tc = TIER_CONFIG[player.tier as keyof typeof TIER_CONFIG] ?? TIER_CONFIG.C;
+  const implied = oddsToImplied(player.oddsNum);
+  const edgeVsImplied = player.hrProb - implied;
+
+  return (
+    <div style={{
+      background: "rgba(255,255,255,0.02)", border: `1px solid ${tc.color}25`,
+      borderRadius: 10, marginBottom: 6, overflow: "hidden",
+    }}>
+      {/* Collapsed row */}
+      <div
+        style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", cursor: "pointer", flexWrap: "wrap" }}
+        onClick={() => setOpen(o => !o)}
+      >
+        <span style={{
+          background: tc.bg, border: `1px solid ${tc.color}60`,
+          borderRadius: 3, padding: "1px 5px", fontSize: 9, fontWeight: 900,
+          color: tc.color, letterSpacing: 1, whiteSpace: "nowrap", flexShrink: 0,
+        }}>{tc.label}</span>
+
+        <span style={{ fontWeight: 700, fontSize: 13, color: "#F5F5F5", flex: 1, minWidth: 100 }}>{player.name}</span>
+        <span style={{ fontSize: 10, color: "#666" }}>{player.team}</span>
+
+        {/* Model odds */}
+        <div style={{ textAlign: "center", minWidth: 54 }}>
+          <div style={{ fontSize: 15, fontWeight: 800, color: "#FFD700" }}>{player.estOdds}</div>
+          <div style={{ fontSize: 8, color: "#555", letterSpacing: 1 }}>MODEL</div>
+        </div>
+
+        {/* Edge vs implied */}
+        <div style={{ textAlign: "center", minWidth: 48 }}>
+          <div style={{
+            fontSize: 12, fontWeight: 700,
+            color: edgeVsImplied > 0 ? "#76FF03" : "#FF5252",
+          }}>
+            {edgeVsImplied > 0 ? "+" : ""}{edgeVsImplied}%
+          </div>
+          <div style={{ fontSize: 8, color: "#555", letterSpacing: 1 }}>EDGE</div>
+        </div>
+
+        <span style={{ fontSize: 10, color: "#444" }}>{open ? "▲" : "▼"}</span>
+      </div>
+
+      {/* Expanded: book links + odds detail */}
+      {open && (
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "12px 14px" }}>
+          <div style={{ fontSize: 10, color: "#555", letterSpacing: 2, marginBottom: 8 }}>OPEN IN YOUR BOOK</div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+            {BOOKS.map(b => <BookButton key={b.id} book={b} playerName={player.name} />)}
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 10 }}>
+            <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "8px 10px", fontSize: 11 }}>
+              <div style={{ color: "#555", marginBottom: 2, fontSize: 9 }}>MODEL ODDS</div>
+              <div style={{ color: "#FFD700", fontWeight: 700, fontSize: 15 }}>{player.estOdds}</div>
+            </div>
+            <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "8px 10px", fontSize: 11 }}>
+              <div style={{ color: "#555", marginBottom: 2, fontSize: 9 }}>IMPLIED PROB</div>
+              <div style={{ color: "#00E5FF", fontWeight: 700 }}>{implied}%</div>
+            </div>
+            <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "8px 10px", fontSize: 11 }}>
+              <div style={{ color: "#555", marginBottom: 2, fontSize: 9 }}>MODEL EST.</div>
+              <div style={{ color: "#76FF03", fontWeight: 700 }}>{player.hrProb}%</div>
+            </div>
+          </div>
+
+          <p style={{ fontSize: 11, color: "#666", lineHeight: 1.5, margin: 0 }}>
+            ⚠ Model odds are estimates — always confirm current lines on your sportsbook before placing.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── PLACE BET TAB ────────────────────────────────────────────────────────────
+function PlaceBetTab({
+  parlayPlayers, parlays, playerMap, combinedOdds, slateDate,
+}: {
+  parlayPlayers: Player[];
   parlays: Parlay[];
+  playerMap: Record<number, Player>;
+  combinedOdds: string | null;
+  slateDate: string;
+}) {
+  const [copiedTicket, setCopiedTicket] = useState(false);
+  const [copiedList, setCopiedList] = useState(false);
+  const [activeBook, setActiveBook] = useState("dk");
+  const [viewSection, setViewSection] = useState<"ticket"|"odds"|"books">("ticket");
+
+  const selectedBook = BOOKS.find(b => b.id === activeBook) ?? BOOKS[0];
+
+  // Build the copy-ready ticket text
+  const ticketText = useMemo(() => {
+    if (parlayPlayers.length === 0) return "";
+    const lines = [
+      `═══ HR PARLAY TICKET — ${slateDate} ═══`,
+      `${parlayPlayers.length}-LEG SAME-GAME / MULTI-GAME PARLAY`,
+      `Bet type: Player Home Run (any HR)`,
+      ``,
+      ...parlayPlayers.map((p, i) =>
+        `LEG ${i + 1}: ${p.name} (${p.team}) to hit a Home Run\n        vs ${p.pitcher} @ ${p.park}\n        Model odds: ${p.estOdds} | MU Grade: ${p.matchupGrade}`
+      ),
+      ``,
+      `Combined model payout: ${combinedOdds ?? "N/A"}`,
+      `⚠ Confirm current odds on your sportsbook before placing.`,
+      `═══════════════════════════════════════`,
+    ];
+    return lines.join("\n");
+  }, [parlayPlayers, combinedOdds, slateDate]);
+
+  const shortList = useMemo(() =>
+    parlayPlayers.map(p => `${p.name} (${p.team}) HR ${p.estOdds}`).join("\n"),
+  [parlayPlayers]);
+
+  const copyTicket = () => {
+    navigator.clipboard.writeText(ticketText).then(() => {
+      setCopiedTicket(true);
+      setTimeout(() => setCopiedTicket(false), 2500);
+    });
+  };
+
+  const copyList = () => {
+    navigator.clipboard.writeText(shortList).then(() => {
+      setCopiedList(true);
+      setTimeout(() => setCopiedList(false), 2500);
+    });
+  };
+
+  const sectionBtn = (id: typeof viewSection, label: string) => (
+    <button
+      style={{
+        flex: 1, padding: "7px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer",
+        background: viewSection === id ? "rgba(255,215,0,0.15)" : "transparent",
+        color: viewSection === id ? "#FFD700" : "#555",
+        border: "none", borderBottom: `2px solid ${viewSection === id ? "#FFD700" : "transparent"}`,
+        transition: "all 0.15s", fontFamily: "inherit",
+      }}
+      onClick={() => setViewSection(id)}
+    >{label}</button>
+  );
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{
+        background: "rgba(83,211,55,0.06)", border: "1px solid rgba(83,211,55,0.2)",
+        borderRadius: 12, padding: 14, marginBottom: 16,
+      }}>
+        <h2 style={{ fontFamily: "'Bebas Neue'", fontSize: 22, color: "#53D337", letterSpacing: 2, marginBottom: 4 }}>
+          🎯 PLACE YOUR BET
+        </h2>
+        <p style={{ fontSize: 11, color: "#888", lineHeight: 1.6 }}>
+          Use your parlay builder to select legs, then copy your ticket or open directly in your sportsbook.
+          {parlayPlayers.length === 0 && " → Go to the Picks tab and add players first."}
+        </p>
+      </div>
+
+      {/* Section switcher */}
+      <div style={{
+        display: "flex", background: "rgba(255,255,255,0.03)",
+        border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8,
+        marginBottom: 16, overflow: "hidden",
+      }}>
+        {sectionBtn("ticket", "📋 Parlay Ticket")}
+        {sectionBtn("odds", "📊 Odds Table")}
+        {sectionBtn("books", "🔗 Open in Book")}
+      </div>
+
+      {/* ── PARLAY TICKET ── */}
+      {viewSection === "ticket" && (
+        <div>
+          {parlayPlayers.length === 0 ? (
+            <div style={{
+              background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.1)",
+              borderRadius: 12, padding: 32, textAlign: "center",
+            }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>🎰</div>
+              <div style={{ fontSize: 13, color: "#555" }}>No legs selected yet</div>
+              <div style={{ fontSize: 11, color: "#444", marginTop: 4 }}>Go to Picks → Add players to your parlay builder</div>
+            </div>
+          ) : (
+            <>
+              {/* Ticket preview */}
+              <div style={{
+                background: "#0D0D14", border: "1px solid rgba(255,215,0,0.2)",
+                borderRadius: 12, padding: 16, marginBottom: 12,
+                fontFamily: "'DM Mono', monospace",
+              }}>
+                <div style={{ fontSize: 9, color: "#FFD70060", letterSpacing: 3, marginBottom: 10 }}>
+                  ══ HR PARLAY TICKET — {slateDate} ══
+                </div>
+                <div style={{ fontSize: 10, color: "#555", marginBottom: 10 }}>
+                  {parlayPlayers.length}-LEG PARLAY · Player Home Run (any HR)
+                </div>
+
+                {parlayPlayers.map((p, i) => {
+                  const tc = TIER_CONFIG[p.tier as keyof typeof TIER_CONFIG] ?? TIER_CONFIG.C;
+                  return (
+                    <div key={p.id} style={{
+                      display: "flex", gap: 10, alignItems: "flex-start",
+                      padding: "8px 0", borderBottom: i < parlayPlayers.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
+                    }}>
+                      <span style={{ fontSize: 9, color: "#444", paddingTop: 2, minWidth: 40 }}>LEG {i + 1}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{
+                            background: tc.bg, border: `1px solid ${tc.color}50`,
+                            borderRadius: 3, padding: "0px 4px", fontSize: 8, fontWeight: 900, color: tc.color,
+                          }}>{tc.label}</span>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: "#F5F5F5" }}>{p.name}</span>
+                          <span style={{ fontSize: 10, color: "#666" }}>{p.team}</span>
+                        </div>
+                        <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>
+                          vs {p.pitcher} @ {p.park}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "right", flexShrink: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: "#FFD700" }}>{p.estOdds}</div>
+                        <div style={{ fontSize: 9, color: "#444" }}>MU: {p.matchupGrade}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div style={{
+                  marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,215,0,0.15)",
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                }}>
+                  <span style={{ fontSize: 10, color: "#666" }}>{parlayPlayers.length}-LEG COMBINED EST.</span>
+                  <span style={{ fontFamily: "'Bebas Neue'", fontSize: 26, color: "#FFD700" }}>
+                    {combinedOdds ?? "—"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Copy buttons */}
+              <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                <button
+                  style={{
+                    flex: 1, padding: "10px 16px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+                    cursor: "pointer", fontFamily: "inherit",
+                    background: copiedTicket ? "rgba(118,255,3,0.15)" : "rgba(255,215,0,0.1)",
+                    border: `1px solid ${copiedTicket ? "#76FF03" : "rgba(255,215,0,0.3)"}`,
+                    color: copiedTicket ? "#76FF03" : "#FFD700",
+                    transition: "all 0.2s",
+                  }}
+                  onClick={copyTicket}
+                >
+                  {copiedTicket ? "✓ Copied!" : "📋 Copy Full Ticket"}
+                </button>
+                <button
+                  style={{
+                    padding: "10px 16px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+                    cursor: "pointer", fontFamily: "inherit",
+                    background: copiedList ? "rgba(118,255,3,0.15)" : "rgba(255,255,255,0.05)",
+                    border: `1px solid ${copiedList ? "#76FF03" : "rgba(255,255,255,0.1)"}`,
+                    color: copiedList ? "#76FF03" : "#888",
+                    transition: "all 0.2s",
+                  }}
+                  onClick={copyList}
+                >
+                  {copiedList ? "✓ Copied!" : "Quick Copy"}
+                </button>
+              </div>
+
+              {/* Open in book */}
+              <div style={{ fontSize: 10, color: "#555", letterSpacing: 2, marginBottom: 8 }}>OPEN YOUR BOOK — THEN SEARCH EACH LEG</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {BOOKS.map(b => (
+                  <a
+                    key={b.id}
+                    href={b.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: "flex", alignItems: "center", gap: 8,
+                      background: `${b.color}15`, border: `1px solid ${b.color}50`,
+                      borderRadius: 8, padding: "9px 14px", textDecoration: "none",
+                      flex: 1, minWidth: 110, cursor: "pointer",
+                    }}
+                  >
+                    <span style={{
+                      background: b.color, color: "#000", borderRadius: 4,
+                      padding: "1px 6px", fontSize: 9, fontWeight: 900,
+                    }}>{b.logo}</span>
+                    <span style={{ fontSize: 12, color: b.color, fontWeight: 700 }}>{b.name}</span>
+                    <span style={{ marginLeft: "auto", fontSize: 11, color: "#555" }}>↗</span>
+                  </a>
+                ))}
+              </div>
+
+              <p style={{ fontSize: 10, color: "#333", marginTop: 12, lineHeight: 1.6 }}>
+                ⚠ Odds shown are model estimates. Always verify current lines on your sportsbook. Some books may not offer all listed props.
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── ODDS TABLE ── */}
+      {viewSection === "odds" && (
+        <div>
+          <div style={{ fontSize: 10, color: "#555", letterSpacing: 1, marginBottom: 12 }}>
+            {parlayPlayers.length > 0
+              ? `Showing ${parlayPlayers.length} selected parlay legs — expand any row to open in your book`
+              : "No legs in your builder — showing top picks instead. Add legs from the Picks tab."}
+          </div>
+
+          {/* Show parlay legs if any, otherwise top S-tier */}
+          {(parlayPlayers.length > 0
+            ? parlayPlayers
+            : Object.values(playerMap).filter(p => p.tier === "S").sort((a, b) => b.edgeScore - a.edgeScore).slice(0, 8)
+          ).map(p => (
+            <OddsComparisonRow key={p.id} player={p} />
+          ))}
+
+          <div style={{
+            background: "rgba(0,229,255,0.04)", border: "1px solid rgba(0,229,255,0.15)",
+            borderRadius: 10, padding: 12, marginTop: 12, fontSize: 11, color: "#666", lineHeight: 1.7,
+          }}>
+            <span style={{ color: "#00E5FF", fontWeight: 700 }}>How to read this: </span>
+            Model odds are our estimated fair value based on matchup grade and park factor. Implied prob is what the sportsbook's odds translate to. When our model est. exceeds the implied prob, that's where we see edge.
+          </div>
+        </div>
+      )}
+
+      {/* ── BOOK LINKS ── */}
+      {viewSection === "books" && (
+        <div>
+          <div style={{ fontSize: 10, color: "#555", letterSpacing: 1, marginBottom: 16 }}>
+            SELECT A BOOK — THEN NAVIGATE TO PLAYER PROPS → HOME RUNS
+          </div>
+
+          {/* Book selector */}
+          <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+            {BOOKS.map(b => (
+              <button
+                key={b.id}
+                style={{
+                  padding: "6px 14px", borderRadius: 6, fontSize: 11, fontWeight: 700,
+                  cursor: "pointer", fontFamily: "inherit",
+                  background: activeBook === b.id ? `${b.color}25` : "rgba(255,255,255,0.04)",
+                  color: activeBook === b.id ? b.color : "#555",
+                  border: `1px solid ${activeBook === b.id ? b.color + "60" : "rgba(255,255,255,0.08)"}`,
+                }}
+                onClick={() => setActiveBook(b.id)}
+              >
+                {b.name}
+              </button>
+            ))}
+          </div>
+
+          {/* Selected book card */}
+          <div style={{
+            background: `${selectedBook.color}08`, border: `1px solid ${selectedBook.color}30`,
+            borderRadius: 12, padding: 16, marginBottom: 16,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <span style={{
+                background: selectedBook.color, color: "#000", borderRadius: 6,
+                padding: "4px 10px", fontSize: 13, fontWeight: 900,
+              }}>{selectedBook.logo}</span>
+              <span style={{ fontSize: 16, fontWeight: 700, color: selectedBook.color }}>{selectedBook.name}</span>
+            </div>
+
+            <a
+              href={selectedBook.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "block", textAlign: "center", padding: "11px 16px",
+                background: selectedBook.color, color: "#000",
+                borderRadius: 8, fontSize: 13, fontWeight: 900,
+                textDecoration: "none", marginBottom: 12, letterSpacing: 0.5,
+              }}
+            >
+              Open {selectedBook.name} → HR Props ↗
+            </a>
+
+            <div style={{ fontSize: 10, color: "#555", letterSpacing: 2, marginBottom: 8 }}>
+              SEARCH EACH PLAYER — OPENS DIRECTLY TO HR PROPS SECTION
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+              {(parlayPlayers.length > 0
+                ? parlayPlayers
+                : Object.values(playerMap).filter(p => p.tier === "S").sort((a, b) => b.edgeScore - a.edgeScore).slice(0, 6)
+              ).map(p => (
+                <a
+                  key={p.id}
+                  href={selectedBook.searchUrl(p.name)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)",
+                    borderRadius: 8, padding: "8px 12px", textDecoration: "none",
+                  }}
+                >
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#F5F5F5", flex: 1 }}>{p.name}</span>
+                  <span style={{ fontSize: 10, color: "#666" }}>{p.team}</span>
+                  <span style={{ fontSize: 12, color: "#FFD700", fontWeight: 700 }}>{p.estOdds}</span>
+                  <span style={{ fontSize: 10, color: selectedBook.color }}>Search ↗</span>
+                </a>
+              ))}
+            </div>
+
+            {parlayPlayers.length === 0 && (
+              <p style={{ fontSize: 10, color: "#444", marginTop: 10, textAlign: "center" }}>
+                Add players in the Picks tab to see your specific legs here.
+              </p>
+            )}
+          </div>
+
+          {/* Step-by-step guide */}
+          <div style={{
+            background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: 12, padding: 14,
+          }}>
+            <div style={{ fontSize: 10, color: "#FFD700", letterSpacing: 2, fontWeight: 700, marginBottom: 10 }}>
+              HOW TO PLACE YOUR PARLAY
+            </div>
+            {[
+              "Open your sportsbook using the button above",
+              "Navigate to MLB → Player Props → Home Run",
+              'Search each player name and find "To Hit a Home Run"',
+              "Add each leg to your bet slip",
+              "Select Parlay and enter your stake",
+              "Verify the combined odds match or beat our model estimate",
+              "Confirm the bet — good luck!",
+            ].map((step, i) => (
+              <div key={i} style={{ display: "flex", gap: 10, marginBottom: 8, alignItems: "flex-start" }}>
+                <span style={{
+                  background: "rgba(255,215,0,0.15)", color: "#FFD700",
+                  borderRadius: "50%", width: 20, height: 20, flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 10, fontWeight: 900, marginTop: 1,
+                }}>{i + 1}</span>
+                <span style={{ fontSize: 11, color: "#aaa", lineHeight: 1.5 }}>{step}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
-// ─── COMPONENTS ───────────────────────────────────────────────────────────────
-
+// ─── EDGE / MU BADGE COMPONENTS ───────────────────────────────────────────────
 function EdgeBadge({ score }: { score: number }) {
   const color = score >= 85 ? "#FFD700" : score >= 70 ? "#76FF03" : "#FF9800";
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 3,
       background: `${color}18`, border: `1px solid ${color}40`,
-      borderRadius: 6, padding: "2px 7px", fontSize: 11, fontWeight: 700, color,
-      whiteSpace: "nowrap",
+      borderRadius: 6, padding: "2px 7px", fontSize: 11, fontWeight: 700, color, whiteSpace: "nowrap",
     }}>
       <span style={{ fontSize: 9 }}>EDGE</span>
       <span style={{ fontSize: 14 }}>{score}</span>
@@ -108,6 +599,7 @@ function MuBadge({ grade }: { grade: string }) {
   );
 }
 
+// ─── PLAYER CARD ──────────────────────────────────────────────────────────────
 function PlayerCard({
   player, inParlay, onToggle, parkLabel,
 }: {
@@ -127,7 +619,6 @@ function PlayerCard({
       }}
       onClick={() => setExpanded(e => !e)}
     >
-      {/* Row 1: Tier badge / Name / Team / Odds */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <span style={{
           background: tc.bg, border: `1px solid ${tc.color}60`,
@@ -139,7 +630,6 @@ function PlayerCard({
         <span style={{ fontWeight: 800, fontSize: 16, color: "#FFD700", minWidth: 54, textAlign: "right" }}>{player.estOdds}</span>
       </div>
 
-      {/* Row 2: Park / Pitcher / Badges */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
         <span style={{ fontSize: 11, color: "#aaa" }}>{player.park}</span>
         {parkLabel && <span style={{ fontSize: 10, color: "#555" }}>· {parkLabel}</span>}
@@ -151,7 +641,6 @@ function PlayerCard({
         </span>
       </div>
 
-      {/* Expanded detail */}
       {expanded && (
         <div style={{ marginTop: 10, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 10 }}>
           <p style={{ fontSize: 12, color: "#bbb", lineHeight: 1.6, margin: "0 0 6px" }}>
@@ -184,7 +673,6 @@ function PlayerCard({
         </div>
       )}
 
-      {/* Row 3: CTA + toggle hint */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10 }}>
         <button
           style={{
@@ -192,7 +680,7 @@ function PlayerCard({
             border: `1px solid ${tc.color}`,
             borderRadius: 6, padding: "5px 14px", fontSize: 11,
             color: inParlay ? "#000" : tc.color, fontWeight: 700, cursor: "pointer",
-            transition: "all 0.15s",
+            transition: "all 0.15s", fontFamily: "inherit",
           }}
           onClick={e => { e.stopPropagation(); onToggle(); }}
         >
@@ -204,6 +692,7 @@ function PlayerCard({
   );
 }
 
+// ─── BUILT PARLAY CARD ────────────────────────────────────────────────────────
 function ParlayBuiltCard({
   parlay, playerMap, isOpen, onToggle,
 }: {
@@ -234,13 +723,11 @@ function ParlayBuiltCard({
         <span style={{ fontWeight: 800, color: "#FFD700", fontSize: 15, whiteSpace: "nowrap" }}>{parlay.estPayout}</span>
         <span style={{ fontSize: 11, color: "#555" }}>{isOpen ? "▲" : "▼"}</span>
       </div>
-
       {missingIds.length > 0 && (
         <div style={{ fontSize: 10, color: "#FF5252", marginTop: 6 }}>
           ⚠ {missingIds.length} player id{missingIds.length > 1 ? "s" : ""} not found: {missingIds.join(", ")}
         </div>
       )}
-
       {isOpen && (
         <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
           <p style={{ fontSize: 11, color: "#aaa", margin: "0 0 10px", lineHeight: 1.6 }}>{parlay.description}</p>
@@ -254,9 +741,8 @@ function ParlayBuiltCard({
               const tc = TIER_CONFIG[p.tier as keyof typeof TIER_CONFIG] ?? TIER_CONFIG.C;
               return (
                 <span key={p.id} style={{
-                  fontSize: 10, color: tc.color,
-                  background: tc.bg, padding: "2px 8px",
-                  borderRadius: 10, border: `1px solid ${tc.color}40`,
+                  fontSize: 10, color: tc.color, background: tc.bg,
+                  padding: "2px 8px", borderRadius: 10, border: `1px solid ${tc.color}40`,
                 }}>{p.name.split(" ").at(-1)}</span>
               );
             })}
@@ -269,49 +755,36 @@ function ParlayBuiltCard({
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function Home() {
-  // ── State: loaded data
   const [slateDate,    setSlateDate]    = useState("...");
   const [slateLabel,   setSlateLabel]   = useState("");
-  const [contextCards, setContextCards] = useState<SlateData["contextCards"]>([]);
-  const [parkFactors,  setParkFactors]  = useState<SlateData["parkFactors"]>({});
+  const [contextCards, setContextCards] = useState<{ icon: string; label: string; note: string; sub: string }[]>([]);
+  const [parkFactors,  setParkFactors]  = useState<Record<string, { rank: number; label: string; color: string }>>({});
   const [players,      setPlayers]      = useState<Player[]>([]);
   const [parlays,      setParlays]      = useState<Parlay[]>([]);
   const [loading,      setLoading]      = useState(true);
   const [dataError,    setDataError]    = useState<string | null>(null);
 
-  // ── State: UI
-  const [activeTab,   setActiveTab]   = useState<"picks"|"parlays"|"longshots">("picks");
+  const [activeTab,   setActiveTab]   = useState<"picks"|"parlays"|"longshots"|"bet">("picks");
   const [tierFilter,  setTierFilter]  = useState("ALL");
   const [sortBy,      setSortBy]      = useState<"edge"|"prob"|"odds">("edge");
   const [parlay,      setParlay]      = useState<number[]>([]);
   const [parlayOpen,  setParlayOpen]  = useState(false);
   const [openParlay,  setOpenParlay]  = useState<string | null>(null);
 
-  // ── Fetch data.js from public/
   useEffect(() => {
     fetch("/data.js")
-      .then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status} — is public/data.js in your repo?`);
-        return r.text();
-      })
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status} — is public/data.js in your repo?`); return r.text(); })
       .then(text => {
-        // Execute the JS in a sandboxed scope
         // eslint-disable-next-line no-new-func
-        const fn = new Function(`
-          ${text}
-          return { SLATE_DATE, SLATE_LABEL, CONTEXT_CARDS, PARK_FACTORS, players, parlays };
-        `);
+        const fn = new Function(`${text}\nreturn { SLATE_DATE, SLATE_LABEL, CONTEXT_CARDS, PARK_FACTORS, players, parlays };`);
         const raw = fn();
-
-        // Hydrate derived fields into each player
-        const hydrated: Player[] = (raw.players as Player[]).map((p: Player) => ({
+        const hydrated: Player[] = raw.players.map((p: Player) => ({
           ...p,
-          edgeScore:  gradeToEdge(p.matchupGrade),
-          hrProb:     gradeToHrProb(p.matchupGrade, p.tier),
-          oddsNum:    oddsToNum(p.estOdds),
+          edgeScore: gradeToEdge(p.matchupGrade),
+          hrProb: gradeToHrProb(p.matchupGrade, p.tier),
+          oddsNum: oddsToNum(p.estOdds),
           isLongshot: p.tier === "C",
         }));
-
         setSlateDate(raw.SLATE_DATE);
         setSlateLabel(raw.SLATE_LABEL);
         setContextCards(raw.CONTEXT_CARDS);
@@ -320,99 +793,73 @@ export default function Home() {
         setParlays(raw.parlays);
         setLoading(false);
       })
-      .catch(err => {
-        setDataError(err.message);
-        setLoading(false);
-      });
+      .catch(err => { setDataError(err.message); setLoading(false); });
   }, []);
 
-  // ── Derived
-  const playerMap = useMemo(() => Object.fromEntries(players.map(p => [p.id, p])), [players]);
-
-  const mainPlayers = useMemo(() => players.filter(p => p.tier !== "C"), [players]);
+  const playerMap       = useMemo(() => Object.fromEntries(players.map(p => [p.id, p])), [players]);
+  const mainPlayers     = useMemo(() => players.filter(p => p.tier !== "C"), [players]);
   const longshotPlayers = useMemo(() => players.filter(p => p.tier === "C"), [players]);
+  const parlayPlayers   = useMemo(() => players.filter(p => parlay.includes(p.id)), [parlay, players]);
+  const topPicks        = useMemo(() => players.filter(p => p.tier === "S").sort((a, b) => b.edgeScore - a.edgeScore).slice(0, 5), [players]);
+  const tierCounts      = useMemo(() => {
+    const c: Record<string, number> = { S: 0, A: 0, B: 0, C: 0 };
+    players.forEach(p => { if (p.tier in c) c[p.tier]++; });
+    return c;
+  }, [players]);
 
   const filteredPlayers = useMemo(() => {
     let p = mainPlayers;
     if (tierFilter !== "ALL") p = p.filter(pl => pl.tier === tierFilter);
-    if (sortBy === "edge")  p = [...p].sort((a, b) => b.edgeScore - a.edgeScore);
-    if (sortBy === "prob")  p = [...p].sort((a, b) => b.hrProb   - a.hrProb);
-    if (sortBy === "odds")  p = [...p].sort((a, b) => b.oddsNum  - a.oddsNum);
+    if (sortBy === "edge")  return [...p].sort((a, b) => b.edgeScore - a.edgeScore);
+    if (sortBy === "prob")  return [...p].sort((a, b) => b.hrProb - a.hrProb);
+    if (sortBy === "odds")  return [...p].sort((a, b) => b.oddsNum - a.oddsNum);
     return p;
   }, [mainPlayers, tierFilter, sortBy]);
-
-  const topPicks = useMemo(() =>
-    players.filter(p => p.tier === "S").sort((a, b) => b.edgeScore - a.edgeScore).slice(0, 5),
-  [players]);
-
-  const parlayPlayers = useMemo(() => players.filter(p => parlay.includes(p.id)), [parlay, players]);
 
   const combinedOdds = useMemo(() => {
     if (parlayPlayers.length < 2) return null;
     const dec = parlayPlayers.map(p => p.oddsNum > 0 ? p.oddsNum / 100 + 1 : 100 / Math.abs(p.oddsNum) + 1);
-    const combined = dec.reduce((a, b) => a * b, 1);
-    return `+${Math.round((combined - 1) * 100).toLocaleString()}`;
+    return `+${Math.round((dec.reduce((a, b) => a * b, 1) - 1) * 100).toLocaleString()}`;
   }, [parlayPlayers]);
 
   const toggleParlay = useCallback((id: number) => {
     setParlay(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   }, []);
 
-  // ── Stat counts (live from data)
-  const tierCounts = useMemo(() => {
-    const counts: Record<string, number> = { S: 0, A: 0, B: 0, C: 0 };
-    players.forEach(p => { if (p.tier in counts) counts[p.tier]++; });
-    return counts;
-  }, [players]);
-
-  // ── Style helpers
   const tabStyle = (t: string) => ({
-    padding: "8px 18px", borderRadius: 8, fontSize: 12, fontWeight: 700 as const,
-    cursor: "pointer", transition: "all 0.15s",
+    padding: "8px 14px", borderRadius: 8, fontSize: 11, fontWeight: 700 as const,
+    cursor: "pointer", transition: "all 0.15s", fontFamily: "inherit",
     background: activeTab === t ? "#FFD700" : "rgba(255,255,255,0.05)",
     color: activeTab === t ? "#000" : "#aaa",
     border: activeTab === t ? "none" : "1px solid rgba(255,255,255,0.1)",
-    fontFamily: "inherit",
+    position: "relative" as const,
   });
 
   const filterBtnStyle = (active: boolean, color = "#FFD700") => ({
     padding: "5px 12px", borderRadius: 6, fontSize: 11, fontWeight: 700 as const,
-    cursor: "pointer",
+    cursor: "pointer", fontFamily: "inherit",
     background: active ? `${color}20` : "rgba(255,255,255,0.04)",
     color: active ? color : "#666",
     border: `1px solid ${active ? color + "50" : "rgba(255,255,255,0.08)"}`,
-    transition: "all 0.15s", fontFamily: "inherit",
+    transition: "all 0.15s",
   });
 
-  // ── Loading / error screens
   if (loading) return (
-    <div style={{
-      minHeight: "100vh", background: "#0A0A0F", color: "#555",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      fontFamily: "'DM Mono', monospace", letterSpacing: 3, fontSize: 13,
-    }}>
+    <div style={{ minHeight: "100vh", background: "#0A0A0F", color: "#555", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Mono', monospace", letterSpacing: 3, fontSize: 13 }}>
       LOADING SLATE DATA...
     </div>
   );
 
   if (dataError) return (
-    <div style={{
-      minHeight: "100vh", background: "#0A0A0F", color: "#FF5252",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      flexDirection: "column", gap: 12, fontFamily: "'DM Mono', monospace", padding: 24,
-    }}>
+    <div style={{ minHeight: "100vh", background: "#0A0A0F", color: "#FF5252", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12, fontFamily: "'DM Mono', monospace", padding: 24 }}>
       <div style={{ letterSpacing: 3, fontSize: 13 }}>⚠ FAILED TO LOAD DATA</div>
       <div style={{ fontSize: 11, color: "#666", textAlign: "center", maxWidth: 400 }}>{dataError}</div>
       <div style={{ fontSize: 10, color: "#444" }}>Make sure <code>public/data.js</code> exists in your repo.</div>
     </div>
   );
 
-  // ─── RENDER ──────────────────────────────────────────────────────────────────
   return (
-    <div style={{
-      minHeight: "100vh", background: "#0A0A0F", color: "#F0F0F0",
-      fontFamily: "'DM Mono', 'Courier New', monospace",
-    }}>
+    <div style={{ minHeight: "100vh", background: "#0A0A0F", color: "#F0F0F0", fontFamily: "'DM Mono', 'Courier New', monospace" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bebas+Neue&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -421,52 +868,31 @@ export default function Home() {
         ::-webkit-scrollbar-track { background: #111; }
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
         .parlay-sticky { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; }
-        @media (max-width: 600px) {
-          .hero-title { font-size: 36px !important; }
-          .stat-row { gap: 12px !important; }
-        }
+        @media (max-width: 600px) { .hero-title { font-size: 36px !important; } .stat-row { gap: 12px !important; } }
       `}</style>
 
-      {/* ── HERO ── */}
-      <div style={{
-        background: "linear-gradient(180deg, #111118 0%, #0A0A0F 100%)",
-        borderBottom: "1px solid rgba(255,215,0,0.15)",
-        padding: "32px 16px 24px", textAlign: "center",
-        position: "relative", overflow: "hidden",
-      }}>
-        <div style={{
-          position: "absolute", top: -60, left: "50%", transform: "translateX(-50%)",
-          width: 400, height: 200, borderRadius: "50%",
-          background: "radial-gradient(ellipse, rgba(255,215,0,0.07) 0%, transparent 70%)",
-          pointerEvents: "none",
-        }} />
+      {/* HERO */}
+      <div style={{ background: "linear-gradient(180deg, #111118 0%, #0A0A0F 100%)", borderBottom: "1px solid rgba(255,215,0,0.15)", padding: "32px 16px 24px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: -60, left: "50%", transform: "translateX(-50%)", width: 400, height: 200, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(255,215,0,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
         <div style={{ fontSize: 10, letterSpacing: 4, color: "#FFD70080", fontWeight: 700, marginBottom: 10 }}>
           ◆ SHARP STACKING SYSTEM ◆ {slateDate} ◆ {slateLabel}
         </div>
-        <h1 className="hero-title" style={{
-          fontFamily: "'Bebas Neue', sans-serif",
-          fontSize: 52, letterSpacing: 3, color: "#FFD700",
-          lineHeight: 1, marginBottom: 8,
-        }}>
+        <h1 className="hero-title" style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 52, letterSpacing: 3, color: "#FFD700", lineHeight: 1, marginBottom: 8 }}>
           Daily MLB Home Run Picks
         </h1>
-        <p style={{ fontSize: 13, color: "#888", marginBottom: 4 }}>
-          Data-driven picks using matchup grades, park factors &amp; pitcher tendencies
-        </p>
+        <p style={{ fontSize: 13, color: "#888", marginBottom: 4 }}>Data-driven picks using matchup grades, park factors &amp; pitcher tendencies</p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 12, flexWrap: "wrap" }}>
           {["✅ Updated Daily","📊 Statcast Data","🔢 Edge Score /100"].map(s => (
             <span key={s} style={{ fontSize: 10, color: "#FFD700", background: "rgba(255,215,0,0.08)", padding: "3px 10px", borderRadius: 10, border: "1px solid rgba(255,215,0,0.2)" }}>{s}</span>
           ))}
         </div>
-
-        {/* Live stat counts from data */}
         <div className="stat-row" style={{ display: "flex", gap: 20, justifyContent: "center", marginTop: 20, flexWrap: "wrap" }}>
           {([
-            { label: "S-TIER",    val: tierCounts.S, color: "#FFD700" },
-            { label: "A-TIER",    val: tierCounts.A, color: "#00E5FF" },
-            { label: "B-TIER",    val: tierCounts.B, color: "#76FF03" },
+            { label: "S-TIER", val: tierCounts.S, color: "#FFD700" },
+            { label: "A-TIER", val: tierCounts.A, color: "#00E5FF" },
+            { label: "B-TIER", val: tierCounts.B, color: "#76FF03" },
             { label: "LONGSHOTS", val: tierCounts.C, color: "#FF6D00" },
-            { label: "PARLAYS",   val: parlays.length, color: "#FF80AB" },
+            { label: "PARLAYS", val: parlays.length, color: "#FF80AB" },
           ] as const).map(s => (
             <div key={s.label} style={{ textAlign: "center" }}>
               <div style={{ fontFamily: "'Bebas Neue'", fontSize: 28, color: s.color, lineHeight: 1 }}>{s.val}</div>
@@ -476,16 +902,13 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── TOP PICKS BANNER ── */}
+      {/* TOP PICKS BANNER */}
       <div style={{ background: "rgba(255,215,0,0.04)", borderBottom: "1px solid rgba(255,215,0,0.1)", padding: "16px" }}>
         <div style={{ maxWidth: 700, margin: "0 auto" }}>
-          <div style={{ fontSize: 10, letterSpacing: 3, color: "#FFD700", fontWeight: 900, marginBottom: 10 }}>🏆 BEST HR BETS TODAY — TOP S-TIER PICKS</div>
+          <div style={{ fontSize: 10, letterSpacing: 3, color: "#FFD700", fontWeight: 900, marginBottom: 10 }}>🏆 BEST HR BETS TODAY</div>
           <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
             {topPicks.map(p => (
-              <div key={p.id} style={{
-                background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.25)",
-                borderRadius: 10, padding: "10px 14px", minWidth: 130, flex: "0 0 auto",
-              }}>
+              <div key={p.id} style={{ background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.25)", borderRadius: 10, padding: "10px 14px", minWidth: 130, flex: "0 0 auto" }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#FFD700", marginBottom: 2 }}>{p.name}</div>
                 <div style={{ fontSize: 10, color: "#888" }}>{p.team} · {p.estOdds}</div>
                 <div style={{ fontSize: 10, color: "#76FF03", marginTop: 4 }}>Edge {p.edgeScore}/100</div>
@@ -495,7 +918,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── CONTEXT CARDS ── */}
+      {/* CONTEXT CARDS */}
       {contextCards.length > 0 && (
         <div style={{ background: "rgba(255,140,0,0.03)", borderBottom: "1px solid rgba(255,140,0,0.12)", padding: "14px 16px" }}>
           <div style={{ maxWidth: 700, margin: "0 auto" }}>
@@ -516,26 +939,33 @@ export default function Home() {
         </div>
       )}
 
-      {/* ── MAIN CONTENT ── */}
+      {/* MAIN CONTENT */}
       <div style={{ maxWidth: 700, margin: "0 auto", padding: "16px 12px 130px" }}>
 
-        {/* Tabs */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-          <button style={tabStyle("picks")}     onClick={() => setActiveTab("picks")}>📊 All Picks</button>
+        {/* Tabs — now 4 tabs */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+          <button style={tabStyle("picks")}     onClick={() => setActiveTab("picks")}>📊 Picks</button>
           <button style={tabStyle("parlays")}   onClick={() => setActiveTab("parlays")}>🎰 Parlays</button>
           <button style={tabStyle("longshots")} onClick={() => setActiveTab("longshots")}>💎 Longshots</button>
+          <button
+            style={{ ...tabStyle("bet"), background: activeTab === "bet" ? "#53D337" : "rgba(83,211,55,0.08)", color: activeTab === "bet" ? "#000" : "#53D337", border: activeTab === "bet" ? "none" : "1px solid rgba(83,211,55,0.3)" }}
+            onClick={() => setActiveTab("bet")}
+          >
+            🎯 Place Bet
+            {parlay.length > 0 && (
+              <span style={{ background: "#53D337", color: "#000", borderRadius: "50%", width: 16, height: 16, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900, marginLeft: 6 }}>{parlay.length}</span>
+            )}
+          </button>
         </div>
 
-        {/* ── PICKS TAB ── */}
+        {/* PICKS TAB */}
         {activeTab === "picks" && (
           <>
-            {/* Filters */}
             <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: 12, marginBottom: 14 }}>
               <div style={{ fontSize: 10, color: "#555", letterSpacing: 2, marginBottom: 8 }}>FILTER BY TIER</div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
                 {(["ALL","S","A","B"] as const).map(t => (
-                  <button key={t} style={filterBtnStyle(tierFilter === t, t === "S" ? "#FFD700" : t === "A" ? "#00E5FF" : t === "B" ? "#76FF03" : "#aaa")}
-                    onClick={() => setTierFilter(t)}>
+                  <button key={t} style={filterBtnStyle(tierFilter === t, t === "S" ? "#FFD700" : t === "A" ? "#00E5FF" : t === "B" ? "#76FF03" : "#aaa")} onClick={() => setTierFilter(t)}>
                     {t === "ALL" ? "All" : TIER_CONFIG[t].label}
                   </button>
                 ))}
@@ -547,34 +977,22 @@ export default function Home() {
                 ))}
               </div>
             </div>
-
             <div style={{ fontSize: 10, color: "#444", letterSpacing: 1, marginBottom: 10 }}>
-              {filteredPlayers.length} players — tap any card for details · click "+ Add to Parlay" to build your ticket
+              {filteredPlayers.length} players · tap for details · add to parlay builder below
             </div>
-
-            {/* Tier sections */}
             {(["S","A","B"] as const).filter(t => tierFilter === "ALL" || tierFilter === t).map(tier => {
               const tc = TIER_CONFIG[tier];
-              const tieredPlayers = filteredPlayers.filter(p => p.tier === tier);
-              if (!tieredPlayers.length) return null;
+              const tp = filteredPlayers.filter(p => p.tier === tier);
+              if (!tp.length) return null;
               return (
                 <div key={tier} style={{ marginBottom: 20 }}>
-                  <div style={{
-                    display: "flex", alignItems: "center", gap: 10, marginBottom: 10,
-                    paddingBottom: 8, borderBottom: `1px solid ${tc.color}25`,
-                  }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, paddingBottom: 8, borderBottom: `1px solid ${tc.color}25` }}>
                     <span style={{ fontFamily: "'Bebas Neue'", fontSize: 18, color: tc.color, letterSpacing: 2 }}>{tc.label}</span>
                     <span style={{ fontSize: 10, color: "#555" }}>— {tc.desc}</span>
-                    <span style={{ marginLeft: "auto", fontSize: 11, color: "#444" }}>{tieredPlayers.length}</span>
+                    <span style={{ marginLeft: "auto", fontSize: 11, color: "#444" }}>{tp.length}</span>
                   </div>
-                  {tieredPlayers.map(p => (
-                    <PlayerCard
-                      key={p.id}
-                      player={p}
-                      inParlay={parlay.includes(p.id)}
-                      onToggle={() => toggleParlay(p.id)}
-                      parkLabel={parkFactors[p.park]?.label}
-                    />
+                  {tp.map(p => (
+                    <PlayerCard key={p.id} player={p} inParlay={parlay.includes(p.id)} onToggle={() => toggleParlay(p.id)} parkLabel={parkFactors[p.park]?.label} />
                   ))}
                 </div>
               );
@@ -582,7 +1000,7 @@ export default function Home() {
           </>
         )}
 
-        {/* ── PARLAYS TAB ── */}
+        {/* PARLAYS TAB */}
         {activeTab === "parlays" && (
           <div>
             <div style={{ marginBottom: 14 }}>
@@ -590,45 +1008,39 @@ export default function Home() {
               <p style={{ fontSize: 11, color: "#666" }}>Pre-built combinations from today's slate — tap to expand strategy</p>
             </div>
             {parlays.map(p => (
-              <ParlayBuiltCard
-                key={p.id}
-                parlay={p}
-                playerMap={playerMap}
-                isOpen={openParlay === p.id}
-                onToggle={() => setOpenParlay(prev => prev === p.id ? null : p.id)}
-              />
+              <ParlayBuiltCard key={p.id} parlay={p} playerMap={playerMap} isOpen={openParlay === p.id} onToggle={() => setOpenParlay(prev => prev === p.id ? null : p.id)} />
             ))}
           </div>
         )}
 
-        {/* ── LONGSHOTS TAB ── */}
+        {/* LONGSHOTS TAB */}
         {activeTab === "longshots" && (
           <div>
-            <div style={{
-              background: "rgba(255,109,0,0.06)", border: "1px solid rgba(255,109,0,0.2)",
-              borderRadius: 12, padding: 14, marginBottom: 16,
-            }}>
-              <h2 style={{ fontFamily: "'Bebas Neue'", fontSize: 22, color: "#FF6D00", letterSpacing: 2, marginBottom: 4 }}>
-                💎 LONGSHOTS — HIGH RISK, HIGH REWARD
-              </h2>
+            <div style={{ background: "rgba(255,109,0,0.06)", border: "1px solid rgba(255,109,0,0.2)", borderRadius: 12, padding: 14, marginBottom: 16 }}>
+              <h2 style={{ fontFamily: "'Bebas Neue'", fontSize: 22, color: "#FF6D00", letterSpacing: 2, marginBottom: 4 }}>💎 LONGSHOTS — HIGH RISK, HIGH REWARD</h2>
               <p style={{ fontSize: 11, color: "#888", lineHeight: 1.6 }}>
                 C-tier players with real HR upside — favorable parks, overlooked matchups, or hot streaks. Ideal as tail legs on big parlays. {longshotPlayers.length} available today.
               </p>
             </div>
             {longshotPlayers.map(p => (
-              <PlayerCard
-                key={p.id}
-                player={p}
-                inParlay={parlay.includes(p.id)}
-                onToggle={() => toggleParlay(p.id)}
-                parkLabel={parkFactors[p.park]?.label}
-              />
+              <PlayerCard key={p.id} player={p} inParlay={parlay.includes(p.id)} onToggle={() => toggleParlay(p.id)} parkLabel={parkFactors[p.park]?.label} />
             ))}
           </div>
         )}
+
+        {/* PLACE BET TAB */}
+        {activeTab === "bet" && (
+          <PlaceBetTab
+            parlayPlayers={parlayPlayers}
+            parlays={parlays}
+            playerMap={playerMap}
+            combinedOdds={combinedOdds}
+            slateDate={slateDate}
+          />
+        )}
       </div>
 
-      {/* ── STICKY PARLAY BUILDER ── */}
+      {/* STICKY PARLAY BUILDER */}
       <div className="parlay-sticky">
         <div style={{ background: "#111118", borderTop: "1px solid rgba(255,215,0,0.25)" }}>
           {parlayOpen && (
@@ -636,9 +1048,7 @@ export default function Home() {
               <div style={{ maxWidth: 700, margin: "0 auto" }}>
                 <div style={{ fontSize: 10, letterSpacing: 3, color: "#FFD700", marginBottom: 12 }}>YOUR PARLAY BUILDER</div>
                 {parlayPlayers.length === 0 ? (
-                  <p style={{ fontSize: 12, color: "#555", textAlign: "center", padding: "20px 0" }}>
-                    Add players from the picks tab to build your parlay
-                  </p>
+                  <p style={{ fontSize: 12, color: "#555", textAlign: "center", padding: "20px 0" }}>Add players from the picks tab to build your parlay</p>
                 ) : (
                   <>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
@@ -647,30 +1057,28 @@ export default function Home() {
                           <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{p.name}</span>
                           <span style={{ fontSize: 11, color: "#888" }}>{p.team}</span>
                           <span style={{ fontSize: 13, color: "#FFD700", fontWeight: 700 }}>{p.estOdds}</span>
-                          <button
-                            style={{ background: "rgba(255,82,82,0.15)", border: "1px solid rgba(255,82,82,0.3)", borderRadius: 4, padding: "2px 8px", fontSize: 11, color: "#FF5252", cursor: "pointer", fontFamily: "inherit" }}
-                            onClick={() => toggleParlay(p.id)}
-                          >✕</button>
+                          <button style={{ background: "rgba(255,82,82,0.15)", border: "1px solid rgba(255,82,82,0.3)", borderRadius: 4, padding: "2px 8px", fontSize: 11, color: "#FF5252", cursor: "pointer", fontFamily: "inherit" }} onClick={() => toggleParlay(p.id)}>✕</button>
                         </div>
                       ))}
                     </div>
-                    <div style={{ display: "flex", gap: 10, alignItems: "center", background: "rgba(255,215,0,0.06)", borderRadius: 8, padding: "10px 14px" }}>
+                    <div style={{ display: "flex", gap: 10, alignItems: "center", background: "rgba(255,215,0,0.06)", borderRadius: 8, padding: "10px 14px", marginBottom: 10 }}>
                       <span style={{ fontSize: 11, color: "#888", flex: 1 }}>{parlayPlayers.length}-LEG PARLAY EST.</span>
                       <span style={{ fontFamily: "'Bebas Neue'", fontSize: 24, color: "#FFD700" }}>{combinedOdds ?? "—"}</span>
                     </div>
+                    <button
+                      style={{ width: "100%", padding: "10px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", background: "rgba(83,211,55,0.12)", border: "1px solid rgba(83,211,55,0.35)", color: "#53D337" }}
+                      onClick={() => { setParlayOpen(false); setActiveTab("bet"); }}
+                    >
+                      🎯 Place This Parlay →
+                    </button>
                   </>
                 )}
               </div>
             </div>
           )}
-
           <div style={{ maxWidth: 700, margin: "0 auto", display: "flex", alignItems: "center", gap: 12, padding: "10px 12px" }}>
             <button
-              style={{
-                flex: 1, background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.25)",
-                borderRadius: 8, padding: "10px 16px", cursor: "pointer",
-                display: "flex", alignItems: "center", gap: 10, fontFamily: "inherit",
-              }}
+              style={{ flex: 1, background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.25)", borderRadius: 8, padding: "10px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, fontFamily: "inherit" }}
               onClick={() => setParlayOpen(o => !o)}
             >
               <span style={{ fontSize: 13, fontWeight: 700, color: "#FFD700" }}>🎰 PARLAY BUILDER</span>
@@ -679,16 +1087,13 @@ export default function Home() {
               <span style={{ fontSize: 11, color: "#555", marginLeft: combinedOdds ? 0 : "auto" }}>{parlayOpen ? "▼" : "▲"}</span>
             </button>
             {parlay.length > 0 && (
-              <button
-                style={{ background: "rgba(255,82,82,0.1)", border: "1px solid rgba(255,82,82,0.3)", borderRadius: 8, padding: "10px 14px", cursor: "pointer", fontSize: 11, color: "#FF5252", fontWeight: 700, fontFamily: "inherit" }}
-                onClick={() => { setParlay([]); setParlayOpen(false); }}
-              >Clear</button>
+              <button style={{ background: "rgba(255,82,82,0.1)", border: "1px solid rgba(255,82,82,0.3)", borderRadius: 8, padding: "10px 14px", cursor: "pointer", fontSize: 11, color: "#FF5252", fontWeight: 700, fontFamily: "inherit" }} onClick={() => { setParlay([]); setParlayOpen(false); }}>Clear</button>
             )}
           </div>
         </div>
       </div>
 
-      {/* ── FOOTER ── */}
+      {/* FOOTER */}
       <div style={{ textAlign: "center", padding: "12px", background: "#07070C", fontSize: 9, color: "#333", letterSpacing: 1 }}>
         ⚠️ INFORMATIONAL &amp; ENTERTAINMENT PURPOSES ONLY — NOT FINANCIAL ADVICE — CONFIRM ODDS ON YOUR SPORTSBOOK
         <br />SOURCES: Covers.com · THE BAT X · DraftKings · Baseball-Reference · StatMuse · Statcast
