@@ -1,811 +1,588 @@
 "use client";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useEffect } from "react";
 
-// ─── DATA ────────────────────────────────────────────────────────────────────
-const PLAYERS = [
-  {
-    id: 1, name: "Yordan Alvarez", team: "HOU", tier: "S",
-    park: "Coors Field", parkFactor: 130, parkEmoji: "🏔️",
-    pitcher: "Michael Lorenzen", pitcherHand: "R",
-    muGrade: "A+", muScore: 97,
-    odds: "+270", oddsNum: 270,
-    hrProb: 18, edgeScore: 94,
-    recentForm: 5, barrels: 4,
-    why: "Lorenzen gave up 12 R in 7.1 IP. Coors #1 HR park. Alvarez leads MLB in SLG (.900).",
-    tags: ["🔥 Hot", "🏔️ Coors", "💣 Elite MU"],
-    longshot: false,
-  },
-  {
-    id: 2, name: "Kyle Schwarber", team: "PHI", tier: "S",
-    park: "Citizens Bank Park", parkFactor: 112, parkEmoji: "🔶",
-    pitcher: "Tyler Mahle", pitcherHand: "R",
-    muGrade: "A", muScore: 88,
-    odds: "+340", oddsNum: 340,
-    hrProb: 15, edgeScore: 89,
-    recentForm: 4, barrels: 3,
-    why: "56 HR in 2025. Mahle getting lit up early in starts. CBP hitter-friendly.",
-    tags: ["🐂 Elite Power", "💣 Struggling SP"],
-    longshot: false,
-  },
-  {
-    id: 3, name: "Aaron Judge", team: "NYY", tier: "S",
-    park: "Yankee Stadium", parkFactor: 115, parkEmoji: "⚾",
-    pitcher: "Luis Severino", pitcherHand: "R",
-    muGrade: "B", muScore: 80,
-    odds: "+310", oddsNum: 310,
-    hrProb: 16, edgeScore: 88,
-    recentForm: 3, barrels: 2,
-    why: "53 HR in 2025. Short porch at home. Already 2 HR in 2026.",
-    tags: ["👑 AL MVP", "🏟️ Short Porch"],
-    longshot: false,
-  },
-  {
-    id: 4, name: "Kyle Tucker", team: "HOU", tier: "S",
-    park: "Coors Field", parkFactor: 130, parkEmoji: "🏔️",
-    pitcher: "Michael Lorenzen", pitcherHand: "R",
-    muGrade: "A+", muScore: 97,
-    odds: "+310", oddsNum: 310,
-    hrProb: 16, edgeScore: 91,
-    recentForm: 4, barrels: 3,
-    why: "Tucker in Coors is a cheat code. 98th percentile Sweet Spot %. Lorenzen's cutter is flat.",
-    tags: ["🏔️ Coors Stack", "🎯 Sweet Spot"],
-    longshot: false,
-  },
-  {
-    id: 5, name: "Rafael Devers", team: "BOS", tier: "S",
-    park: "Fenway Park", parkFactor: 111, parkEmoji: "🟢",
-    pitcher: "George Kirby", pitcherHand: "R",
-    muGrade: "B", muScore: 78,
-    odds: "+410", oddsNum: 410,
-    hrProb: 13, edgeScore: 82,
-    recentForm: 3, barrels: 2,
-    why: "1.100 OPS vs Kirby in 15 career ABs. Fenway hitter-friendly.",
-    tags: ["🦁 Fenway King", "📊 BvP History"],
-    longshot: false,
-  },
-  {
-    id: 6, name: "Bobby Witt Jr.", team: "KC", tier: "S",
-    park: "Kauffman Stadium", parkFactor: 98, parkEmoji: "🏟️",
-    pitcher: "Tanner Bibee", pitcherHand: "R",
-    muGrade: "A-", muScore: 86,
-    odds: "+440", oddsNum: 440,
-    hrProb: 13, edgeScore: 84,
-    recentForm: 5, barrels: 3,
-    why: "10-game hit streak. Bibee gave up 3 HR in last start. Elite contact rate.",
-    tags: ["⚡ 30/30 Club", "📈 Streak"],
-    longshot: false,
-  },
-  {
-    id: 7, name: "Matt Olson", team: "ATL", tier: "S",
-    park: "Angel Stadium", parkFactor: 118, parkEmoji: "⚡",
-    pitcher: "Reid Detmers", pitcherHand: "L",
-    muGrade: "B", muScore: 79,
-    odds: "+330", oddsNum: 330,
-    hrProb: 15, edgeScore: 87,
-    recentForm: 3, barrels: 2,
-    why: "Olson at #2 HR park. L/L split negligible for him. Must-include for volume parlays.",
-    tags: ["🏰 Smash", "📊 Consistent"],
-    longshot: false,
-  },
-  {
-    id: 8, name: "Juan Soto", team: "NYM", tier: "S",
-    park: "Citi Field", parkFactor: 95, parkEmoji: "🏟️",
-    pitcher: "Zack Wheeler", pitcherHand: "R",
-    muGrade: "B-", muScore: 74,
-    odds: "+460", oddsNum: 460,
-    hrProb: 12, edgeScore: 79,
-    recentForm: 3, barrels: 2,
-    why: "Soto Shuffle back in Queens. Wheeler is tough but Soto's plate discipline is 99th percentile.",
-    tags: ["⚖️ Plate Disc.", "👑 Elite"],
-    longshot: false,
-  },
-  // A-TIER
-  {
-    id: 9, name: "Ozzie Albies", team: "ATL", tier: "A",
-    park: "Angel Stadium", parkFactor: 118, parkEmoji: "⚡",
-    pitcher: "Reid Detmers", pitcherHand: "L",
-    muGrade: "A", muScore: 89,
-    odds: "+570", oddsNum: 570,
-    hrProb: 11, edgeScore: 81,
-    recentForm: 5, barrels: 3,
-    why: "HR yesterday at +520 (cashed). Bats 3rd vs LHP (100pt SLG boost). Detmers arm is cooked.",
-    tags: ["♻️ Run Back", "⚡ Angel Stad.", "📈 L5 Form"],
-    longshot: false,
-  },
-  {
-    id: 10, name: "Jo Adell", team: "LAA", tier: "A",
-    park: "Angel Stadium", parkFactor: 118, parkEmoji: "⚡",
-    pitcher: "Grant Holmes", pitcherHand: "R",
-    muGrade: "A+", muScore: 93,
-    odds: "+470", oddsNum: 470,
-    hrProb: 12, edgeScore: 83,
-    recentForm: 4, barrels: 3,
-    why: "Best +EV prop per Covers/THE BAT. 4-for-8 in this series. +100 longer than Trout despite similar projected ABs.",
-    tags: ["💰 Best EV", "⚡ Angel Stad.", "🔥 Series Hot"],
-    longshot: false,
-  },
-  {
-    id: 11, name: "Willy Adames", team: "SF", tier: "A",
-    park: "Oracle Park", parkFactor: 102, parkEmoji: "💨",
-    pitcher: "Aaron Nola", pitcherHand: "R",
-    muGrade: "B+", muScore: 82,
-    odds: "+500", oddsNum: 500,
-    hrProb: 11, edgeScore: 78,
-    recentForm: 3, barrels: 2,
-    why: "93rd percentile HR talent. Wind blowing out to CF at 11.5 mph. Leadoff = max ABs.",
-    tags: ["💨 Wind Boost", "🏠 Home Field"],
-    longshot: false,
-  },
-  {
-    id: 12, name: "Cal Raleigh", team: "SEA", tier: "A",
-    park: "Globe Life Field", parkFactor: 100, parkEmoji: "🏟️",
-    pitcher: "MacKenzie Gore", pitcherHand: "L",
-    muGrade: "C", muScore: 65,
-    odds: "+600", oddsNum: 600,
-    hrProb: 9, edgeScore: 71,
-    recentForm: 2, barrels: 1,
-    why: "60 HR in 2025. 0 HR in 25 ABs in 2026 — elite talent in drought. Due soon.",
-    tags: ["💤 Still Waiting", "🔜 Due Soon"],
-    longshot: false,
-  },
-  {
-    id: 13, name: "Royce Lewis", team: "MIN", tier: "A",
-    park: "Comerica Park", parkFactor: 93, parkEmoji: "🏟️",
-    pitcher: "Jack Flaherty", pitcherHand: "R",
-    muGrade: "A-", muScore: 85,
-    odds: "+430", oddsNum: 430,
-    hrProb: 12, edgeScore: 80,
-    recentForm: 4, barrels: 3,
-    why: "HR every 12 ABs when healthy. Flaherty's velo is down 1.5 mph — targetable.",
-    tags: ["🔥 Per-AB Power", "🎯 Velo Drop"],
-    longshot: false,
-  },
-  {
-    id: 14, name: "Adolis Garcia", team: "TEX", tier: "A",
-    park: "Globe Life Field", parkFactor: 100, parkEmoji: "🏟️",
-    pitcher: "Logan Gilbert", pitcherHand: "R",
-    muGrade: "B", muScore: 77,
-    odds: "+380", oddsNum: 380,
-    hrProb: 13, edgeScore: 79,
-    recentForm: 4, barrels: 3,
-    why: "2 HR in last 3 games. Momentum hitter. Home field advantage.",
-    tags: ["💣 Bomb Squad", "🏠 Home"],
-    longshot: false,
-  },
-  {
-    id: 15, name: "Shea Langeliers", team: "OAK", tier: "A",
-    park: "Sutter Health Park", parkFactor: 108, parkEmoji: "🏟️",
-    pitcher: "Bryan Woo", pitcherHand: "R",
-    muGrade: "B+", muScore: 83,
-    odds: "+420", oddsNum: 420,
-    hrProb: 12, edgeScore: 80,
-    recentForm: 3, barrels: 4,
-    why: "95th percentile barrel rate. Sutter Health Park playing small in 2026. Woo allows pull-side power.",
-    tags: ["🏟️ Small Park", "💣 Barrel King"],
-    longshot: false,
-  },
-  // B-TIER
-  {
-    id: 16, name: "Oneil Cruz", team: "PIT", tier: "B",
-    park: "PNC Park", parkFactor: 91, parkEmoji: "🏟️",
-    pitcher: "Michael King", pitcherHand: "R",
-    muGrade: "B+", muScore: 82,
-    odds: "+500", oddsNum: 500,
-    hrProb: 10, edgeScore: 74,
-    recentForm: 5, barrels: 3,
-    why: ".314 BA / 4 HR / 1.026 OPS in 2026. King struggling with walk rate up.",
-    tags: ["🚀 Raw Power", "📈 Hot Start"],
-    longshot: false,
-  },
-  {
-    id: 17, name: "Jose Altuve", team: "HOU", tier: "B",
-    park: "Coors Field", parkFactor: 130, parkEmoji: "🏔️",
-    pitcher: "Michael Lorenzen", pitcherHand: "R",
-    muGrade: "A+", muScore: 93,
-    odds: "+550", oddsNum: 550,
-    hrProb: 10, edgeScore: 75,
-    recentForm: 3, barrels: 2,
-    why: "88th percentile batting per THE BAT X. Bats 3rd. Coors + Lorenzen disaster = perfect storm.",
-    tags: ["🏔️ Coors", "💣 SP Disaster"],
-    longshot: false,
-  },
-  {
-    id: 18, name: "Gunnar Henderson", team: "BAL", tier: "B",
-    park: "Guaranteed Rate Field", parkFactor: 108, parkEmoji: "🏟️",
-    pitcher: "Sean Burke", pitcherHand: "R",
-    muGrade: "C+", muScore: 67,
-    odds: "+480", oddsNum: 480,
-    hrProb: 10, edgeScore: 72,
-    recentForm: 2, barrels: 2,
-    why: "GRF has shallowest fences in MLB (#5 HR park). Burke sharp but Henderson elite power.",
-    tags: ["🏟️ Short Fences", "🔁 Bounce Back"],
-    longshot: false,
-  },
-  {
-    id: 19, name: "Manny Machado", team: "SD", tier: "B",
-    park: "PNC Park", parkFactor: 91, parkEmoji: "🏟️",
-    pitcher: "Mitch Keller", pitcherHand: "R",
-    muGrade: "B", muScore: 78,
-    odds: "+490", oddsNum: 490,
-    hrProb: 9, edgeScore: 70,
-    recentForm: 3, barrels: 2,
-    why: "Just homered Sunday to break cold streak. Rebound candidate with established power.",
-    tags: ["📈 Breakout", "🔓 Due"],
-    longshot: false,
-  },
-  {
-    id: 20, name: "Giancarlo Stanton", team: "NYY", tier: "B",
-    park: "Yankee Stadium", parkFactor: 115, parkEmoji: "⚾",
-    pitcher: "Luis Severino", pitcherHand: "R",
-    muGrade: "B", muScore: 77,
-    odds: "+380", oddsNum: 380,
-    hrProb: 13, edgeScore: 76,
-    recentForm: 3, barrels: 3,
-    why: "Leads MLB in Hard Hit % per Statcast. Severino's slider hanging. Short porch.",
-    tags: ["🚀 EV King", "🏟️ Short Porch"],
-    longshot: false,
-  },
-  {
-    id: 21, name: "Riley Greene", team: "DET", tier: "B",
-    park: "Comerica Park", parkFactor: 93, parkEmoji: "🏟️",
-    pitcher: "Joe Ryan", pitcherHand: "R",
-    muGrade: "A", muScore: 88,
-    odds: "+540", oddsNum: 540,
-    hrProb: 9, edgeScore: 72,
-    recentForm: 3, barrels: 2,
-    why: "Extreme fly-ball pitcher in 75-degree weather = ideal HR recipe.",
-    tags: ["🐯 Tiger Up", "📈 MU Play"],
-    longshot: false,
-  },
-  {
-    id: 22, name: "Elly De La Cruz", team: "CIN", tier: "B",
-    park: "Great American Ball Park", parkFactor: 120, parkEmoji: "🏟️",
-    pitcher: "Graham Ashcraft", pitcherHand: "R",
-    muGrade: "B-", muScore: 73,
-    odds: "+520", oddsNum: 520,
-    hrProb: 9, edgeScore: 71,
-    recentForm: 4, barrels: 3,
-    why: "Hardest exit velo of the year (119.2 mph). GABP fences can't hold him.",
-    tags: ["👽 Alien", "🏟️ GABP"],
-    longshot: false,
-  },
-  // LONGSHOTS
-  {
-    id: 23, name: "Sal Stewart", team: "CIN", tier: "C",
-    park: "Great American Ball Park", parkFactor: 120, parkEmoji: "🏟️",
-    pitcher: "TBD", pitcherHand: "R",
-    muGrade: "B+", muScore: 82,
-    odds: "+580", oddsNum: 580,
-    hrProb: 8, edgeScore: 68,
-    recentForm: 5, barrels: 3,
-    why: "1.167 OPS in 9 games — one of the hottest bats in baseball. GABP is a launching pad.",
-    tags: ["🔥 Hottest Bat", "🏟️ GABP", "📈 Emerging"],
-    longshot: true,
-  },
-  {
-    id: 24, name: "James Wood", team: "WAS", tier: "B",
-    park: "Nationals Park", parkFactor: 100, parkEmoji: "🏟️",
-    pitcher: "Michael McGreevey", pitcherHand: "R",
-    muGrade: "B+", muScore: 83,
-    odds: "+520", oddsNum: 520,
-    hrProb: 9, edgeScore: 69,
-    recentForm: 3, barrels: 2,
-    why: "2 HR/6 RBI in 2026. Elite exit velo (6'7\", 234 lbs). McGreevey getting lucky with 2.53 ERA vs high xERA.",
-    tags: ["📊 Regression SP", "🏆 2025 All-Star"],
-    longshot: false,
-  },
-  {
-    id: 25, name: "Jackson Holliday", team: "BAL", tier: "C",
-    park: "Guaranteed Rate Field", parkFactor: 108, parkEmoji: "🏟️",
-    pitcher: "Sean Burke", pitcherHand: "R",
-    muGrade: "B-", muScore: 72,
-    odds: "+750", oddsNum: 750,
-    hrProb: 6, edgeScore: 58,
-    recentForm: 3, barrels: 2,
-    why: "Elite bat speed. GRF shallowest fences. Rookie vs Rookie — volatility favors the longshot.",
-    tags: ["👶 Rookie", "💰 Value"],
-    longshot: true,
-  },
-  {
-    id: 26, name: "Maikel Garcia", team: "KC", tier: "C",
-    park: "Kauffman Stadium", parkFactor: 98, parkEmoji: "🏟️",
-    pitcher: "Tanner Bibee", pitcherHand: "R",
-    muGrade: "B", muScore: 76,
-    odds: "+800", oddsNum: 800,
-    hrProb: 5, edgeScore: 55,
-    recentForm: 4, barrels: 2,
-    why: "Hitting ball harder than ever. Bibee vulnerable to high-contact hitters. Sneaky KC sleeper.",
-    tags: ["👑 KC Sleeper", "💰 Value"],
-    longshot: true,
-  },
-  {
-    id: 27, name: "Lane Thomas", team: "CLE", tier: "C",
-    park: "Progressive Field", parkFactor: 95, parkEmoji: "🏟️",
-    pitcher: "Bailey Ober", pitcherHand: "R",
-    muGrade: "B-", muScore: 71,
-    odds: "+720", oddsNum: 720,
-    hrProb: 6, edgeScore: 57,
-    recentForm: 3, barrels: 2,
-    why: "Lefty killer but facing a righty. Contrarian play with barrel flashes.",
-    tags: ["🏹 Guardian", "🤔 Contrarian"],
-    longshot: true,
-  },
-];
-
-const PARLAYS = [
-  { id: "4A", label: "THE CORE FOUR", legs: 4, risk: "Lower Risk", players: ["Yordan Alvarez","Kyle Schwarber","Aaron Judge","Kyle Tucker"], desc: "Highest-probability S-tier anchors for today's slate.", odds: "+850" },
-  { id: "4B", label: "FENWAY-COORS LIGHT", legs: 4, risk: "Lower Risk", players: ["Yordan Alvarez","Rafael Devers","Kyle Tucker","Triston Casas"], desc: "Elite bats in the top two hitting environments today.", odds: "+1,100" },
-  { id: "5A", label: "THE HIGH FIVE", legs: 5, risk: "Lower Risk", players: ["Yordan Alvarez","Kyle Schwarber","Aaron Judge","Ozzie Albies","Jo Adell"], desc: "A blend of S-tier power and Angel Stadium's park factor.", odds: "+1,800" },
-  { id: "5B", label: "THE EV SPECIAL", legs: 5, risk: "Medium Risk", players: ["Yordan Alvarez","Aaron Judge","Oneil Cruz","Giancarlo Stanton","Kyle Schwarber"], desc: "Players with the highest Exit Velocity metrics this week.", odds: "+2,400" },
-  { id: "6A", label: "THE ANCHOR", legs: 6, risk: "Lower Risk", players: ["Yordan Alvarez","Kyle Schwarber","Aaron Judge","Shohei Ohtani","Jo Adell","Ozzie Albies"], desc: "Pure S-tier + elite park stack. The floor of the board.", odds: "+3,200" },
-  { id: "6B", label: "THE COORS STACK", legs: 6, risk: "Lower Risk", players: ["Yordan Alvarez","Jose Altuve","Kyle Schwarber","Jo Adell","Ozzie Albies","Oneil Cruz"], desc: "Double-down on Coors — #1 HR park today — plus elite matchup plays.", odds: "+4,100" },
-  { id: "7A", label: "THE ANGEL CITY MEGA", legs: 7, risk: "Medium Risk", players: ["Ozzie Albies","Jo Adell","Yordan Alvarez","Kyle Schwarber","Aaron Judge","Willy Adames","Jose Altuve"], desc: "Both Angel Stadium plays stacked with S-tier elite power.", odds: "+6,800" },
-  { id: "9A", label: "THE GRAND SALAMI", legs: 9, risk: "High Risk", players: ["Yordan Alvarez","Jose Altuve","Kyle Schwarber","Aaron Judge","Ozzie Albies","Jo Adell","Willy Adames","Oneil Cruz","Kyle Tucker"], desc: "Nine-leg monster pulling from every park context today.", odds: "+32,000" },
-  { id: "10A", label: "THE LOTTERY TICKET", legs: 10, risk: "Max Risk", players: ["Yordan Alvarez","Jose Altuve","Kyle Schwarber","Aaron Judge","Ozzie Albies","Jo Adell","Willy Adames","Oneil Cruz","Kyle Tucker","Sal Stewart"], desc: "All-in 10-leg monster. Every elite + value play on the board.", odds: "+70,000" },
-];
-
-const TIER_CONFIG = {
-  S: { label: "S-TIER", color: "#FFD700", bg: "rgba(255,215,0,0.12)", border: "#FFD700", desc: "Elite HR Targets — highest probability" },
-  A: { label: "A-TIER", color: "#00E5FF", bg: "rgba(0,229,255,0.08)", border: "#00E5FF", desc: "Strong Plays — solid HR potential" },
-  B: { label: "B-TIER", color: "#76FF03", bg: "rgba(118,255,3,0.07)", border: "#76FF03", desc: "Value Plays — good odds vs probability" },
-  C: { label: "LONGSHOT", color: "#FF6D00", bg: "rgba(255,109,0,0.08)", border: "#FF6D00", desc: "High Risk, High Reward" },
+// ── STATIC CONFIG (never changes day-to-day) ──────────────────
+const TIERS = {
+  S: { label: "S-TIER", color: "#ff4444", bg: "rgba(255,68,68,0.15)",   border: "#ff4444" },
+  A: { label: "A-TIER", color: "#ff8c00", bg: "rgba(255,140,0,0.12)",   border: "#ff8c00" },
+  B: { label: "B-TIER", color: "#ffd700", bg: "rgba(255,215,0,0.10)",   border: "#ffd700" },
+  C: { label: "C-TIER", color: "#7ec8e3", bg: "rgba(126,200,227,0.10)", border: "#7ec8e3" },
 };
 
-function EdgeBadge({ score }: { score: number }) {
-  const color = score >= 85 ? "#FFD700" : score >= 70 ? "#76FF03" : "#FF9800";
+function gradeColor(g = "") {
+  if (g.startsWith("A")) return "#4caf50";
+  if (g.startsWith("B")) return "#ffd700";
+  if (g.startsWith("C")) return "#ff8c00";
+  return "#ff4444";
+}
+
+function hexToRgb(hex) {
+  const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return r ? `${parseInt(r[1],16)},${parseInt(r[2],16)},${parseInt(r[3],16)}` : "255,255,255";
+}
+
+const GRADE_ORDER = ["A+","A","A-","B+","B","B-","C+","C","C-","D+","D","F"];
+
+// ── SUBCOMPONENTS ─────────────────────────────────────────────
+
+function SectionHeader({ title, sub }) {
   return (
-    <div style={{
-      display: "flex", alignItems: "center", gap: 4,
-      background: `${color}18`, border: `1px solid ${color}40`,
-      borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700, color,
-    }}>
-      <span style={{ fontSize: 9 }}>EDGE</span>
-      <span style={{ fontSize: 14 }}>{score}</span>
-      <span style={{ fontSize: 9, opacity: 0.7 }}>/100</span>
+    <div style={{ marginBottom: "14px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        <div style={{ height: "1px", flex: 1, background: "linear-gradient(90deg, #ff4444, transparent)" }} />
+        <div style={{ fontSize: "10px", color: "#ff4444", letterSpacing: "3px", fontWeight: "bold" }}>{title}</div>
+        <div style={{ height: "1px", flex: 1, background: "linear-gradient(270deg, #ff4444, transparent)" }} />
+      </div>
+      {sub && <div style={{ fontSize: "10px", color: "#555", textAlign: "center", marginTop: "4px", letterSpacing: "1px" }}>{sub}</div>}
     </div>
   );
 }
 
-function MuBadge({ grade, score }: { grade: string; score: number }) {
-  const color = score >= 85 ? "#FFD700" : score >= 70 ? "#00E5FF" : score >= 55 ? "#76FF03" : "#FF5252";
+function ContextCard({ icon, label, note, sub }) {
   return (
-    <span style={{
-      background: `${color}20`, border: `1px solid ${color}50`,
-      borderRadius: 4, padding: "1px 6px", fontSize: 10, fontWeight: 800, color, letterSpacing: 0.5,
-    }}>{grade}</span>
-  );
-}
-
-function PlayerCard({ player, inParlay, onToggle }: { player: typeof PLAYERS[0]; inParlay: boolean; onToggle: () => void }) {
-  const [expanded, setExpanded] = useState(false);
-  const tc = TIER_CONFIG[player.tier as keyof typeof TIER_CONFIG];
-  return (
-    <div
-      style={{
-        background: inParlay ? `${tc.color}15` : "rgba(255,255,255,0.03)",
-        border: `1px solid ${inParlay ? tc.color : tc.border + "35"}`,
-        borderRadius: 12, padding: "14px 16px", marginBottom: 8,
-        cursor: "pointer", transition: "all 0.2s ease",
-        boxShadow: inParlay ? `0 0 16px ${tc.color}30` : "none",
-      }}
-      onClick={() => setExpanded(e => !e)}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        {/* Tier badge */}
-        <span style={{
-          background: tc.bg, border: `1px solid ${tc.color}60`,
-          borderRadius: 4, padding: "2px 7px", fontSize: 9, fontWeight: 900,
-          color: tc.color, letterSpacing: 1, whiteSpace: "nowrap",
-        }}>{tc.label}</span>
-        {/* Name */}
-        <span style={{ fontWeight: 700, fontSize: 15, color: "#F5F5F5", flex: 1 }}>{player.name}</span>
-        {/* Team */}
-        <span style={{ fontSize: 11, color: "#888", background: "rgba(255,255,255,0.06)", padding: "2px 6px", borderRadius: 4 }}>{player.team}</span>
-        {/* Odds */}
-        <span style={{ fontWeight: 800, fontSize: 16, color: "#FFD700", minWidth: 54, textAlign: "right" }}>{player.odds}</span>
-      </div>
-
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 11, color: "#aaa" }}>{player.parkEmoji} {player.park}</span>
-        <span style={{ fontSize: 11, color: "#777" }}>vs {player.pitcher} ({player.pitcherHand}HP)</span>
-        <MuBadge grade={player.muGrade} score={player.muScore} />
-        <EdgeBadge score={player.edgeScore} />
-        {/* HR Prob */}
-        <span style={{ marginLeft: "auto", fontSize: 11, color: "#aaa" }}>
-          <span style={{ color: "#76FF03", fontWeight: 700 }}>{player.hrProb}%</span> HR prob
-        </span>
-      </div>
-
-      {expanded && (
-        <div style={{ marginTop: 10, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 10 }}>
-          <p style={{ fontSize: 12, color: "#bbb", lineHeight: 1.6, margin: "0 0 8px" }}>
-            💡 <em>{player.why}</em>
-          </p>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {player.tags.map(t => (
-              <span key={t} style={{ fontSize: 10, color: "#aaa", background: "rgba(255,255,255,0.05)", padding: "2px 7px", borderRadius: 10 }}>{t}</span>
-            ))}
-          </div>
-          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-            <div style={{ flex: 1, background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "8px 10px", fontSize: 11 }}>
-              <div style={{ color: "#666", marginBottom: 2 }}>Park Factor</div>
-              <div style={{ color: "#00E5FF", fontWeight: 700 }}>{player.parkFactor}</div>
-            </div>
-            <div style={{ flex: 1, background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "8px 10px", fontSize: 11 }}>
-              <div style={{ color: "#666", marginBottom: 2 }}>L5 Form</div>
-              <div style={{ color: "#76FF03", fontWeight: 700 }}>{"⚡".repeat(player.recentForm)}</div>
-            </div>
-            <div style={{ flex: 1, background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "8px 10px", fontSize: 11 }}>
-              <div style={{ color: "#666", marginBottom: 2 }}>Barrels (L5)</div>
-              <div style={{ color: "#FFD700", fontWeight: 700 }}>{player.barrels}</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10 }}>
-        <button
-          style={{
-            background: inParlay ? tc.color : "transparent",
-            border: `1px solid ${tc.color}`,
-            borderRadius: 6, padding: "5px 14px", fontSize: 11,
-            color: inParlay ? "#000" : tc.color, fontWeight: 700, cursor: "pointer",
-            transition: "all 0.15s",
-          }}
-          onClick={e => { e.stopPropagation(); onToggle(); }}
-        >
-          {inParlay ? "✓ In Parlay" : "+ Add to Parlay"}
-        </button>
-        <span style={{ fontSize: 10, color: "#555" }}>{expanded ? "▲ collapse" : "▼ details"}</span>
+    <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+      <div style={{ fontSize: "22px", lineHeight: 1, flexShrink: 0 }}>{icon}</div>
+      <div>
+        <div style={{ fontWeight: "bold", fontSize: "12px", color: "#e8e8e8" }}>{label}</div>
+        <div style={{ fontSize: "11px", color: "#ff8c00", marginTop: "2px" }}>{note}</div>
+        <div style={{ fontSize: "10px", color: "#555", marginTop: "2px" }}>{sub}</div>
       </div>
     </div>
   );
 }
 
-function ParlayCard({ parlay }: { parlay: typeof PARLAYS[0] }) {
-  const [open, setOpen] = useState(false);
-  const riskColor = parlay.risk === "Lower Risk" ? "#76FF03" : parlay.risk === "Medium Risk" ? "#FFD700" : parlay.risk === "High Risk" ? "#FF9800" : "#FF5252";
+function FilterBtn({ active, onClick, color = "#ff8c00", children }) {
   return (
-    <div
-      style={{
-        background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: 12, padding: "14px 16px", marginBottom: 8, cursor: "pointer",
-      }}
-      onClick={() => setOpen(o => !o)}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{
-          background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.3)",
-          borderRadius: 4, padding: "2px 8px", fontSize: 10, fontWeight: 900,
-          color: "#FFD700", letterSpacing: 1,
-        }}>{parlay.legs}-LEG</span>
-        <span style={{ fontWeight: 700, fontSize: 13, color: "#F5F5F5", flex: 1 }}>{parlay.label}</span>
-        <span style={{ fontSize: 11, color: riskColor, fontWeight: 600 }}>{parlay.risk}</span>
-        <span style={{ fontWeight: 800, color: "#FFD700", fontSize: 15 }}>{parlay.odds}</span>
-      </div>
-      {open && (
-        <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-          <p style={{ fontSize: 11, color: "#aaa", margin: "0 0 8px" }}>{parlay.desc}</p>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {parlay.players.map(p => (
-              <span key={p} style={{ fontSize: 10, color: "#FFD700", background: "rgba(255,215,0,0.08)", padding: "2px 8px", borderRadius: 10, border: "1px solid rgba(255,215,0,0.2)" }}>{p}</span>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
+    <button onClick={onClick} style={{
+      background: active ? color : "rgba(255,255,255,0.04)",
+      border: `1px solid ${active ? color : "#2a2a2a"}`,
+      color: active ? (color === "#ffd700" ? "#000" : "#fff") : "#666",
+      padding: "4px 12px",
+      borderRadius: "4px",
+      fontSize: "11px",
+      cursor: "pointer",
+      fontWeight: "bold",
+      letterSpacing: "0.5px",
+      transition: "all 0.15s",
+      fontFamily: "inherit",
+      lineHeight: 1.4,
+    }}>{children}</button>
   );
 }
 
-export default function Home() {
-  const [activeTab, setActiveTab] = useState<"picks"|"parlays"|"longshots">("picks");
-  const [tierFilter, setTierFilter] = useState<string>("ALL");
-  const [sortBy, setSortBy] = useState<"edge"|"prob"|"odds"|"form">("edge");
-  const [parlay, setParlay] = useState<number[]>([]);
-  const [parlayOpen, setParlayOpen] = useState(false);
-  const [pitcherHand, setPitcherHand] = useState<"ALL"|"L"|"R">("ALL");
-
-  const toggleParlay = useCallback((id: number) => {
-    setParlay(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  }, []);
-
-  const parlayPlayers = useMemo(() => PLAYERS.filter(p => parlay.includes(p.id)), [parlay]);
-
-  const combinedOdds = useMemo(() => {
-    if (parlayPlayers.length < 2) return null;
-    const dec = parlayPlayers.map(p => {
-      const n = p.oddsNum;
-      return n > 0 ? (n / 100) + 1 : (100 / Math.abs(n)) + 1;
-    });
-    const combined = dec.reduce((a, b) => a * b, 1);
-    const american = Math.round((combined - 1) * 100);
-    return `+${american.toLocaleString()}`;
-  }, [parlayPlayers]);
-
-  const filteredPlayers = useMemo(() => {
-    let p = PLAYERS.filter(pl => !pl.longshot);
-    if (tierFilter !== "ALL") p = p.filter(pl => pl.tier === tierFilter);
-    if (pitcherHand !== "ALL") p = p.filter(pl => pl.pitcherHand === pitcherHand);
-    if (sortBy === "edge") p = [...p].sort((a, b) => b.edgeScore - a.edgeScore);
-    else if (sortBy === "prob") p = [...p].sort((a, b) => b.hrProb - a.hrProb);
-    else if (sortBy === "odds") p = [...p].sort((a, b) => b.oddsNum - a.oddsNum);
-    else if (sortBy === "form") p = [...p].sort((a, b) => b.recentForm - a.recentForm);
-    return p;
-  }, [tierFilter, sortBy, pitcherHand]);
-
-  const topPicks = useMemo(() => PLAYERS.filter(p => p.tier === "S" && p.edgeScore >= 85).slice(0, 5), []);
-  const longshots = useMemo(() => PLAYERS.filter(p => p.longshot), []);
-
-  const tabStyle = (t: string) => ({
-    padding: "8px 18px", borderRadius: 8, fontSize: 12, fontWeight: 700,
-    cursor: "pointer", transition: "all 0.15s",
-    background: activeTab === t ? "#FFD700" : "rgba(255,255,255,0.05)",
-    color: activeTab === t ? "#000" : "#aaa",
-    border: activeTab === t ? "none" : "1px solid rgba(255,255,255,0.1)",
-  });
-
-  const filterBtnStyle = (active: boolean, color = "#FFD700") => ({
-    padding: "5px 12px", borderRadius: 6, fontSize: 11, fontWeight: 700,
-    cursor: "pointer", background: active ? `${color}20` : "rgba(255,255,255,0.04)",
-    color: active ? color : "#666", border: `1px solid ${active ? color + "50" : "rgba(255,255,255,0.08)"}`,
-    transition: "all 0.15s",
-  });
+function ParlayCard({ parlay, playerMap, parkFactors, isOpen, onToggle }) {
+  const legPlayers = parlay.playerIds.map(id => playerMap[id]).filter(Boolean);
+  const missingIds = parlay.playerIds.filter(id => !playerMap[id]);
 
   return (
     <div style={{
-      minHeight: "100vh",
-      background: "#0A0A0F",
-      color: "#F0F0F0",
-      fontFamily: "'DM Mono', 'Courier New', monospace",
+      border: `1px solid ${isOpen ? parlay.riskColor : "#252525"}`,
+      borderRadius: "8px",
+      background: isOpen ? `rgba(${hexToRgb(parlay.riskColor)},0.04)` : "rgba(255,255,255,0.015)",
+      overflow: "hidden",
+      transition: "border-color 0.2s",
     }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bebas+Neue&display=swap');
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #0A0A0F; }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: #111; }
-        ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
-        .parlay-sticky { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; }
-        @media (max-width: 600px) {
-          .hero-title { font-size: 36px !important; }
-          .stat-row { flex-wrap: wrap !important; }
-        }
-      `}</style>
-
-      {/* ── HERO ── */}
-      <div style={{
-        background: "linear-gradient(180deg, #111118 0%, #0A0A0F 100%)",
-        borderBottom: "1px solid rgba(255,215,0,0.15)",
-        padding: "32px 16px 24px",
-        textAlign: "center",
-        position: "relative", overflow: "hidden",
+      <div onClick={onToggle} style={{
+        padding: "14px 18px", cursor: "pointer",
+        display: "grid",
+        gridTemplateColumns: "44px 1fr auto 24px",
+        gap: "14px", alignItems: "center",
+        userSelect: "none",
       }}>
-        {/* Background glow */}
         <div style={{
-          position: "absolute", top: -60, left: "50%", transform: "translateX(-50%)",
-          width: 400, height: 200, borderRadius: "50%",
-          background: "radial-gradient(ellipse, rgba(255,215,0,0.08) 0%, transparent 70%)",
-          pointerEvents: "none",
-        }} />
-        <div style={{ fontSize: 10, letterSpacing: 4, color: "#FFD70080", fontWeight: 700, marginBottom: 10 }}>
-          ◆ SHARP STACKING SYSTEM ◆ APRIL 9, 2026 ◆
-        </div>
-        <h1 className="hero-title" style={{
-          fontFamily: "'Bebas Neue', sans-serif",
-          fontSize: 52, letterSpacing: 3, color: "#FFD700",
-          lineHeight: 1, marginBottom: 8,
-        }}>
-          Daily MLB Home Run Picks
-        </h1>
-        <p style={{ fontSize: 13, color: "#888", marginBottom: 4 }}>
-          Data-driven picks using matchup grades, park factors & pitcher tendencies
-        </p>
-        <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 12, flexWrap: "wrap" }}>
-          {["✅ Updated Daily", "📊 Based on Statcast Data", "🔢 Model Score / 100"].map(s => (
-            <span key={s} style={{ fontSize: 10, color: "#FFD700", background: "rgba(255,215,0,0.08)", padding: "3px 10px", borderRadius: 10, border: "1px solid rgba(255,215,0,0.2)" }}>{s}</span>
-          ))}
-        </div>
-        {/* Stats row */}
-        <div className="stat-row" style={{ display: "flex", gap: 16, justifyContent: "center", marginTop: 20, flexWrap: "wrap" }}>
-          {[
-            { label: "S-TIER", val: "8", color: "#FFD700" },
-            { label: "A-TIER", val: "7", color: "#00E5FF" },
-            { label: "B-TIER", val: "8", color: "#76FF03" },
-            { label: "LONGSHOTS", val: "3", color: "#FF6D00" },
-            { label: "PARLAYS", val: "9", color: "#FF80AB" },
-          ].map(s => (
-            <div key={s.label} style={{ textAlign: "center" }}>
-              <div style={{ fontFamily: "'Bebas Neue'", fontSize: 28, color: s.color, lineHeight: 1 }}>{s.val}</div>
-              <div style={{ fontSize: 9, color: "#555", letterSpacing: 1 }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+          background: parlay.riskColor, borderRadius: "5px",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: "11px", fontWeight: "bold", color: "#fff",
+          height: "32px", width: "44px", flexShrink: 0, letterSpacing: "0.5px",
+        }}>{parlay.id}</div>
 
-      {/* ── TOP PICKS BANNER ── */}
-      <div style={{ background: "rgba(255,215,0,0.05)", borderBottom: "1px solid rgba(255,215,0,0.1)", padding: "16px 16px" }}>
-        <div style={{ maxWidth: 700, margin: "0 auto" }}>
-          <div style={{ fontSize: 10, letterSpacing: 3, color: "#FFD700", fontWeight: 900, marginBottom: 10 }}>🏆 BEST HR BETS TODAY — TOP PICKS</div>
-          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
-            {topPicks.map(p => (
-              <div key={p.id} style={{
-                background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.25)",
-                borderRadius: 10, padding: "10px 14px", minWidth: 130, flex: "0 0 auto",
-              }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#FFD700", marginBottom: 2 }}>{p.name}</div>
-                <div style={{ fontSize: 10, color: "#888" }}>{p.team} · {p.odds}</div>
-                <div style={{ fontSize: 10, color: "#76FF03", marginTop: 4 }}>Edge {p.edgeScore}/100</div>
-              </div>
-            ))}
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "5px" }}>
+            <span style={{ fontWeight: "bold", fontSize: "14px", color: "#e8e8e8" }}>{parlay.label}</span>
+            <span style={{
+              background: "rgba(255,255,255,0.06)", border: "1px solid #333",
+              color: "#666", padding: "1px 8px", borderRadius: "3px", fontSize: "10px", letterSpacing: "1px",
+            }}>{parlay.legs}-LEG</span>
+            <span style={{
+              background: `rgba(${hexToRgb(parlay.riskColor)},0.15)`,
+              border: `1px solid ${parlay.riskColor}`,
+              color: parlay.riskColor, padding: "1px 8px", borderRadius: "3px", fontSize: "10px", letterSpacing: "1px",
+            }}>{parlay.risk}</span>
+            {missingIds.length > 0 && (
+              <span style={{ fontSize: "10px", color: "#ff4444", background: "rgba(255,68,68,0.1)", border: "1px solid #ff4444", padding: "1px 6px", borderRadius: "3px" }}>
+                ⚠ {missingIds.length} invalid id{missingIds.length > 1 ? "s" : ""}: {missingIds.join(",")}
+              </span>
+            )}
           </div>
+          <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginBottom: "4px" }}>
+            {legPlayers.map(p => {
+              const tier = TIERS[p.tier] || TIERS.C;
+              return (
+                <span key={p.id} style={{
+                  background: tier.bg, border: `1px solid ${tier.border}`,
+                  color: tier.color, padding: "2px 7px", borderRadius: "3px",
+                  fontSize: "11px", fontWeight: "600",
+                }}>{p.name.split(" ").slice(-1)[0]}</span>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: "11px", color: "#555" }}>{parlay.description}</div>
         </div>
+
+        <div style={{ textAlign: "right", flexShrink: 0 }}>
+          <div style={{ fontSize: "9px", color: "#444", letterSpacing: "1px", marginBottom: "2px" }}>EST. PAYOUT</div>
+          <div style={{ fontSize: "20px", fontWeight: "bold", color: "#ff8c00", lineHeight: 1 }}>{parlay.estPayout}</div>
+        </div>
+
+        <div style={{ color: "#444", fontSize: "12px", textAlign: "center" }}>{isOpen ? "▲" : "▼"}</div>
       </div>
 
-      {/* ── MAIN CONTENT ── */}
-      <div style={{ maxWidth: 700, margin: "0 auto", padding: "16px 12px 120px" }}>
+      {isOpen && (
+        <div style={{ borderTop: "1px solid #1e1e1e", padding: "16px 18px" }}>
+          <div style={{
+            background: "rgba(255,255,255,0.03)", border: "1px solid #252525",
+            borderRadius: "6px", padding: "10px 14px", marginBottom: "14px",
+            fontSize: "12px", color: "#aaa", lineHeight: 1.6,
+          }}>
+            <span style={{ color: "#ff8c00", fontWeight: "bold", letterSpacing: "1px" }}>STRATEGY: </span>
+            {parlay.strategy}
+          </div>
 
-        {/* Tabs */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-          <button style={tabStyle("picks")} onClick={() => setActiveTab("picks")}>📊 All Picks</button>
-          <button style={tabStyle("parlays")} onClick={() => setActiveTab("parlays")}>🎰 Parlays</button>
-          <button style={tabStyle("longshots")} onClick={() => setActiveTab("longshots")}>💎 Longshots</button>
-        </div>
-
-        {/* ── PICKS TAB ── */}
-        {activeTab === "picks" && (
-          <>
-            {/* Filters */}
-            <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: 12, marginBottom: 14 }}>
-              <div style={{ fontSize: 10, color: "#555", letterSpacing: 2, marginBottom: 8 }}>FILTER BY TIER</div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-                {["ALL","S","A","B"].map(t => (
-                  <button key={t} style={filterBtnStyle(tierFilter === t, t === "S" ? "#FFD700" : t === "A" ? "#00E5FF" : t === "B" ? "#76FF03" : "#aaa")}
-                    onClick={() => setTierFilter(t)}>
-                    {t === "ALL" ? "All" : TIER_CONFIG[t as keyof typeof TIER_CONFIG]?.label || t}
-                  </button>
-                ))}
-              </div>
-              <div style={{ fontSize: 10, color: "#555", letterSpacing: 2, marginBottom: 8 }}>PITCHER HAND</div>
-              <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-                {(["ALL","L","R"] as const).map(h => (
-                  <button key={h} style={filterBtnStyle(pitcherHand === h)} onClick={() => setPitcherHand(h)}>{h === "ALL" ? "Both" : h === "L" ? "LHP" : "RHP"}</button>
-                ))}
-              </div>
-              <div style={{ fontSize: 10, color: "#555", letterSpacing: 2, marginBottom: 8 }}>SORT BY</div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {([["edge","Edge Score"],["prob","HR Prob"],["odds","Best Odds"],["form","Hot Form"]] as const).map(([v,l]) => (
-                  <button key={v} style={filterBtnStyle(sortBy === v, "#00E5FF")} onClick={() => setSortBy(v)}>{l}</button>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ fontSize: 10, color: "#444", letterSpacing: 1, marginBottom: 10 }}>
-              {filteredPlayers.length} players — tap any card to expand details
-            </div>
-
-            {/* Tier sections */}
-            {(["S","A","B"] as const).filter(t => tierFilter === "ALL" || tierFilter === t).map(tier => {
-              const tc = TIER_CONFIG[tier];
-              const players = filteredPlayers.filter(p => p.tier === tier);
-              if (!players.length) return null;
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {legPlayers.map((p, i) => {
+              const tier = TIERS[p.tier] || TIERS.C;
+              const park = parkFactors[p.park];
+              const gc   = gradeColor(p.matchupGrade);
               return (
-                <div key={tier} style={{ marginBottom: 20 }}>
-                  <div style={{
-                    display: "flex", alignItems: "center", gap: 10, marginBottom: 10,
-                    paddingBottom: 8, borderBottom: `1px solid ${tc.color}25`,
-                  }}>
-                    <span style={{ fontFamily: "'Bebas Neue'", fontSize: 18, color: tc.color, letterSpacing: 2 }}>{tc.label}</span>
-                    <span style={{ fontSize: 10, color: "#555" }}>— {tc.desc}</span>
-                    <span style={{ marginLeft: "auto", fontSize: 11, color: "#444" }}>{players.length}</span>
+                <div key={p.id} style={{
+                  display: "grid", gridTemplateColumns: "22px 1fr auto",
+                  gap: "12px", alignItems: "start",
+                  padding: "10px 12px",
+                  background: "rgba(255,255,255,0.02)",
+                  border: "1px solid rgba(255,255,255,0.05)",
+                  borderRadius: "6px",
+                }}>
+                  <div style={{ color: "#444", fontSize: "11px", fontWeight: "bold", paddingTop: "2px" }}>{i + 1}</div>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                      <span style={{ fontWeight: "bold", color: "#e8e8e8" }}>{p.name}</span>
+                      <span style={{ color: "#555", fontSize: "11px" }}>{p.team}</span>
+                      <span style={{
+                        background: tier.bg, border: `1px solid ${tier.border}`,
+                        color: tier.color, padding: "1px 6px", borderRadius: "2px",
+                        fontSize: "9px", letterSpacing: "1px",
+                      }}>{tier.label}</span>
+                      {park && <span style={{ fontSize: "10px", color: "#777" }}>{park.label}</span>}
+                    </div>
+                    <div style={{ fontSize: "11px", color: "#555", marginTop: "3px" }}>
+                      vs <span style={{ color: "#aaa" }}>{p.pitcher}</span>
+                      <span style={{ color: "#444" }}> — {p.pitcherNote}</span>
+                    </div>
+                    <div style={{ fontSize: "11px", color: "#888", marginTop: "4px", lineHeight: 1.5 }}>{p.note}</div>
                   </div>
-                  {players.map(p => (
-                    <PlayerCard key={p.id} player={p} inParlay={parlay.includes(p.id)} onToggle={() => toggleParlay(p.id)} />
-                  ))}
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div style={{ fontSize: "9px", color: "#444", marginBottom: "2px" }}>ODDS</div>
+                    <div style={{ color: "#ff8c00", fontWeight: "bold", fontSize: "15px" }}>{p.estOdds}</div>
+                    <div style={{ marginTop: "4px", color: gc, fontSize: "12px", fontWeight: "bold" }}>MU: {p.matchupGrade}</div>
+                  </div>
                 </div>
               );
             })}
-          </>
-        )}
-
-        {/* ── PARLAYS TAB ── */}
-        {activeTab === "parlays" && (
-          <div>
-            <div style={{ marginBottom: 14 }}>
-              <h2 style={{ fontFamily: "'Bebas Neue'", fontSize: 22, color: "#FFD700", letterSpacing: 2, marginBottom: 4 }}>SHARP PARLAYS</h2>
-              <p style={{ fontSize: 11, color: "#666" }}>Pre-built combinations from today's slate — tap to expand</p>
-            </div>
-            {PARLAYS.map(p => <ParlayCard key={p.id} parlay={p} />)}
           </div>
-        )}
+        </div>
+      )}
+    </div>
+  );
+}
 
-        {/* ── LONGSHOTS TAB ── */}
-        {activeTab === "longshots" && (
-          <div>
-            <div style={{
-              background: "rgba(255,109,0,0.06)", border: "1px solid rgba(255,109,0,0.2)",
-              borderRadius: 12, padding: 14, marginBottom: 16,
-            }}>
-              <h2 style={{ fontFamily: "'Bebas Neue'", fontSize: 22, color: "#FF6D00", letterSpacing: 2, marginBottom: 4 }}>
-                💎 LONGSHOTS — HIGH RISK, HIGH REWARD
-              </h2>
-              <p style={{ fontSize: 11, color: "#888", lineHeight: 1.6 }}>
-                Lower probability players with real HR upside — power flashes, favorable parks, platoon advantages, or overlooked matchups. Ideal as tail legs on big parlays.
-              </p>
-            </div>
-            {longshots.map(p => (
-              <PlayerCard key={p.id} player={p} inParlay={parlay.includes(p.id)} onToggle={() => toggleParlay(p.id)} />
-            ))}
+// ── MAIN APP ──────────────────────────────────────────────────
+export default function App() {
+  // ── Daily data loaded from /data.js ──
+  const [slateDate,    setSlateDate]    = useState("");
+  const [slateLabel,   setSlateLabel]   = useState("");
+  const [contextCards, setContextCards] = useState([]);
+  const [parkFactors,  setParkFactors]  = useState({});
+  const [players,      setPlayers]      = useState([]);
+  const [parlays,      setParlays]      = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [dataError,    setDataError]    = useState(null);
+
+  useEffect(() => {
+    fetch("/data.js")
+      .then(r => {
+        if (!r.ok) throw new Error(`Failed to load data.js (${r.status})`);
+        return r.text();
+      })
+      .then(text => {
+        // Execute the JS module in a sandboxed scope and extract the exports
+        // eslint-disable-next-line no-new-func
+        const fn = new Function(`
+          ${text}
+          return { SLATE_DATE, SLATE_LABEL, CONTEXT_CARDS, PARK_FACTORS, players, parlays };
+        `);
+        const data = fn();
+        setSlateDate(data.SLATE_DATE);
+        setSlateLabel(data.SLATE_LABEL);
+        setContextCards(data.CONTEXT_CARDS);
+        setParkFactors(data.PARK_FACTORS);
+        setPlayers(data.players);
+        setParlays(data.parlays);
+        setLoading(false);
+      })
+      .catch(err => {
+        setDataError(err.message);
+        setLoading(false);
+      });
+  }, []);
+
+  // ── Filter state ──
+  const [tierFilter,    setTierFilter]    = useState("ALL");
+  const [gradeFilter,   setGradeFilter]   = useState([]);
+  const [selectedTeams, setSelectedTeams] = useState([]);
+  const [legFilter,     setLegFilter]     = useState("ALL");
+  const [activeParlay,  setActiveParlay]  = useState(null);
+  const [parlayMode,    setParlayMode]    = useState("all");
+
+  const toggleTeam  = (team)  => setSelectedTeams(prev => prev.includes(team)  ? prev.filter(t => t !== team)  : [...prev, team]);
+  const toggleGrade = (grade) => setGradeFilter(prev   => prev.includes(grade) ? prev.filter(g => g !== grade) : [...prev, grade]);
+  const clearAll    = ()      => { setTierFilter("ALL"); setGradeFilter([]); setSelectedTeams([]); };
+
+  const filtersActive = tierFilter !== "ALL" || gradeFilter.length > 0 || selectedTeams.length > 0;
+
+  // Derived from loaded data
+  const playerMap       = useMemo(() => Object.fromEntries(players.map(p => [p.id, p])), [players]);
+  const TEAMS_IN_SLATE  = useMemo(() => [...new Set(players.map(p => p.team))].sort(), [players]);
+  const GRADES_IN_SLATE = useMemo(() => GRADE_ORDER.filter(g => players.some(p => p.matchupGrade === g)), [players]);
+
+  const filteredCandidates = useMemo(() => players.filter(p => {
+    const okTier  = tierFilter === "ALL" || p.tier === tierFilter;
+    const okGrade = gradeFilter.length === 0 || gradeFilter.includes(p.matchupGrade);
+    const okTeam  = selectedTeams.length === 0 || selectedTeams.includes(p.team);
+    return okTier && okGrade && okTeam;
+  }), [players, tierFilter, gradeFilter, selectedTeams]);
+
+  const allowedIds = useMemo(() => new Set(filteredCandidates.map(p => p.id)), [filteredCandidates]);
+
+  const filteredParlays = useMemo(() => parlays.filter(p => {
+    const legCount = parseInt(legFilter);
+    const okLegs = legFilter === "ALL" ? true : legFilter === "9+" ? p.legs >= 9 : p.legs === legCount;
+    if (!okLegs) return false;
+    if (parlayMode === "smart" && filtersActive) return p.playerIds.every(id => allowedIds.has(id));
+    return true;
+  }), [parlays, legFilter, parlayMode, allowedIds, filtersActive]);
+
+  const sTierCount = filteredCandidates.filter(p => p.tier === "S").length;
+  const aTierCount = filteredCandidates.filter(p => p.tier === "A").length;
+  const bestPark   = [...filteredCandidates]
+    .map(p => parkFactors[p.park]).filter(Boolean)
+    .sort((a, b) => a.rank - b.rank)[0];
+
+  // ── Loading / error states ──
+  if (loading) return (
+    <div style={{ minHeight: "100vh", background: "#080810", color: "#444", fontFamily: "'Courier New', Consolas, monospace", display: "flex", alignItems: "center", justifyContent: "center", letterSpacing: "3px", fontSize: "12px" }}>
+      LOADING SLATE DATA...
+    </div>
+  );
+
+  if (dataError) return (
+    <div style={{ minHeight: "100vh", background: "#080810", color: "#ff4444", fontFamily: "'Courier New', Consolas, monospace", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "12px" }}>
+      <div style={{ letterSpacing: "3px", fontSize: "12px" }}>⚠ FAILED TO LOAD DATA</div>
+      <div style={{ fontSize: "11px", color: "#555" }}>{dataError}</div>
+      <div style={{ fontSize: "10px", color: "#333" }}>Make sure /public/data.js exists in your repo.</div>
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#080810", color: "#e0e0e0", fontFamily: "'Courier New', Consolas, monospace" }}>
+
+      {/* ══ HEADER ══════════════════════════════════════════ */}
+      <div style={{
+        background: "linear-gradient(160deg, #0d0d1c 0%, #170808 60%, #080d18 100%)",
+        borderBottom: "2px solid #ff4444",
+        padding: "28px 40px 22px",
+        position: "relative", overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute", inset: 0, pointerEvents: "none",
+          background: "repeating-linear-gradient(0deg, transparent, transparent 22px, rgba(255,68,68,0.025) 22px, rgba(255,68,68,0.025) 23px)",
+        }} />
+        <div style={{ position: "relative", maxWidth: "1600px", margin: "0 auto" }}>
+          <div style={{ fontSize: "10px", color: "#ff4444", letterSpacing: "4px", marginBottom: "12px", opacity: 0.85 }}>
+            ◆ SHARP STACKING SYSTEM ◆ {slateDate} ◆ {slateLabel}
           </div>
-        )}
-      </div>
 
-      {/* ── PARLAY BUILDER (Sticky) ── */}
-      <div className="parlay-sticky">
-        <div
-          style={{
-            background: "#111118", borderTop: "1px solid rgba(255,215,0,0.25)",
-            padding: parlayOpen ? "0" : "12px 16px",
-          }}
-        >
-          {parlayOpen && (
-            <div style={{ background: "#13131A", maxHeight: "60vh", overflowY: "auto", padding: "16px" }}>
-              <div style={{ maxWidth: 700, margin: "0 auto" }}>
-                <div style={{ fontSize: 10, letterSpacing: 3, color: "#FFD700", marginBottom: 12 }}>YOUR PARLAY BUILDER</div>
-                {parlayPlayers.length === 0 ? (
-                  <p style={{ fontSize: 12, color: "#555", textAlign: "center", padding: "20px 0" }}>Add players from the picks tab to build your parlay</p>
-                ) : (
-                  <>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
-                      {parlayPlayers.map(p => (
-                        <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "8px 12px" }}>
-                          <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{p.name}</span>
-                          <span style={{ fontSize: 11, color: "#888" }}>{p.team}</span>
-                          <span style={{ fontSize: 13, color: "#FFD700", fontWeight: 700 }}>{p.odds}</span>
-                          <button
-                            style={{ background: "rgba(255,82,82,0.15)", border: "1px solid rgba(255,82,82,0.3)", borderRadius: 4, padding: "2px 8px", fontSize: 11, color: "#FF5252", cursor: "pointer" }}
-                            onClick={() => toggleParlay(p.id)}
-                          >✕</button>
-                        </div>
-                      ))}
-                    </div>
-                    <div style={{ display: "flex", gap: 10, alignItems: "center", background: "rgba(255,215,0,0.06)", borderRadius: 8, padding: "10px 14px" }}>
-                      <span style={{ fontSize: 11, color: "#888", flex: 1 }}>{parlayPlayers.length}-LEG PARLAY</span>
-                      <span style={{ fontFamily: "'Bebas Neue'", fontSize: 24, color: "#FFD700" }}>{combinedOdds ?? "—"}</span>
-                    </div>
-                  </>
-                )}
+          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: "20px" }}>
+            <div>
+              <h1 style={{ fontSize: "clamp(26px, 4vw, 44px)", fontWeight: "900", margin: "0 0 6px", letterSpacing: "-1px", lineHeight: 1 }}>
+                <span style={{ color: "#ff4444" }}>HR PARLAY</span>{" "}
+                <span style={{ color: "#e8e8e8" }}>BOARD</span>
+              </h1>
+              <div style={{ fontSize: "10px", color: "#444", letterSpacing: "2px" }}>
+                HOME RUN PROP RESEARCH · INFORMATIONAL ONLY
               </div>
             </div>
-          )}
 
-          <div style={{ maxWidth: 700, margin: "0 auto", display: "flex", alignItems: "center", gap: 12, padding: parlayOpen ? "10px 0" : "0" }}>
-            <button
-              style={{
-                flex: 1, background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.3)",
-                borderRadius: 8, padding: "10px 16px", cursor: "pointer",
-                display: "flex", alignItems: "center", gap: 10,
-              }}
-              onClick={() => setParlayOpen(o => !o)}
-            >
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#FFD700" }}>🎰 PARLAY BUILDER</span>
-              <span style={{ background: "#FFD700", color: "#000", borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900 }}>{parlay.length}</span>
-              {combinedOdds && <span style={{ marginLeft: "auto", fontSize: 13, color: "#FFD700", fontWeight: 800 }}>{combinedOdds}</span>}
-              <span style={{ fontSize: 11, color: "#555", marginLeft: combinedOdds ? 0 : "auto" }}>{parlayOpen ? "▼" : "▲"}</span>
-            </button>
-            {parlay.length > 0 && (
-              <button
-                style={{ background: "rgba(255,82,82,0.1)", border: "1px solid rgba(255,82,82,0.3)", borderRadius: 8, padding: "10px 14px", cursor: "pointer", fontSize: 11, color: "#FF5252", fontWeight: 700 }}
-                onClick={() => { setParlay([]); setParlayOpen(false); }}
-              >Clear</button>
-            )}
+            <div style={{
+              display: "flex", gap: "0",
+              border: "1px solid #1e1e1e", borderRadius: "6px", overflow: "hidden",
+              background: "rgba(0,0,0,0.5)", flexShrink: 0,
+            }}>
+              {[
+                { label: "CANDIDATES", val: filteredCandidates.length, col: "#e8e8e8" },
+                { label: "S-TIER",     val: sTierCount,                col: "#ff4444" },
+                { label: "A-TIER",     val: aTierCount,                col: "#ff8c00" },
+                { label: "PARLAYS",    val: filteredParlays.length,    col: "#ffd700" },
+                { label: "BEST PARK",  val: bestPark ? `#${bestPark.rank}` : "—", col: "#90e0ef" },
+              ].map((s, i, arr) => (
+                <div key={s.label} style={{
+                  padding: "10px 20px", textAlign: "center",
+                  borderRight: i < arr.length - 1 ? "1px solid #1a1a1a" : "none",
+                  minWidth: "70px",
+                }}>
+                  <div style={{ fontSize: "8px", color: "#3a3a3a", letterSpacing: "2px", marginBottom: "4px" }}>{s.label}</div>
+                  <div style={{ fontSize: "22px", fontWeight: "900", color: s.col, lineHeight: 1 }}>{s.val}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Footer */}
-      <div style={{ textAlign: "center", padding: "12px", background: "#07070C", fontSize: 9, color: "#333", letterSpacing: 1 }}>
-        ⚠️ INFORMATIONAL & ENTERTAINMENT PURPOSES ONLY — NOT FINANCIAL ADVICE — CONFIRM ODDS ON YOUR SPORTSBOOK
-        <br />SOURCES: Covers.com · THE BAT X · DraftKings · Baseball-Reference · StatMuse · Statcast
+      {/* ══ BODY ════════════════════════════════════════════ */}
+      <div style={{ maxWidth: "1600px", margin: "0 auto", padding: "24px 32px 56px" }}>
+
+        {/* ── FILTER PANEL ─────────────────────────────── */}
+        <div style={{
+          background: "rgba(255,255,255,0.015)",
+          border: "1px solid #1e1e1e",
+          borderRadius: "8px",
+          padding: "16px 20px",
+          marginBottom: "24px",
+          display: "flex", flexDirection: "column", gap: "12px",
+        }}>
+          <div style={{ display: "flex", gap: "28px", flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+              <span style={{ fontSize: "9px", color: "#3a3a3a", letterSpacing: "2px", minWidth: "28px" }}>TIER</span>
+              {["ALL","S","A","B","C"].map(t => (
+                <FilterBtn key={t} active={tierFilter === t} onClick={() => setTierFilter(t)}
+                  color={t === "S" ? "#ff4444" : t === "A" ? "#ff8c00" : t === "B" ? "#ffd700" : t === "C" ? "#7ec8e3" : "#666"}>
+                  {t}
+                </FilterBtn>
+              ))}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+              <span style={{ fontSize: "9px", color: "#3a3a3a", letterSpacing: "2px", whiteSpace: "nowrap" }}>MU GRADE</span>
+              <FilterBtn active={gradeFilter.length === 0} onClick={() => setGradeFilter([])} color="#666">ALL</FilterBtn>
+              {GRADES_IN_SLATE.map(g => (
+                <FilterBtn key={g} active={gradeFilter.includes(g)} onClick={() => toggleGrade(g)} color={gradeColor(g)}>{g}</FilterBtn>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ borderTop: "1px solid #181818", paddingTop: "12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+              <span style={{ fontSize: "9px", color: "#3a3a3a", letterSpacing: "2px", minWidth: "28px" }}>TEAM</span>
+              <FilterBtn active={selectedTeams.length === 0} onClick={() => setSelectedTeams([])} color="#666">ALL</FilterBtn>
+              {TEAMS_IN_SLATE.map(team => (
+                <FilterBtn key={team} active={selectedTeams.includes(team)} onClick={() => toggleTeam(team)} color="#4a90d9">{team}</FilterBtn>
+              ))}
+            </div>
+          </div>
+
+          {filtersActive && (
+            <div style={{ borderTop: "1px solid #181818", paddingTop: "10px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+              <span style={{ fontSize: "9px", color: "#3a3a3a", letterSpacing: "1px" }}>ACTIVE:</span>
+              {tierFilter !== "ALL" && (
+                <span style={{ fontSize: "10px", background: "rgba(255,140,0,0.08)", border: "1px solid #ff8c00", color: "#ff8c00", padding: "2px 8px", borderRadius: "3px" }}>TIER={tierFilter}</span>
+              )}
+              {gradeFilter.map(g => (
+                <span key={g} style={{ fontSize: "10px", background: "rgba(76,175,80,0.08)", border: "1px solid #4caf50", color: "#4caf50", padding: "2px 8px", borderRadius: "3px" }}>MU={g}</span>
+              ))}
+              {selectedTeams.map(t => (
+                <span key={t} style={{ fontSize: "10px", background: "rgba(74,144,217,0.08)", border: "1px solid #4a90d9", color: "#4a90d9", padding: "2px 8px", borderRadius: "3px" }}>{t}</span>
+              ))}
+              <button onClick={clearAll} style={{
+                marginLeft: "auto", fontSize: "10px", color: "#ff4444",
+                background: "none", border: "1px solid rgba(255,68,68,0.4)",
+                padding: "2px 12px", borderRadius: "3px", cursor: "pointer", fontFamily: "inherit",
+              }}>CLEAR ALL ×</button>
+            </div>
+          )}
+        </div>
+
+        {/* ── CONTEXT CARDS ────────────────────────────── */}
+        <div style={{
+          display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: "12px", marginBottom: "28px",
+          background: "rgba(255,140,0,0.03)", border: "1px solid rgba(255,140,0,0.18)",
+          borderRadius: "8px", padding: "16px 20px",
+        }}>
+          {contextCards.map((c, i) => <ContextCard key={i} {...c} />)}
+        </div>
+
+        {/* ── CANDIDATES TABLE ─────────────────────────── */}
+        <div style={{ marginBottom: "40px" }}>
+          <SectionHeader
+            title="TARGET CANDIDATES"
+            sub={`${filteredCandidates.length} of ${players.length} players${filtersActive ? " · filters active" : ""}`}
+          />
+          <div style={{ overflowX: "auto", border: "1px solid #1e1e1e", borderRadius: "8px", background: "#0c0c14" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", tableLayout: "fixed", minWidth: "1400px" }}>
+              <thead>
+                <tr style={{
+                  borderBottom: "1px solid #222", background: "#0c0c14",
+                  color: "#3a3a3a", textTransform: "uppercase", fontSize: "9px", letterSpacing: "1.5px",
+                }}>
+                  <th style={{ width: "44px",  padding: "13px 14px", textAlign: "left", fontWeight: "bold" }}>#</th>
+                  <th style={{ width: "190px", padding: "13px 14px", textAlign: "left", fontWeight: "bold" }}>Player</th>
+                  <th style={{ width: "60px",  padding: "13px 14px", textAlign: "left", fontWeight: "bold" }}>Team</th>
+                  <th style={{ width: "96px",  padding: "13px 14px", textAlign: "left", fontWeight: "bold" }}>Tier</th>
+                  <th style={{ width: "195px", padding: "13px 14px", textAlign: "left", fontWeight: "bold" }}>Park</th>
+                  <th style={{ width: "215px", padding: "13px 14px", textAlign: "left", fontWeight: "bold" }}>Vs. Pitcher</th>
+                  <th style={{ width: "54px",  padding: "13px 14px", textAlign: "left", fontWeight: "bold" }}>MU</th>
+                  <th style={{ width: "80px",  padding: "13px 14px", textAlign: "left", fontWeight: "bold" }}>~Odds</th>
+                  <th style={{                  padding: "13px 14px", textAlign: "left", fontWeight: "bold" }}>Notes / Tags</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCandidates.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} style={{ padding: "40px", textAlign: "center", color: "#333", fontSize: "12px", letterSpacing: "1px" }}>
+                      NO PLAYERS MATCH CURRENT FILTERS
+                    </td>
+                  </tr>
+                ) : filteredCandidates.map((p, i) => {
+                  const tier = TIERS[p.tier] || { bg: "#1a1a1a", color: "#555", label: p.tier, border: "#333" };
+                  const park = parkFactors[p.park];
+                  const gc   = gradeColor(p.matchupGrade);
+                  return (
+                    <tr key={p.id} style={{
+                      borderBottom: "1px solid rgba(255,255,255,0.03)",
+                      background: i % 2 === 0 ? "rgba(255,255,255,0.007)" : "transparent",
+                    }}>
+                      <td style={{ padding: "14px 14px", color: "#333", fontWeight: "bold", fontSize: "12px" }}>{i + 1}</td>
+                      <td style={{ padding: "14px 14px", fontWeight: "700", color: "#e8e8e8", whiteSpace: "nowrap" }}>{p.name}</td>
+                      <td style={{ padding: "14px 14px", color: "#666", fontSize: "12px" }}>{p.team}</td>
+                      <td style={{ padding: "14px 14px" }}>
+                        <span style={{
+                          background: tier.bg, border: `1px solid ${tier.border}`,
+                          color: tier.color, padding: "3px 8px", borderRadius: "3px",
+                          fontSize: "10px", fontWeight: "bold", letterSpacing: "0.5px",
+                        }}>{tier.label}</span>
+                      </td>
+                      <td style={{ padding: "14px 14px", fontSize: "12px" }}>
+                        <div style={{ color: "#aaa", whiteSpace: "nowrap" }}>{p.park}</div>
+                        {park && <div style={{ fontSize: "10px", color: park.color, marginTop: "2px", opacity: 0.8 }}>{park.label}</div>}
+                      </td>
+                      <td style={{ padding: "14px 14px", fontSize: "12px" }}>
+                        <div style={{ color: "#aaa", whiteSpace: "nowrap" }}>{p.pitcher}</div>
+                        <div style={{ color: "#3a3a3a", fontSize: "11px", marginTop: "2px" }}>{p.pitcherNote}</div>
+                      </td>
+                      <td style={{ padding: "14px 14px" }}>
+                        <span style={{ color: gc, fontWeight: "bold", fontSize: "13px" }}>{p.matchupGrade}</span>
+                      </td>
+                      <td style={{ padding: "14px 14px", color: "#ff8c00", fontWeight: "bold", fontSize: "14px", whiteSpace: "nowrap" }}>{p.estOdds}</td>
+                      <td style={{ padding: "14px 14px" }}>
+                        <div style={{ fontSize: "12px", color: "#bbb", marginBottom: "6px", lineHeight: 1.5 }}>{p.note}</div>
+                        <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                          {p.tags?.map((t, idx) => (
+                            <span key={idx} style={{
+                              background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)",
+                              padding: "2px 7px", borderRadius: "3px", fontSize: "10px", color: "#666", whiteSpace: "nowrap",
+                            }}>{t}</span>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* ── PARLAYS ──────────────────────────────────── */}
+        <div>
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            flexWrap: "wrap", gap: "12px", marginBottom: "14px",
+            background: "rgba(255,255,255,0.015)", border: "1px solid #1e1e1e",
+            borderRadius: "8px", padding: "12px 16px",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+              <span style={{ fontSize: "9px", color: "#3a3a3a", letterSpacing: "2px" }}>LEGS</span>
+              {["ALL","4","5","6","7","8","9+","10"].map(f => (
+                <FilterBtn key={f} active={legFilter === f} onClick={() => setLegFilter(f)} color="#ff4444">{f}</FilterBtn>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <span style={{ fontSize: "9px", color: "#3a3a3a", letterSpacing: "1px" }}>FILTER MODE</span>
+              <div style={{ display: "flex", border: "1px solid #252525", borderRadius: "4px", overflow: "hidden" }}>
+                <button onClick={() => setParlayMode("all")} style={{
+                  background: parlayMode === "all" ? "#333" : "transparent",
+                  border: "none", borderRight: "1px solid #252525",
+                  color: parlayMode === "all" ? "#e0e0e0" : "#444",
+                  padding: "5px 14px", cursor: "pointer", fontSize: "11px",
+                  fontFamily: "inherit", fontWeight: "bold",
+                }}>SHOW ALL</button>
+                <button onClick={() => setParlayMode("smart")} style={{
+                  background: parlayMode === "smart" ? "#ff4444" : "transparent",
+                  border: "none",
+                  color: parlayMode === "smart" ? "#fff" : "#444",
+                  padding: "5px 14px", cursor: "pointer", fontSize: "11px",
+                  fontFamily: "inherit", fontWeight: "bold",
+                }}>MATCH PLAYERS ▲</button>
+              </div>
+              {parlayMode === "smart" && filtersActive && (
+                <span style={{ fontSize: "10px", color: "#555", fontStyle: "italic" }}>hiding parlays with filtered-out legs</span>
+              )}
+            </div>
+          </div>
+
+          <SectionHeader
+            title="SHARP PARLAYS"
+            sub={`${filteredParlays.length} of ${parlays.length} combos${parlayMode === "smart" && filtersActive ? " · smart-filtered to match player view" : ""}`}
+          />
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {filteredParlays.length > 0 ? filteredParlays.map(parlay => (
+              <ParlayCard
+                key={parlay.id}
+                parlay={parlay}
+                playerMap={playerMap}
+                parkFactors={parkFactors}
+                isOpen={activeParlay === parlay.id}
+                onToggle={() => setActiveParlay(prev => prev === parlay.id ? null : parlay.id)}
+              />
+            )) : (
+              <div style={{
+                padding: "40px", textAlign: "center", color: "#333",
+                border: "1px dashed #252525", borderRadius: "8px",
+                fontSize: "12px", letterSpacing: "1px",
+              }}>
+                NO PARLAYS MATCH CURRENT FILTERS
+                {parlayMode === "smart" && filtersActive && (
+                  <div style={{ marginTop: "10px", color: "#444", fontSize: "11px" }}>
+                    Switch FILTER MODE to "SHOW ALL" to see all parlays regardless of player filters.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── FOOTER ───────────────────────────────────── */}
+        <div style={{
+          marginTop: "48px", paddingTop: "16px",
+          borderTop: "1px solid #161616",
+          display: "flex", justifyContent: "space-between",
+          flexWrap: "wrap", gap: "8px",
+          fontSize: "9px", color: "#303030", letterSpacing: "0.5px", lineHeight: 2,
+        }}>
+          <span>⚠️ INFORMATIONAL &amp; ENTERTAINMENT PURPOSES ONLY — NOT FINANCIAL ADVICE — CONFIRM ODDS ON YOUR SPORTSBOOK BEFORE BETTING</span>
+          <span>SOURCES: Covers.com · THE BAT X · DraftKings · Baseball-Reference · StatMuse</span>
+        </div>
       </div>
     </div>
   );
