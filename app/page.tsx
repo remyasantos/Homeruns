@@ -148,12 +148,12 @@ function OddsComparisonRow({ player }: { player: Player }) {
         }}>{tc.label}</span>
 
         <span style={{ fontWeight: 700, fontSize: 13, color: "#F5F5F5", flex: 1, minWidth: 100 }}>{player.name}</span>
-        <span style={{ fontSize: 10, color: "#666" }}>{player.team}</span>
+        <span style={{ fontSize: 10, color: "#aaa" }}>{player.team}</span>
 
         {/* Model odds */}
         <div style={{ textAlign: "center", minWidth: 54 }}>
           <div style={{ fontSize: 15, fontWeight: 800, color: "#FFD700" }}>{player.estOdds}</div>
-          <div style={{ fontSize: 8, color: "#555", letterSpacing: 1 }}>MODEL</div>
+          <div style={{ fontSize: 8, color: "#888", letterSpacing: 1 }}>MODEL</div>
         </div>
 
         {/* Edge vs implied */}
@@ -164,36 +164,36 @@ function OddsComparisonRow({ player }: { player: Player }) {
           }}>
             {edgeVsImplied > 0 ? "+" : ""}{edgeVsImplied}%
           </div>
-          <div style={{ fontSize: 8, color: "#555", letterSpacing: 1 }}>EDGE</div>
+          <div style={{ fontSize: 8, color: "#888", letterSpacing: 1 }}>EDGE</div>
         </div>
 
-        <span style={{ fontSize: 10, color: "#444" }}>{open ? "▲" : "▼"}</span>
+        <span style={{ fontSize: 10, color: "#888" }}>{open ? "▲" : "▼"}</span>
       </div>
 
       {/* Expanded: book links + odds detail */}
       {open && (
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "12px 14px" }}>
-          <div style={{ fontSize: 10, color: "#555", letterSpacing: 2, marginBottom: 8 }}>OPEN IN YOUR BOOK</div>
+          <div style={{ fontSize: 10, color: "#aaa", letterSpacing: 2, marginBottom: 8 }}>OPEN IN YOUR BOOK</div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
             {BOOKS.map(b => <BookButton key={b.id} book={b} playerName={player.name} />)}
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 10 }}>
             <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "8px 10px", fontSize: 11 }}>
-              <div style={{ color: "#555", marginBottom: 2, fontSize: 9 }}>MODEL ODDS</div>
+              <div style={{ color: "#aaa", marginBottom: 2, fontSize: 9 }}>MODEL ODDS</div>
               <div style={{ color: "#FFD700", fontWeight: 700, fontSize: 15 }}>{player.estOdds}</div>
             </div>
             <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "8px 10px", fontSize: 11 }}>
-              <div style={{ color: "#555", marginBottom: 2, fontSize: 9 }}>IMPLIED PROB</div>
+              <div style={{ color: "#aaa", marginBottom: 2, fontSize: 9 }}>IMPLIED PROB</div>
               <div style={{ color: "#00E5FF", fontWeight: 700 }}>{implied}%</div>
             </div>
             <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "8px 10px", fontSize: 11 }}>
-              <div style={{ color: "#555", marginBottom: 2, fontSize: 9 }}>MODEL EST.</div>
+              <div style={{ color: "#aaa", marginBottom: 2, fontSize: 9 }}>MODEL EST.</div>
               <div style={{ color: "#76FF03", fontWeight: 700 }}>{player.hrProb}%</div>
             </div>
           </div>
 
-          <p style={{ fontSize: 11, color: "#666", lineHeight: 1.5, margin: 0 }}>
+          <p style={{ fontSize: 11, color: "#aaa", lineHeight: 1.5, margin: 0 }}>
             ⚠ Model odds are estimates — always confirm current lines on your sportsbook before placing.
           </p>
         </div>
@@ -358,7 +358,7 @@ function PlaceBetTab({
                             borderRadius: 3, padding: "0px 4px", fontSize: 8, fontWeight: 900, color: tc.color,
                           }}>{tc.label}</span>
                           <span style={{ fontSize: 13, fontWeight: 700, color: "#F5F5F5" }}>{p.name}</span>
-                          <span style={{ fontSize: 10, color: "#666" }}>{p.team}</span>
+                          <span style={{ fontSize: 10, color: "#aaa" }}>{p.team}</span>
                         </div>
                         <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>
                           vs {p.pitcher} @ {p.park}
@@ -414,7 +414,7 @@ function PlaceBetTab({
               </div>
 
               {/* Open in book */}
-              <div style={{ fontSize: 10, color: "#555", letterSpacing: 2, marginBottom: 8 }}>OPEN YOUR BOOK — THEN SEARCH EACH LEG</div>
+              <div style={{ fontSize: 10, color: "#aaa", letterSpacing: 2, marginBottom: 8 }}>OPEN YOUR BOOK — THEN SEARCH EACH LEG</div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {BOOKS.map(b => (
                   <a
@@ -434,12 +434,12 @@ function PlaceBetTab({
                       padding: "1px 6px", fontSize: 9, fontWeight: 900,
                     }}>{b.logo}</span>
                     <span style={{ fontSize: 12, color: b.color, fontWeight: 700 }}>{b.name}</span>
-                    <span style={{ marginLeft: "auto", fontSize: 11, color: "#555" }}>↗</span>
+                    <span style={{ marginLeft: "auto", fontSize: 11, color: "#888" }}>↗</span>
                   </a>
                 ))}
               </div>
 
-              <p style={{ fontSize: 10, color: "#333", marginTop: 12, lineHeight: 1.6 }}>
+              <p style={{ fontSize: 10, color: "#aaa", marginTop: 12, lineHeight: 1.6 }}>
                 ⚠ Odds shown are model estimates. Always verify current lines on your sportsbook. Some books may not offer all listed props.
               </p>
             </>
@@ -450,7 +450,7 @@ function PlaceBetTab({
       {/* ── ODDS TABLE ── */}
       {viewSection === "odds" && (
         <div>
-          <div style={{ fontSize: 10, color: "#555", letterSpacing: 1, marginBottom: 12 }}>
+          <div style={{ fontSize: 10, color: "#aaa", letterSpacing: 1, marginBottom: 12 }}>
             {parlayPlayers.length > 0
               ? `Showing ${parlayPlayers.length} selected parlay legs — expand any row to open in your book`
               : "No legs in your builder — showing top picks instead. Add legs from the Picks tab."}
@@ -466,7 +466,7 @@ function PlaceBetTab({
 
           <div style={{
             background: "rgba(0,229,255,0.04)", border: "1px solid rgba(0,229,255,0.15)",
-            borderRadius: 10, padding: 12, marginTop: 12, fontSize: 11, color: "#666", lineHeight: 1.7,
+            borderRadius: 10, padding: 12, marginTop: 12, fontSize: 11, color: "#aaa", lineHeight: 1.7,
           }}>
             <span style={{ color: "#00E5FF", fontWeight: 700 }}>How to read this: </span>
             Model odds are our estimated fair value based on matchup grade and park factor. Implied prob is what the sportsbook's odds translate to. When our model est. exceeds the implied prob, that's where we see edge.
@@ -477,7 +477,7 @@ function PlaceBetTab({
       {/* ── BOOK LINKS ── */}
       {viewSection === "books" && (
         <div>
-          <div style={{ fontSize: 10, color: "#555", letterSpacing: 1, marginBottom: 16 }}>
+          <div style={{ fontSize: 10, color: "#aaa", letterSpacing: 1, marginBottom: 16 }}>
             SELECT A BOOK — THEN NAVIGATE TO PLAYER PROPS → HOME RUNS
           </div>
 
@@ -490,7 +490,7 @@ function PlaceBetTab({
                   padding: "6px 14px", borderRadius: 6, fontSize: 11, fontWeight: 700,
                   cursor: "pointer", fontFamily: "inherit",
                   background: activeBook === b.id ? `${b.color}25` : "rgba(255,255,255,0.04)",
-                  color: activeBook === b.id ? b.color : "#555",
+                  color: activeBook === b.id ? b.color : "#aaa",
                   border: `1px solid ${activeBook === b.id ? b.color + "60" : "rgba(255,255,255,0.08)"}`,
                 }}
                 onClick={() => setActiveBook(b.id)}
@@ -527,7 +527,7 @@ function PlaceBetTab({
               Open {selectedBook.name} → HR Props ↗
             </a>
 
-            <div style={{ fontSize: 10, color: "#555", letterSpacing: 2, marginBottom: 8 }}>
+            <div style={{ fontSize: 10, color: "#aaa", letterSpacing: 2, marginBottom: 8 }}>
               SEARCH EACH PLAYER — OPENS DIRECTLY TO HR PROPS SECTION
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
@@ -547,7 +547,7 @@ function PlaceBetTab({
                   }}
                 >
                   <span style={{ fontSize: 12, fontWeight: 700, color: "#F5F5F5", flex: 1 }}>{p.name}</span>
-                  <span style={{ fontSize: 10, color: "#666" }}>{p.team}</span>
+                  <span style={{ fontSize: 10, color: "#aaa" }}>{p.team}</span>
                   <span style={{ fontSize: 12, color: "#FFD700", fontWeight: 700 }}>{p.estOdds}</span>
                   <span style={{ fontSize: 10, color: selectedBook.color }}>Search ↗</span>
                 </a>
@@ -555,7 +555,7 @@ function PlaceBetTab({
             </div>
 
             {parlayPlayers.length === 0 && (
-              <p style={{ fontSize: 10, color: "#444", marginTop: 10, textAlign: "center" }}>
+              <p style={{ fontSize: 10, color: "#888", marginTop: 10, textAlign: "center" }}>
                 Add players in the Picks tab to see your specific legs here.
               </p>
             )}
@@ -654,8 +654,8 @@ function PlayerCard({
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
         <span style={{ fontSize: 11, color: "#aaa" }}>{player.park}</span>
-        {parkLabel && <span style={{ fontSize: 10, color: "#555" }}>· {parkLabel}</span>}
-        <span style={{ fontSize: 11, color: "#777" }}>vs {player.pitcher}</span>
+        {parkLabel && <span style={{ fontSize: 10, color: "#888" }}>· {parkLabel}</span>}
+        <span style={{ fontSize: 11, color: "#aaa" }}>vs {player.pitcher}</span>
         <MuBadge grade={player.matchupGrade} />
         <EdgeBadge score={player.edgeScore} />
         <span style={{ marginLeft: "auto", fontSize: 11, color: "#aaa", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
@@ -676,7 +676,7 @@ function PlayerCard({
             💡 <em>{player.note}</em>
           </p>
           {player.pitcherNote && (
-            <p style={{ fontSize: 11, color: "#666", lineHeight: 1.5, margin: "0 0 8px" }}>
+            <p style={{ fontSize: 11, color: "#aaa", lineHeight: 1.5, margin: "0 0 8px" }}>
               ⚾ SP note: {player.pitcherNote}
             </p>
           )}
@@ -687,15 +687,15 @@ function PlayerCard({
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <div style={{ flex: 1, background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "8px 10px", fontSize: 11 }}>
-              <div style={{ color: "#666", marginBottom: 2 }}>MU Grade</div>
+              <div style={{ color: "#aaa", marginBottom: 2 }}>MU Grade</div>
               <div style={{ color: gradeColor(player.matchupGrade), fontWeight: 700 }}>{player.matchupGrade}</div>
             </div>
             <div style={{ flex: 1, background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "8px 10px", fontSize: 11 }}>
-              <div style={{ color: "#666", marginBottom: 2 }}>Edge Score</div>
+              <div style={{ color: "#aaa", marginBottom: 2 }}>Edge Score</div>
               <div style={{ color: "#FFD700", fontWeight: 700 }}>{player.edgeScore}/100</div>
             </div>
             <div style={{ flex: 1, background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "8px 10px", fontSize: 11 }}>
-              <div style={{ color: "#666", marginBottom: 2 }}>Est. HR %</div>
+              <div style={{ color: "#aaa", marginBottom: 2 }}>Est. HR %</div>
               <div style={{ color: "#76FF03", fontWeight: 700 }}>{player.hrProb}%</div>
             </div>
           </div>
@@ -715,7 +715,7 @@ function PlayerCard({
         >
           {inParlay ? "✓ In Parlay" : "+ Add to Parlay"}
         </button>
-        <span style={{ fontSize: 10, color: "#555" }}>{expanded ? "▲ collapse" : "▼ details"}</span>
+        <span style={{ fontSize: 10, color: "#888" }}>{expanded ? "▲ collapse" : "▼ details"}</span>
       </div>
     </div>
   );
@@ -753,7 +753,7 @@ function ParlayBuiltCard({
         <span style={{ fontWeight: 700, fontSize: 13, color: "#F5F5F5", flex: 1 }}>{parlay.label}</span>
         <span style={{ fontSize: 11, color: riskColor, fontWeight: 600, whiteSpace: "nowrap" }}>{parlay.risk}</span>
         <span style={{ fontWeight: 800, color: "#FFD700", fontSize: 15, whiteSpace: "nowrap" }}>{parlay.estPayout}</span>
-        <span style={{ fontSize: 11, color: "#555" }}>{isOpen ? "▲" : "▼"}</span>
+        <span style={{ fontSize: 11, color: "#888" }}>{isOpen ? "▲" : "▼"}</span>
       </div>
 
       {/* Game coverage badges — always visible */}
@@ -778,11 +778,11 @@ function ParlayBuiltCard({
         <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
           <p style={{ fontSize: 11, color: "#aaa", margin: "0 0 10px", lineHeight: 1.6 }}>{parlay.description}</p>
           {parlay.strategy && (
-            <p style={{ fontSize: 11, color: "#666", margin: "0 0 10px", lineHeight: 1.6 }}>
+            <p style={{ fontSize: 11, color: "#aaa", margin: "0 0 10px", lineHeight: 1.6 }}>
               <span style={{ color: "#FFD700", fontWeight: 700 }}>STRATEGY: </span>{parlay.strategy}
             </p>
           )}
-          <div style={{ fontSize: 10, color: "#555", letterSpacing: 1, marginBottom: 6 }}>LEGS</div>
+          <div style={{ fontSize: 10, color: "#aaa", letterSpacing: 1, marginBottom: 6 }}>LEGS</div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {legPlayers.map(p => {
               const tc = TIER_CONFIG[p.tier as keyof typeof TIER_CONFIG] ?? TIER_CONFIG.C;
@@ -934,7 +934,7 @@ export default function Home() {
   });
 
   if (loading) return (
-    <div style={{ minHeight: "100vh", background: "#0A0A0F", color: "#555", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Mono', monospace", letterSpacing: 3, fontSize: 13 }}>
+    <div style={{ minHeight: "100vh", background: "#0A0A0F", color: "#aaa", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Mono', monospace", letterSpacing: 3, fontSize: 13 }}>
       LOADING SLATE DATA...
     </div>
   );
@@ -942,8 +942,8 @@ export default function Home() {
   if (dataError) return (
     <div style={{ minHeight: "100vh", background: "#0A0A0F", color: "#FF5252", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12, fontFamily: "'DM Mono', monospace", padding: 24 }}>
       <div style={{ letterSpacing: 3, fontSize: 13 }}>⚠ FAILED TO LOAD DATA</div>
-      <div style={{ fontSize: 11, color: "#666", textAlign: "center", maxWidth: 400 }}>{dataError}</div>
-      <div style={{ fontSize: 10, color: "#444" }}>Make sure <code>public/data.js</code> exists in your repo.</div>
+      <div style={{ fontSize: 11, color: "#aaa", textAlign: "center", maxWidth: 400 }}>{dataError}</div>
+      <div style={{ fontSize: 10, color: "#888" }}>Make sure <code>public/data.js</code> exists in your repo.</div>
     </div>
   );
 
@@ -960,10 +960,11 @@ export default function Home() {
         @media (max-width: 600px) { .hero-title { font-size: 36px !important; } .stat-row { gap: 12px !important; } }
       `}</style>
 
+      <header>
       {/* HERO */}
       <div style={{ background: "linear-gradient(180deg, #111118 0%, #0A0A0F 100%)", borderBottom: "1px solid rgba(255,215,0,0.15)", padding: "32px 16px 24px", textAlign: "center", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: -60, left: "50%", transform: "translateX(-50%)", width: 400, height: 200, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(255,215,0,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
-        <div style={{ fontSize: 10, letterSpacing: 4, color: "#FFD70080", fontWeight: 700, marginBottom: 10 }}>
+        <div aria-hidden="true" style={{ position: "absolute", top: -60, left: "50%", transform: "translateX(-50%)", width: 400, height: 200, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(255,215,0,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ fontSize: 10, letterSpacing: 4, color: "#FFD700", fontWeight: 700, marginBottom: 10 }}>
           ◆ SHARP STACKING SYSTEM ◆ {slateDate} ◆ {slateLabel}
         </div>
         <h1 className="hero-title" style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 52, letterSpacing: 3, color: "#FFD700", lineHeight: 1, marginBottom: 8 }}>
@@ -985,7 +986,7 @@ export default function Home() {
           ] as const).map(s => (
             <div key={s.label} style={{ textAlign: "center" }}>
               <div style={{ fontFamily: "'Bebas Neue'", fontSize: 28, color: s.color, lineHeight: 1 }}>{s.val}</div>
-              <div style={{ fontSize: 9, color: "#555", letterSpacing: 1 }}>{s.label}</div>
+              <div style={{ fontSize: 9, color: "#888", letterSpacing: 1 }}>{s.label}</div>
             </div>
           ))}
         </div>
@@ -1019,7 +1020,7 @@ export default function Home() {
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "#e8e8e8" }}>{c.label}</div>
                     <div style={{ fontSize: 11, color: "#FF9800", marginTop: 1 }}>{c.note}</div>
-                    <div style={{ fontSize: 10, color: "#555", marginTop: 1 }}>{c.sub}</div>
+                    <div style={{ fontSize: 10, color: "#888", marginTop: 1 }}>{c.sub}</div>
                   </div>
                 </div>
               ))}
@@ -1028,6 +1029,9 @@ export default function Home() {
         </div>
       )}
 
+      </header>
+
+      <main id="main-content">
       {/* MAIN CONTENT */}
       <div style={{ maxWidth: 700, margin: "0 auto", padding: "16px 12px 130px" }}>
 
@@ -1052,9 +1056,9 @@ export default function Home() {
           <>
             <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: 12, marginBottom: 14 }}>
               {/* GAME FILTER */}
-              <div style={{ fontSize: 10, color: "#555", letterSpacing: 2, marginBottom: 8 }}>
+              <div style={{ fontSize: 10, color: "#aaa", letterSpacing: 2, marginBottom: 8 }}>
                 FILTER BY GAME
-                <span style={{ fontSize: 9, color: "#444", marginLeft: 6 }}>(multi-select)</span>
+                <span style={{ fontSize: 9, color: "#888", marginLeft: 6 }}>(multi-select)</span>
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
                 <button
@@ -1078,7 +1082,7 @@ export default function Home() {
                       <span style={{
                         background: active ? "rgba(0,229,255,0.25)" : "rgba(255,255,255,0.08)",
                         borderRadius: 8, padding: "0px 5px", fontSize: 9, fontWeight: 900,
-                        color: active ? "#00E5FF" : "#555",
+                        color: active ? "#00E5FF" : "#888",
                       }}>{cnt}</span>
                     </button>
                   );
@@ -1092,9 +1096,9 @@ export default function Home() {
               </div>
 
               {/* TIER FILTER — multi-select */}
-              <div style={{ fontSize: 10, color: "#555", letterSpacing: 2, marginBottom: 8 }}>
+              <div style={{ fontSize: 10, color: "#aaa", letterSpacing: 2, marginBottom: 8 }}>
                 FILTER BY TIER
-                <span style={{ fontSize: 9, color: "#444", marginLeft: 6 }}>(multi-select)</span>
+                <span style={{ fontSize: 9, color: "#888", marginLeft: 6 }}>(multi-select)</span>
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
                 {(["S","A","B"] as const).map(t => {
@@ -1116,7 +1120,7 @@ export default function Home() {
                       <span style={{
                         background: active ? `${tColor}30` : "rgba(255,255,255,0.08)",
                         borderRadius: 8, padding: "0px 5px", fontSize: 9, fontWeight: 900,
-                        color: active ? tColor : "#555",
+                        color: active ? tColor : "#888",
                       }}>{cnt}</span>
                     </button>
                   );
@@ -1130,22 +1134,22 @@ export default function Home() {
               </div>
 
               {/* SORT */}
-              <div style={{ fontSize: 10, color: "#555", letterSpacing: 2, marginBottom: 8 }}>SORT BY</div>
+              <div style={{ fontSize: 10, color: "#aaa", letterSpacing: 2, marginBottom: 8 }}>SORT BY</div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {([["edge","Edge Score"],["prob","HR Prob"],["odds","Best Odds"]] as const).map(([v,l]) => (
                   <button key={v} style={filterBtnStyle(sortBy === v, "#00E5FF")} onClick={() => setSortBy(v)}>{l}</button>
                 ))}
               </div>
             </div>
-            <div style={{ fontSize: 10, color: "#444", letterSpacing: 1, marginBottom: 10 }}>
+            <div style={{ fontSize: 10, color: "#888", letterSpacing: 1, marginBottom: 10 }}>
               {filteredPlayers.length} players
               {(tierFilters.size > 0 || gameFilter.size > 0) && (
-                <span style={{ color: "#666" }}> · filtered
+                <span style={{ color: "#aaa" }}> · filtered
                   {gameFilter.size > 0 && <span style={{ color: "#00E5FF" }}> {[...gameFilter].join(", ")}</span>}
                   {tierFilters.size > 0 && <span style={{ color: "#FFD700" }}> {[...tierFilters].join("+")}</span>}
                 </span>
               )}
-              <span style={{ color: "#444" }}> · tap for details · add to parlay builder below</span>
+              <span style={{ color: "#888" }}> · tap for details · add to parlay builder below</span>
             </div>
             {filteredPlayers.length === 0 ? (
               <div style={{
@@ -1154,8 +1158,8 @@ export default function Home() {
                 borderRadius: 12,
               }}>
                 <div style={{ fontSize: 28, marginBottom: 10 }}>🔍</div>
-                <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>No picks match these filters</div>
-                <div style={{ fontSize: 11, color: "#444", marginBottom: 16 }}>
+                <div style={{ fontSize: 13, color: "#aaa", marginBottom: 6 }}>No picks match these filters</div>
+                <div style={{ fontSize: 11, color: "#888", marginBottom: 16 }}>
                   {gameFilter.size > 0 && <span>{[...gameFilter].join(", ")} · </span>}
                   {tierFilters.size > 0 && <span>{[...tierFilters].join(" + ")} tier{tierFilters.size > 1 ? "s" : ""}</span>}
                 </div>
@@ -1259,6 +1263,8 @@ export default function Home() {
         )}
       </div>
 
+      </main>
+
       {/* STICKY PARLAY BUILDER */}
       <div className="parlay-sticky">
         <div style={{ background: "#111118", borderTop: "1px solid rgba(255,215,0,0.25)" }}>
@@ -1267,7 +1273,7 @@ export default function Home() {
               <div style={{ maxWidth: 700, margin: "0 auto" }}>
                 <div style={{ fontSize: 10, letterSpacing: 3, color: "#FFD700", marginBottom: 12 }}>YOUR PARLAY BUILDER</div>
                 {parlayPlayers.length === 0 ? (
-                  <p style={{ fontSize: 12, color: "#555", textAlign: "center", padding: "20px 0" }}>Add players from the picks tab to build your parlay</p>
+                  <p style={{ fontSize: 12, color: "#aaa", textAlign: "center", padding: "20px 0" }}>Add players from the picks tab to build your parlay</p>
                 ) : (
                   <>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
@@ -1303,7 +1309,7 @@ export default function Home() {
               <span style={{ fontSize: 13, fontWeight: 700, color: "#FFD700" }}>🎰 PARLAY BUILDER</span>
               <span style={{ background: "#FFD700", color: "#000", borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900 }}>{parlay.length}</span>
               {combinedOdds && <span style={{ marginLeft: "auto", fontSize: 13, color: "#FFD700", fontWeight: 800 }}>{combinedOdds}</span>}
-              <span style={{ fontSize: 11, color: "#555", marginLeft: combinedOdds ? 0 : "auto" }}>{parlayOpen ? "▼" : "▲"}</span>
+              <span style={{ fontSize: 11, color: "#888", marginLeft: combinedOdds ? 0 : "auto" }}>{parlayOpen ? "▼" : "▲"}</span>
             </button>
             {parlay.length > 0 && (
               <button style={{ background: "rgba(255,82,82,0.1)", border: "1px solid rgba(255,82,82,0.3)", borderRadius: 8, padding: "10px 14px", cursor: "pointer", fontSize: 11, color: "#FF5252", fontWeight: 700, fontFamily: "inherit" }} onClick={() => { setParlay([]); setParlayOpen(false); }}>Clear</button>
@@ -1313,10 +1319,10 @@ export default function Home() {
       </div>
 
       {/* FOOTER */}
-      <div style={{ textAlign: "center", padding: "12px", background: "#07070C", fontSize: 9, color: "#333", letterSpacing: 1 }}>
+      <footer style={{ textAlign: "center", padding: "12px", background: "#07070C", fontSize: 9, color: "#888", letterSpacing: 1 }}>
         ⚠️ INFORMATIONAL &amp; ENTERTAINMENT PURPOSES ONLY — NOT FINANCIAL ADVICE — CONFIRM ODDS ON YOUR SPORTSBOOK
         <br />SOURCES: Covers.com · THE BAT X · DraftKings · Baseball-Reference · StatMuse · Statcast
-      </div>
+      </footer>
     </div>
   );
 }
