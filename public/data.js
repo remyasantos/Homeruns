@@ -1,3 +1,23 @@
+// ─── GAME MAP — update ONLY this section each day ─────────────────────────────
+// Maps team abbreviation → game label (AWAY@HOME).
+// Adding or removing games here automatically updates filters in the UI.
+const TEAM_TO_GAME = {
+  LAD: "TEX@LAD", TEX: "TEX@LAD",
+  PHI: "ATL@PHI", ATL: "ATL@PHI",
+  COL: "SD@COL",  SD:  "SD@COL",
+  NYM: "ATH@NYM", ATH: "ATH@NYM",
+  CIN: "LAA@CIN", LAA: "LAA@CIN",
+  HOU: "HOU@SEA", SEA: "HOU@SEA",
+  NYY: "TB@NYY",  TB:  "TB@NYY",
+  KC:  "CWS@KC",  CWS: "CWS@KC",
+  BOS: "BOS@STL", STL: "BOS@STL",
+  SF:  "PIT@SF",  PIT: "PIT@SF",
+  DET: "MIA@DET", MIA: "MIA@DET",
+  MIN: "MIN@TOR", TOR: "MIN@TOR",
+  CLE: "ARI@CLE", ARI: "ARI@CLE",
+  CHC: "MIL@CHC", MIL: "MIL@CHC",
+};
+
 const SLATE_DATE = "APRIL 10, 2026";
 const SLATE_LABEL = "FRIDAY MLB SLATE";
 

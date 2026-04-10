@@ -9,32 +9,6 @@ const TIER_CONFIG = {
   C: { label: "LONGSHOT", color: "#FF6D00", bg: "rgba(255,109,0,0.08)",  border: "#FF6D00", desc: "High Risk, High Reward" },
 } as const;
 
-// ─── GAME MAP ─────────────────────────────────────────────────────────────────
-// Maps team abbreviation → game label (AWAY@HOME) — update daily with the slate
-const TEAM_TO_GAME: Record<string, string> = {
-  LAD: "TEX@LAD", TEX: "TEX@LAD",
-  PHI: "ATL@PHI", ATL: "ATL@PHI",
-  COL: "SD@COL",  SD:  "SD@COL",
-  NYM: "ATH@NYM", ATH: "ATH@NYM",
-  CIN: "LAA@CIN", LAA: "LAA@CIN",
-  HOU: "HOU@SEA", SEA: "HOU@SEA",
-  NYY: "TB@NYY",  TB:  "TB@NYY",
-  KC:  "CWS@KC",  CWS: "CWS@KC",
-  BOS: "BOS@STL", STL: "BOS@STL",
-  SF:  "PIT@SF",  PIT: "PIT@SF",
-  DET: "MIA@DET", MIA: "MIA@DET",
-  MIN: "MIN@TOR", TOR: "MIN@TOR",
-  CLE: "ARI@CLE", ARI: "ARI@CLE",
-  CHC: "MIL@CHC", MIL: "MIL@CHC",
-};
-
-// Update ALL_GAMES daily — must match TEAM_TO_GAME values exactly
-const ALL_GAMES = [
-  "TEX@LAD", "ATL@PHI", "SD@COL",  "ATH@NYM",
-  "LAA@CIN", "HOU@SEA", "TB@NYY",  "CWS@KC",
-  "BOS@STL", "PIT@SF",  "MIA@DET", "MIN@TOR",
-  "ARI@CLE", "MIL@CHC",
-] as const;
 
 const GRADE_ORDER = ["A+","A","A-","B+","B","B-","C+","C","C-","D+","D","F"] as const;
 
@@ -816,7 +790,7 @@ function ParlayBuiltCard({
                 <span key={p.id} style={{
                   fontSize: 10, color: tc.color, background: tc.bg,
                   padding: "2px 8px", borderRadius: 10, border: `1px solid ${tc.color}40`,
-                }}>{p.name.split(" ").at(-1)}</span>
+                }}>{p.name}</span>
               );
             })}
           </div>
@@ -834,12 +808,13 @@ export default function Home() {
   const [parkFactors,  setParkFactors]  = useState<Record<string, { rank: number; label: string; color: string }>>({});
   const [players,      setPlayers]      = useState<Player[]>([]);
   const [parlays,      setParlays]      = useState<Parlay[]>([]);
+  const [allGames,     setAllGames]     = useState<string[]>([]);
   const [loading,      setLoading]      = useState(true);
   const [dataError,    setDataError]    = useState<string | null>(null);
 
   const [activeTab,    setActiveTab]    = useState<"picks"|"parlays"|"longshots"|"bet">("picks");
   const [tierFilters,  setTierFilters]  = useState<Set<string>>(new Set());  // empty = ALL
-  const [gameFilter,   setGameFilter]   = useState<typeof ALL_GAMES[number] | "ALL">("ALL");
+  const [gameFilter,   setGameFilter]   = useState<Set<string>>(new Set());  // empty = ALL
   const [sortBy,       setSortBy]       = useState<"edge"|"prob"|"odds">("edge");
   const [parlay,       setParlay]       = useState<number[]>([]);
   const [parlayOpen,   setParlayOpen]   = useState(false);
@@ -853,7 +828,7 @@ export default function Home() {
       })
       .then(text => {
         // eslint-disable-next-line no-new-func
-        const fn = new Function(`${text}\nreturn { SLATE_DATE, SLATE_LABEL, CONTEXT_CARDS, PARK_FACTORS, players, parlays };`);
+        const fn = new Function(`${text}\nreturn { SLATE_DATE, SLATE_LABEL, CONTEXT_CARDS, PARK_FACTORS, players, parlays, TEAM_TO_GAME };`);
         const raw = fn();
 
         // Deduplicate players by id (guards against accidental duplicates)
@@ -870,7 +845,7 @@ export default function Home() {
           hrProb: gradeToHrProb(p.matchupGrade, p.tier),
           oddsNum: oddsToNum(p.estOdds),
           isLongshot: p.tier === "C",
-          game: TEAM_TO_GAME[p.team] ?? "Other",
+          game: (raw.TEAM_TO_GAME as Record<string, string>)?.[p.team] ?? "Other",
         }));
 
         setSlateDate(raw.SLATE_DATE);
@@ -879,6 +854,9 @@ export default function Home() {
         setParkFactors(raw.PARK_FACTORS);
         setPlayers(hydrated);
         setParlays(raw.parlays);
+        // Derive unique game list from TEAM_TO_GAME — preserves insertion order
+        const uniqueGames = [...new Set<string>(Object.values((raw.TEAM_TO_GAME as Record<string, string>) ?? {}))];
+        setAllGames(uniqueGames);
         setLoading(false);
       })
       .catch(err => { setDataError(err.message); setLoading(false); });
@@ -903,10 +881,18 @@ export default function Home() {
     });
   }, []);
 
+  const toggleGameFilter = useCallback((g: string) => {
+    setGameFilter((prev: Set<string>) => {
+      const next = new Set(prev);
+      if (next.has(g)) next.delete(g); else next.add(g);
+      return next;
+    });
+  }, []);
+
   const filteredPlayers = useMemo(() => {
     let p = mainPlayers;
     if (tierFilters.size > 0) p = p.filter((pl: Player) => tierFilters.has(pl.tier));
-    if (gameFilter !== "ALL") p = p.filter((pl: Player) => pl.game === gameFilter);
+    if (gameFilter.size > 0)  p = p.filter((pl: Player) => gameFilter.has(pl.game));
     if (sortBy === "edge")  return [...p].sort((a: Player, b: Player) => b.edgeScore - a.edgeScore);
     if (sortBy === "prob")  return [...p].sort((a: Player, b: Player) => b.hrProb - a.hrProb);
     if (sortBy === "odds")  return [...p].sort((a: Player, b: Player) => b.oddsNum - a.oddsNum);
@@ -915,7 +901,7 @@ export default function Home() {
 
   const filteredLongshots = useMemo(() => {
     let p = longshotPlayers;
-    if (gameFilter !== "ALL") p = p.filter((pl: Player) => pl.game === gameFilter);
+    if (gameFilter.size > 0) p = p.filter((pl: Player) => gameFilter.has(pl.game));
     return p;
   }, [longshotPlayers, gameFilter]);
 
@@ -1066,32 +1052,43 @@ export default function Home() {
           <>
             <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: 12, marginBottom: 14 }}>
               {/* GAME FILTER */}
-              <div style={{ fontSize: 10, color: "#555", letterSpacing: 2, marginBottom: 8 }}>FILTER BY GAME</div>
+              <div style={{ fontSize: 10, color: "#555", letterSpacing: 2, marginBottom: 8 }}>
+                FILTER BY GAME
+                <span style={{ fontSize: 9, color: "#444", marginLeft: 6 }}>(multi-select)</span>
+              </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
                 <button
-                  style={filterBtnStyle(gameFilter === "ALL", "#aaa")}
-                  onClick={() => setGameFilter("ALL")}
+                  style={filterBtnStyle(gameFilter.size === 0, "#aaa")}
+                  onClick={() => setGameFilter(new Set())}
                 >All Games</button>
-                {ALL_GAMES.map(g => {
+                {allGames.map(g => {
                   const cnt = mainPlayers.filter((p: Player) => p.game === g).length;
+                  const active = gameFilter.has(g);
                   return (
                     <button
                       key={g}
                       style={{
-                        ...filterBtnStyle(gameFilter === g, "#00E5FF"),
+                        ...filterBtnStyle(active, "#00E5FF"),
                         display: "flex", alignItems: "center", gap: 4,
                       }}
-                      onClick={() => setGameFilter(gameFilter === g ? "ALL" : g)}
+                      onClick={() => toggleGameFilter(g)}
                     >
+                      {active && <span style={{ fontSize: 9 }}>✓</span>}
                       <span style={{ fontFamily: "'DM Mono', monospace", letterSpacing: 0.5 }}>{g}</span>
                       <span style={{
-                        background: gameFilter === g ? "rgba(0,229,255,0.25)" : "rgba(255,255,255,0.08)",
+                        background: active ? "rgba(0,229,255,0.25)" : "rgba(255,255,255,0.08)",
                         borderRadius: 8, padding: "0px 5px", fontSize: 9, fontWeight: 900,
-                        color: gameFilter === g ? "#00E5FF" : "#555",
+                        color: active ? "#00E5FF" : "#555",
                       }}>{cnt}</span>
                     </button>
                   );
                 })}
+                {gameFilter.size > 0 && (
+                  <button
+                    style={{ padding: "5px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", background: "rgba(255,82,82,0.08)", color: "#FF5252", border: "1px solid rgba(255,82,82,0.25)" }}
+                    onClick={() => setGameFilter(new Set())}
+                  >✕ Clear</button>
+                )}
               </div>
 
               {/* TIER FILTER — multi-select */}
@@ -1103,7 +1100,7 @@ export default function Home() {
                 {(["S","A","B"] as const).map(t => {
                   const tColor = t === "S" ? "#FFD700" : t === "A" ? "#00E5FF" : "#76FF03";
                   const active = tierFilters.has(t);
-                  const cnt = mainPlayers.filter((p: Player) => p.tier === t && (gameFilter === "ALL" || p.game === gameFilter)).length;
+                  const cnt = mainPlayers.filter((p: Player) => p.tier === t && (gameFilter.size === 0 || gameFilter.has(p.game))).length;
                   return (
                     <button
                       key={t}
@@ -1142,9 +1139,9 @@ export default function Home() {
             </div>
             <div style={{ fontSize: 10, color: "#444", letterSpacing: 1, marginBottom: 10 }}>
               {filteredPlayers.length} players
-              {(tierFilters.size > 0 || gameFilter !== "ALL") && (
+              {(tierFilters.size > 0 || gameFilter.size > 0) && (
                 <span style={{ color: "#666" }}> · filtered
-                  {gameFilter !== "ALL" && <span style={{ color: "#00E5FF" }}> {gameFilter}</span>}
+                  {gameFilter.size > 0 && <span style={{ color: "#00E5FF" }}> {[...gameFilter].join(", ")}</span>}
                   {tierFilters.size > 0 && <span style={{ color: "#FFD700" }}> {[...tierFilters].join("+")}</span>}
                 </span>
               )}
@@ -1159,7 +1156,7 @@ export default function Home() {
                 <div style={{ fontSize: 28, marginBottom: 10 }}>🔍</div>
                 <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>No picks match these filters</div>
                 <div style={{ fontSize: 11, color: "#444", marginBottom: 16 }}>
-                  {gameFilter !== "ALL" && <span>{gameFilter} · </span>}
+                  {gameFilter.size > 0 && <span>{[...gameFilter].join(", ")} · </span>}
                   {tierFilters.size > 0 && <span>{[...tierFilters].join(" + ")} tier{tierFilters.size > 1 ? "s" : ""}</span>}
                 </div>
                 <button
@@ -1169,7 +1166,7 @@ export default function Home() {
                     background: "rgba(0,229,255,0.1)", border: "1px solid rgba(0,229,255,0.3)",
                     color: "#00E5FF",
                   }}
-                  onClick={() => { setTierFilters(new Set()); setGameFilter("ALL"); }}
+                  onClick={() => { setTierFilters(new Set()); setGameFilter(new Set()); }}
                 >
                   Clear all filters
                 </button>
@@ -1218,19 +1215,27 @@ export default function Home() {
                 C-tier players with real HR upside — favorable parks, overlooked matchups, or hot streaks. Ideal as tail legs on big parlays. {longshotPlayers.length} available today.
               </p>
             </div>
-            {/* Game filter for longshots */}
+            {/* Game filter for longshots — multi-select */}
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
-              <button style={filterBtnStyle(gameFilter === "ALL", "#aaa")} onClick={() => setGameFilter("ALL")}>All Games</button>
-              {ALL_GAMES.map(g => {
+              <button style={filterBtnStyle(gameFilter.size === 0, "#aaa")} onClick={() => setGameFilter(new Set())}>All Games</button>
+              {allGames.map(g => {
                 const cnt = longshotPlayers.filter((p: Player) => p.game === g).length;
                 if (!cnt) return null;
+                const active = gameFilter.has(g);
                 return (
-                  <button key={g} style={{ ...filterBtnStyle(gameFilter === g, "#FF6D00"), display: "flex", alignItems: "center", gap: 4 }} onClick={() => setGameFilter(gameFilter === g ? "ALL" : g)}>
+                  <button key={g} style={{ ...filterBtnStyle(active, "#FF6D00"), display: "flex", alignItems: "center", gap: 4 }} onClick={() => toggleGameFilter(g)}>
+                    {active && <span style={{ fontSize: 9 }}>✓</span>}
                     <span style={{ fontFamily: "'DM Mono', monospace", letterSpacing: 0.5 }}>{g}</span>
-                    <span style={{ background: gameFilter === g ? "rgba(255,109,0,0.25)" : "rgba(255,255,255,0.08)", borderRadius: 8, padding: "0px 5px", fontSize: 9, fontWeight: 900, color: gameFilter === g ? "#FF6D00" : "#555" }}>{cnt}</span>
+                    <span style={{ background: active ? "rgba(255,109,0,0.25)" : "rgba(255,255,255,0.08)", borderRadius: 8, padding: "0px 5px", fontSize: 9, fontWeight: 900, color: active ? "#FF6D00" : "#555" }}>{cnt}</span>
                   </button>
                 );
               })}
+              {gameFilter.size > 0 && (
+                <button
+                  style={{ padding: "5px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", background: "rgba(255,82,82,0.08)", color: "#FF5252", border: "1px solid rgba(255,82,82,0.25)" }}
+                  onClick={() => setGameFilter(new Set())}
+                >✕ Clear</button>
+              )}
             </div>
             {filteredLongshots.length === 0 ? (
               <div style={{ textAlign: "center", padding: "24px", color: "#555", fontSize: 12 }}>No longshots match this game filter.</div>
