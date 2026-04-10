@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, type MouseEvent } from "react";
 
 // ─── STATIC CONFIG ────────────────────────────────────────────────────────────
 const TIER_CONFIG = {
@@ -8,6 +8,33 @@ const TIER_CONFIG = {
   B: { label: "B-TIER",   color: "#76FF03", bg: "rgba(118,255,3,0.07)",  border: "#76FF03", desc: "Value Plays — good odds vs probability" },
   C: { label: "LONGSHOT", color: "#FF6D00", bg: "rgba(255,109,0,0.08)",  border: "#FF6D00", desc: "High Risk, High Reward" },
 } as const;
+
+// ─── GAME MAP ─────────────────────────────────────────────────────────────────
+// Maps team abbreviation → game label (AWAY@HOME) — update daily with the slate
+const TEAM_TO_GAME: Record<string, string> = {
+  LAD: "TEX@LAD", TEX: "TEX@LAD",
+  PHI: "ATL@PHI", ATL: "ATL@PHI",
+  COL: "SD@COL",  SD:  "SD@COL",
+  NYM: "ATH@NYM", ATH: "ATH@NYM",
+  CIN: "LAA@CIN", LAA: "LAA@CIN",
+  HOU: "HOU@SEA", SEA: "HOU@SEA",
+  NYY: "TB@NYY",  TB:  "TB@NYY",
+  KC:  "CWS@KC",  CWS: "CWS@KC",
+  BOS: "BOS@STL", STL: "BOS@STL",
+  SF:  "PIT@SF",  PIT: "PIT@SF",
+  DET: "MIA@DET", MIA: "MIA@DET",
+  MIN: "MIN@TOR", TOR: "MIN@TOR",
+  CLE: "ARI@CLE", ARI: "ARI@CLE",
+  CHC: "MIL@CHC", MIL: "MIL@CHC",
+};
+
+// Update ALL_GAMES daily — must match TEAM_TO_GAME values exactly
+const ALL_GAMES = [
+  "TEX@LAD", "ATL@PHI", "SD@COL",  "ATH@NYM",
+  "LAA@CIN", "HOU@SEA", "TB@NYY",  "CWS@KC",
+  "BOS@STL", "PIT@SF",  "MIA@DET", "MIN@TOR",
+  "ARI@CLE", "MIL@CHC",
+] as const;
 
 const GRADE_ORDER = ["A+","A","A-","B+","B","B-","C+","C","C-","D+","D","F"] as const;
 
@@ -23,7 +50,7 @@ function gradeToHrProb(grade: string, tier: string): number {
   return Math.min(22, Math.max(4, Math.round((base / 100) * 18) + bonus));
 }
 
-function gradeColor(g = "") {
+function gradeColor(g = ""): string {
   if (g.startsWith("A")) return "#FFD700";
   if (g.startsWith("B")) return "#76FF03";
   if (g.startsWith("C")) return "#FF9800";
@@ -88,10 +115,11 @@ interface Player {
   park: string; pitcher: string; pitcherNote: string;
   matchupGrade: string; estOdds: string; note: string; tags: string[];
   edgeScore: number; hrProb: number; oddsNum: number; isLongshot: boolean;
+  game: string;
 }
 
 interface Parlay {
-  id: string; legs: number; label: string; risk: string; riskColor: string;
+  id: string; legs: number; label: string; risk: string;
   estPayout: string; description: string; playerIds: number[]; strategy: string;
 }
 
@@ -109,7 +137,7 @@ function BookButton({ book, playerName }: { book: typeof BOOKS[0]; playerName?: 
         transition: "background 0.15s", cursor: "pointer", flex: 1,
         minWidth: 100,
       }}
-      onClick={e => e.stopPropagation()}
+      onClick={(e: MouseEvent<HTMLAnchorElement>) => e.stopPropagation()}
     >
       <span style={{
         background: book.color, color: "#000", borderRadius: 4,
@@ -137,7 +165,7 @@ function OddsComparisonRow({ player }: { player: Player }) {
       {/* Collapsed row */}
       <div
         style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", cursor: "pointer", flexWrap: "wrap" }}
-        onClick={() => setOpen(o => !o)}
+        onClick={() => setOpen((o: boolean) => !o)}
       >
         <span style={{
           background: tc.bg, border: `1px solid ${tc.color}60`,
@@ -225,7 +253,7 @@ function PlaceBetTab({
       `${parlayPlayers.length}-LEG SAME-GAME / MULTI-GAME PARLAY`,
       `Bet type: Player Home Run (any HR)`,
       ``,
-      ...parlayPlayers.map((p, i) =>
+      ...parlayPlayers.map((p: Player, i: number) =>
         `LEG ${i + 1}: ${p.name} (${p.team}) to hit a Home Run\n        vs ${p.pitcher} @ ${p.park}\n        Model odds: ${p.estOdds} | MU Grade: ${p.matchupGrade}`
       ),
       ``,
@@ -237,22 +265,42 @@ function PlaceBetTab({
   }, [parlayPlayers, combinedOdds, slateDate]);
 
   const shortList = useMemo(() =>
-    parlayPlayers.map(p => `${p.name} (${p.team}) HR ${p.estOdds}`).join("\n"),
+    parlayPlayers.map((p: Player) => `${p.name} (${p.team}) HR ${p.estOdds}`).join("\n"),
   [parlayPlayers]);
 
-  const copyTicket = () => {
-    navigator.clipboard.writeText(ticketText).then(() => {
-      setCopiedTicket(true);
-      setTimeout(() => setCopiedTicket(false), 2500);
-    });
+  // Safe clipboard helper — falls back to execCommand for non-HTTPS / older browsers
+  const copyToClipboard = (text: string, onSuccess: () => void) => {
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(onSuccess).catch(() => {
+        // Silent fail — user can manually copy from the ticket
+      });
+    } else {
+      // Fallback: create a temporary textarea and execCommand
+      try {
+        const el = document.createElement("textarea");
+        el.value = text;
+        el.style.position = "fixed";
+        el.style.opacity = "0";
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand("copy");
+        document.body.removeChild(el);
+        onSuccess();
+      } catch {
+        // Silent fail
+      }
+    }
   };
 
-  const copyList = () => {
-    navigator.clipboard.writeText(shortList).then(() => {
-      setCopiedList(true);
-      setTimeout(() => setCopiedList(false), 2500);
-    });
-  };
+  const copyTicket = () => copyToClipboard(ticketText, () => {
+    setCopiedTicket(true);
+    setTimeout(() => setCopiedTicket(false), 2500);
+  });
+
+  const copyList = () => copyToClipboard(shortList, () => {
+    setCopiedList(true);
+    setTimeout(() => setCopiedList(false), 2500);
+  });
 
   const sectionBtn = (id: typeof viewSection, label: string) => (
     <button
@@ -321,7 +369,7 @@ function PlaceBetTab({
                   {parlayPlayers.length}-LEG PARLAY · Player Home Run (any HR)
                 </div>
 
-                {parlayPlayers.map((p, i) => {
+                {parlayPlayers.map((p: Player, i: number) => {
                   const tc = TIER_CONFIG[p.tier as keyof typeof TIER_CONFIG] ?? TIER_CONFIG.C;
                   return (
                     <div key={p.id} style={{
@@ -437,8 +485,8 @@ function PlaceBetTab({
           {/* Show parlay legs if any, otherwise top S-tier */}
           {(parlayPlayers.length > 0
             ? parlayPlayers
-            : Object.values(playerMap).filter(p => p.tier === "S").sort((a, b) => b.edgeScore - a.edgeScore).slice(0, 8)
-          ).map(p => (
+            : (Object.values(playerMap) as Player[]).filter((p: Player) => p.tier === "S").sort((a: Player, b: Player) => b.edgeScore - a.edgeScore).slice(0, 8)
+          ).map((p: Player) => (
             <OddsComparisonRow key={p.id} player={p} />
           ))}
 
@@ -511,8 +559,8 @@ function PlaceBetTab({
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               {(parlayPlayers.length > 0
                 ? parlayPlayers
-                : Object.values(playerMap).filter(p => p.tier === "S").sort((a, b) => b.edgeScore - a.edgeScore).slice(0, 6)
-              ).map(p => (
+                : (Object.values(playerMap) as Player[]).filter((p: Player) => p.tier === "S").sort((a: Player, b: Player) => b.edgeScore - a.edgeScore).slice(0, 6)
+              ).map((p: Player) => (
                 <a
                   key={p.id}
                   href={selectedBook.searchUrl(p.name)}
@@ -617,7 +665,7 @@ function PlayerCard({
         cursor: "pointer", transition: "border-color 0.2s, background 0.2s",
         boxShadow: inParlay ? `0 0 14px ${tc.color}28` : "none",
       }}
-      onClick={() => setExpanded(e => !e)}
+      onClick={() => setExpanded((e: boolean) => !e)}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <span style={{
@@ -636,8 +684,15 @@ function PlayerCard({
         <span style={{ fontSize: 11, color: "#777" }}>vs {player.pitcher}</span>
         <MuBadge grade={player.matchupGrade} />
         <EdgeBadge score={player.edgeScore} />
-        <span style={{ marginLeft: "auto", fontSize: 11, color: "#aaa", whiteSpace: "nowrap" }}>
-          <span style={{ color: "#76FF03", fontWeight: 700 }}>{player.hrProb}%</span> HR est.
+        <span style={{ marginLeft: "auto", fontSize: 11, color: "#aaa", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ color: "#76FF03", fontWeight: 700 }}>{player.hrProb}%</span>
+          {player.game && (
+            <span style={{
+              fontSize: 9, color: "#00E5FF", background: "rgba(0,229,255,0.07)",
+              border: "1px solid rgba(0,229,255,0.18)", borderRadius: 4,
+              padding: "1px 5px", letterSpacing: 0.5, fontWeight: 700,
+            }}>{player.game}</span>
+          )}
         </span>
       </div>
 
@@ -682,7 +737,7 @@ function PlayerCard({
             color: inParlay ? "#000" : tc.color, fontWeight: 700, cursor: "pointer",
             transition: "all 0.15s", fontFamily: "inherit",
           }}
-          onClick={e => { e.stopPropagation(); onToggle(); }}
+          onClick={(e: MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); onToggle(); }}
         >
           {inParlay ? "✓ In Parlay" : "+ Add to Parlay"}
         </button>
@@ -698,12 +753,15 @@ function ParlayBuiltCard({
 }: {
   parlay: Parlay; playerMap: Record<number, Player>; isOpen: boolean; onToggle: () => void;
 }) {
-  const legPlayers = parlay.playerIds.map(id => playerMap[id]).filter(Boolean);
-  const missingIds = parlay.playerIds.filter(id => !playerMap[id]);
+  const legPlayers = parlay.playerIds.map((id: number) => playerMap[id]).filter((p): p is Player => Boolean(p));
+  const missingIds = parlay.playerIds.filter((id: number) => !playerMap[id]);
   const riskColor =
     parlay.risk === "Lower Risk" ? "#76FF03" :
     parlay.risk === "Medium Risk" ? "#FFD700" :
     parlay.risk === "High Risk" ? "#FF9800" : "#FF5252";
+
+  // Derive unique games this parlay spans
+  const gamesInParlay = Array.from(new Set(legPlayers.map(p => p.game).filter(Boolean)));
 
   return (
     <div style={{
@@ -723,9 +781,23 @@ function ParlayBuiltCard({
         <span style={{ fontWeight: 800, color: "#FFD700", fontSize: 15, whiteSpace: "nowrap" }}>{parlay.estPayout}</span>
         <span style={{ fontSize: 11, color: "#555" }}>{isOpen ? "▲" : "▼"}</span>
       </div>
+
+      {/* Game coverage badges — always visible */}
+      {gamesInParlay.length > 0 && (
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 8 }}>
+          {gamesInParlay.map(g => (
+            <span key={g} style={{
+              fontSize: 9, color: "#00E5FF", background: "rgba(0,229,255,0.08)",
+              border: "1px solid rgba(0,229,255,0.2)", borderRadius: 4,
+              padding: "1px 6px", letterSpacing: 0.5, fontWeight: 700,
+            }}>{g}</span>
+          ))}
+        </div>
+      )}
+
       {missingIds.length > 0 && (
         <div style={{ fontSize: 10, color: "#FF5252", marginTop: 6 }}>
-          ⚠ {missingIds.length} player id{missingIds.length > 1 ? "s" : ""} not found: {missingIds.join(", ")}
+          ⚠ {missingIds.length} player id{missingIds.length > 1 ? "s" : ""} not found in data: {missingIds.join(", ")}
         </div>
       )}
       {isOpen && (
@@ -736,6 +808,7 @@ function ParlayBuiltCard({
               <span style={{ color: "#FFD700", fontWeight: 700 }}>STRATEGY: </span>{parlay.strategy}
             </p>
           )}
+          <div style={{ fontSize: 10, color: "#555", letterSpacing: 1, marginBottom: 6 }}>LEGS</div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {legPlayers.map(p => {
               const tc = TIER_CONFIG[p.tier as keyof typeof TIER_CONFIG] ?? TIER_CONFIG.C;
@@ -764,27 +837,42 @@ export default function Home() {
   const [loading,      setLoading]      = useState(true);
   const [dataError,    setDataError]    = useState<string | null>(null);
 
-  const [activeTab,   setActiveTab]   = useState<"picks"|"parlays"|"longshots"|"bet">("picks");
-  const [tierFilter,  setTierFilter]  = useState("ALL");
-  const [sortBy,      setSortBy]      = useState<"edge"|"prob"|"odds">("edge");
-  const [parlay,      setParlay]      = useState<number[]>([]);
-  const [parlayOpen,  setParlayOpen]  = useState(false);
-  const [openParlay,  setOpenParlay]  = useState<string | null>(null);
+  const [activeTab,    setActiveTab]    = useState<"picks"|"parlays"|"longshots"|"bet">("picks");
+  const [tierFilters,  setTierFilters]  = useState<Set<string>>(new Set());  // empty = ALL
+  const [gameFilter,   setGameFilter]   = useState<typeof ALL_GAMES[number] | "ALL">("ALL");
+  const [sortBy,       setSortBy]       = useState<"edge"|"prob"|"odds">("edge");
+  const [parlay,       setParlay]       = useState<number[]>([]);
+  const [parlayOpen,   setParlayOpen]   = useState(false);
+  const [openParlay,   setOpenParlay]   = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/data.js")
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status} — is public/data.js in your repo?`); return r.text(); })
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status} — is public/data.js in your repo?`);
+        return r.text();
+      })
       .then(text => {
         // eslint-disable-next-line no-new-func
         const fn = new Function(`${text}\nreturn { SLATE_DATE, SLATE_LABEL, CONTEXT_CARDS, PARK_FACTORS, players, parlays };`);
         const raw = fn();
-        const hydrated: Player[] = raw.players.map((p: Player) => ({
+
+        // Deduplicate players by id (guards against accidental duplicates)
+        const seen = new Set<number>();
+        const unique = (raw.players as Player[]).filter((p: Player) => {
+          if (seen.has(p.id)) return false;
+          seen.add(p.id);
+          return true;
+        });
+
+        const hydrated: Player[] = unique.map((p: Player) => ({
           ...p,
           edgeScore: gradeToEdge(p.matchupGrade),
           hrProb: gradeToHrProb(p.matchupGrade, p.tier),
           oddsNum: oddsToNum(p.estOdds),
           isLongshot: p.tier === "C",
+          game: TEAM_TO_GAME[p.team] ?? "Other",
         }));
+
         setSlateDate(raw.SLATE_DATE);
         setSlateLabel(raw.SLATE_LABEL);
         setContextCards(raw.CONTEXT_CARDS);
@@ -796,34 +884,49 @@ export default function Home() {
       .catch(err => { setDataError(err.message); setLoading(false); });
   }, []);
 
-  const playerMap       = useMemo(() => Object.fromEntries(players.map(p => [p.id, p])), [players]);
-  const mainPlayers     = useMemo(() => players.filter(p => p.tier !== "C"), [players]);
-  const longshotPlayers = useMemo(() => players.filter(p => p.tier === "C"), [players]);
-  const parlayPlayers   = useMemo(() => players.filter(p => parlay.includes(p.id)), [parlay, players]);
-  const topPicks        = useMemo(() => players.filter(p => p.tier === "S").sort((a, b) => b.edgeScore - a.edgeScore).slice(0, 5), [players]);
+  const playerMap       = useMemo(() => Object.fromEntries(players.map((p: Player) => [p.id, p])), [players]);
+  const mainPlayers     = useMemo(() => players.filter((p: Player) => p.tier !== "C"), [players]);
+  const longshotPlayers = useMemo(() => players.filter((p: Player) => p.tier === "C"), [players]);
+  const parlayPlayers   = useMemo(() => players.filter((p: Player) => parlay.includes(p.id)), [parlay, players]);
+  const topPicks        = useMemo(() => players.filter((p: Player) => p.tier === "S").sort((a: Player, b: Player) => b.edgeScore - a.edgeScore).slice(0, 5), [players]);
   const tierCounts      = useMemo(() => {
     const c: Record<string, number> = { S: 0, A: 0, B: 0, C: 0 };
-    players.forEach(p => { if (p.tier in c) c[p.tier]++; });
+    players.forEach((p: Player) => { if (p.tier in c) c[p.tier]++; });
     return c;
   }, [players]);
 
+  const toggleTierFilter = useCallback((t: string) => {
+    setTierFilters((prev: Set<string>) => {
+      const next = new Set(prev);
+      if (next.has(t)) next.delete(t); else next.add(t);
+      return next;
+    });
+  }, []);
+
   const filteredPlayers = useMemo(() => {
     let p = mainPlayers;
-    if (tierFilter !== "ALL") p = p.filter(pl => pl.tier === tierFilter);
-    if (sortBy === "edge")  return [...p].sort((a, b) => b.edgeScore - a.edgeScore);
-    if (sortBy === "prob")  return [...p].sort((a, b) => b.hrProb - a.hrProb);
-    if (sortBy === "odds")  return [...p].sort((a, b) => b.oddsNum - a.oddsNum);
+    if (tierFilters.size > 0) p = p.filter((pl: Player) => tierFilters.has(pl.tier));
+    if (gameFilter !== "ALL") p = p.filter((pl: Player) => pl.game === gameFilter);
+    if (sortBy === "edge")  return [...p].sort((a: Player, b: Player) => b.edgeScore - a.edgeScore);
+    if (sortBy === "prob")  return [...p].sort((a: Player, b: Player) => b.hrProb - a.hrProb);
+    if (sortBy === "odds")  return [...p].sort((a: Player, b: Player) => b.oddsNum - a.oddsNum);
     return p;
-  }, [mainPlayers, tierFilter, sortBy]);
+  }, [mainPlayers, tierFilters, gameFilter, sortBy]);
+
+  const filteredLongshots = useMemo(() => {
+    let p = longshotPlayers;
+    if (gameFilter !== "ALL") p = p.filter((pl: Player) => pl.game === gameFilter);
+    return p;
+  }, [longshotPlayers, gameFilter]);
 
   const combinedOdds = useMemo(() => {
     if (parlayPlayers.length < 2) return null;
-    const dec = parlayPlayers.map(p => p.oddsNum > 0 ? p.oddsNum / 100 + 1 : 100 / Math.abs(p.oddsNum) + 1);
-    return `+${Math.round((dec.reduce((a, b) => a * b, 1) - 1) * 100).toLocaleString()}`;
+    const dec = parlayPlayers.map((p: Player) => p.oddsNum > 0 ? p.oddsNum / 100 + 1 : 100 / Math.abs(p.oddsNum) + 1);
+    return `+${Math.round((dec.reduce((a: number, b: number) => a * b, 1) - 1) * 100).toLocaleString()}`;
   }, [parlayPlayers]);
 
   const toggleParlay = useCallback((id: number) => {
-    setParlay(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    setParlay((prev: number[]) => prev.includes(id) ? prev.filter((x: number) => x !== id) : [...prev, id]);
   }, []);
 
   const tabStyle = (t: string) => ({
@@ -907,7 +1010,7 @@ export default function Home() {
         <div style={{ maxWidth: 700, margin: "0 auto" }}>
           <div style={{ fontSize: 10, letterSpacing: 3, color: "#FFD700", fontWeight: 900, marginBottom: 10 }}>🏆 BEST HR BETS TODAY</div>
           <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
-            {topPicks.map(p => (
+            {topPicks.map((p: Player) => (
               <div key={p.id} style={{ background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.25)", borderRadius: 10, padding: "10px 14px", minWidth: 130, flex: "0 0 auto" }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#FFD700", marginBottom: 2 }}>{p.name}</div>
                 <div style={{ fontSize: 10, color: "#888" }}>{p.team} · {p.estOdds}</div>
@@ -924,7 +1027,7 @@ export default function Home() {
           <div style={{ maxWidth: 700, margin: "0 auto" }}>
             <div style={{ fontSize: 10, letterSpacing: 3, color: "#FF9800", fontWeight: 900, marginBottom: 10 }}>📍 TODAY'S KEY CONTEXTS</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
-              {contextCards.map((c, i) => (
+              {contextCards.map((c: { icon: string; label: string; note: string; sub: string }, i: number) => (
                 <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                   <span style={{ fontSize: 20, flexShrink: 0 }}>{c.icon}</span>
                   <div>
@@ -962,14 +1065,74 @@ export default function Home() {
         {activeTab === "picks" && (
           <>
             <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: 12, marginBottom: 14 }}>
-              <div style={{ fontSize: 10, color: "#555", letterSpacing: 2, marginBottom: 8 }}>FILTER BY TIER</div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-                {(["ALL","S","A","B"] as const).map(t => (
-                  <button key={t} style={filterBtnStyle(tierFilter === t, t === "S" ? "#FFD700" : t === "A" ? "#00E5FF" : t === "B" ? "#76FF03" : "#aaa")} onClick={() => setTierFilter(t)}>
-                    {t === "ALL" ? "All" : TIER_CONFIG[t].label}
-                  </button>
-                ))}
+              {/* GAME FILTER */}
+              <div style={{ fontSize: 10, color: "#555", letterSpacing: 2, marginBottom: 8 }}>FILTER BY GAME</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+                <button
+                  style={filterBtnStyle(gameFilter === "ALL", "#aaa")}
+                  onClick={() => setGameFilter("ALL")}
+                >All Games</button>
+                {ALL_GAMES.map(g => {
+                  const cnt = mainPlayers.filter((p: Player) => p.game === g).length;
+                  return (
+                    <button
+                      key={g}
+                      style={{
+                        ...filterBtnStyle(gameFilter === g, "#00E5FF"),
+                        display: "flex", alignItems: "center", gap: 4,
+                      }}
+                      onClick={() => setGameFilter(gameFilter === g ? "ALL" : g)}
+                    >
+                      <span style={{ fontFamily: "'DM Mono', monospace", letterSpacing: 0.5 }}>{g}</span>
+                      <span style={{
+                        background: gameFilter === g ? "rgba(0,229,255,0.25)" : "rgba(255,255,255,0.08)",
+                        borderRadius: 8, padding: "0px 5px", fontSize: 9, fontWeight: 900,
+                        color: gameFilter === g ? "#00E5FF" : "#555",
+                      }}>{cnt}</span>
+                    </button>
+                  );
+                })}
               </div>
+
+              {/* TIER FILTER — multi-select */}
+              <div style={{ fontSize: 10, color: "#555", letterSpacing: 2, marginBottom: 8 }}>
+                FILTER BY TIER
+                <span style={{ fontSize: 9, color: "#444", marginLeft: 6 }}>(multi-select)</span>
+              </div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+                {(["S","A","B"] as const).map(t => {
+                  const tColor = t === "S" ? "#FFD700" : t === "A" ? "#00E5FF" : "#76FF03";
+                  const active = tierFilters.has(t);
+                  const cnt = mainPlayers.filter((p: Player) => p.tier === t && (gameFilter === "ALL" || p.game === gameFilter)).length;
+                  return (
+                    <button
+                      key={t}
+                      style={{
+                        ...filterBtnStyle(active, tColor),
+                        display: "flex", alignItems: "center", gap: 4,
+                        position: "relative",
+                      }}
+                      onClick={() => toggleTierFilter(t)}
+                    >
+                      {active && <span style={{ fontSize: 9 }}>✓</span>}
+                      {TIER_CONFIG[t].label}
+                      <span style={{
+                        background: active ? `${tColor}30` : "rgba(255,255,255,0.08)",
+                        borderRadius: 8, padding: "0px 5px", fontSize: 9, fontWeight: 900,
+                        color: active ? tColor : "#555",
+                      }}>{cnt}</span>
+                    </button>
+                  );
+                })}
+                {tierFilters.size > 0 && (
+                  <button
+                    style={{ padding: "5px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", background: "rgba(255,82,82,0.08)", color: "#FF5252", border: "1px solid rgba(255,82,82,0.25)" }}
+                    onClick={() => setTierFilters(new Set())}
+                  >✕ Clear</button>
+                )}
+              </div>
+
+              {/* SORT */}
               <div style={{ fontSize: 10, color: "#555", letterSpacing: 2, marginBottom: 8 }}>SORT BY</div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {([["edge","Edge Score"],["prob","HR Prob"],["odds","Best Odds"]] as const).map(([v,l]) => (
@@ -978,11 +1141,43 @@ export default function Home() {
               </div>
             </div>
             <div style={{ fontSize: 10, color: "#444", letterSpacing: 1, marginBottom: 10 }}>
-              {filteredPlayers.length} players · tap for details · add to parlay builder below
+              {filteredPlayers.length} players
+              {(tierFilters.size > 0 || gameFilter !== "ALL") && (
+                <span style={{ color: "#666" }}> · filtered
+                  {gameFilter !== "ALL" && <span style={{ color: "#00E5FF" }}> {gameFilter}</span>}
+                  {tierFilters.size > 0 && <span style={{ color: "#FFD700" }}> {[...tierFilters].join("+")}</span>}
+                </span>
+              )}
+              <span style={{ color: "#444" }}> · tap for details · add to parlay builder below</span>
             </div>
-            {(["S","A","B"] as const).filter(t => tierFilter === "ALL" || tierFilter === t).map(tier => {
+            {filteredPlayers.length === 0 ? (
+              <div style={{
+                textAlign: "center", padding: "40px 20px",
+                background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.08)",
+                borderRadius: 12,
+              }}>
+                <div style={{ fontSize: 28, marginBottom: 10 }}>🔍</div>
+                <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>No picks match these filters</div>
+                <div style={{ fontSize: 11, color: "#444", marginBottom: 16 }}>
+                  {gameFilter !== "ALL" && <span>{gameFilter} · </span>}
+                  {tierFilters.size > 0 && <span>{[...tierFilters].join(" + ")} tier{tierFilters.size > 1 ? "s" : ""}</span>}
+                </div>
+                <button
+                  style={{
+                    padding: "8px 18px", borderRadius: 8, fontSize: 11, fontWeight: 700,
+                    cursor: "pointer", fontFamily: "inherit",
+                    background: "rgba(0,229,255,0.1)", border: "1px solid rgba(0,229,255,0.3)",
+                    color: "#00E5FF",
+                  }}
+                  onClick={() => { setTierFilters(new Set()); setGameFilter("ALL"); }}
+                >
+                  Clear all filters
+                </button>
+              </div>
+            ) : (
+            (["S","A","B"] as const).filter(t => tierFilters.size === 0 || tierFilters.has(t)).map(tier => {
               const tc = TIER_CONFIG[tier];
-              const tp = filteredPlayers.filter(p => p.tier === tier);
+              const tp = filteredPlayers.filter((p: Player) => p.tier === tier);
               if (!tp.length) return null;
               return (
                 <div key={tier} style={{ marginBottom: 20 }}>
@@ -991,12 +1186,13 @@ export default function Home() {
                     <span style={{ fontSize: 10, color: "#555" }}>— {tc.desc}</span>
                     <span style={{ marginLeft: "auto", fontSize: 11, color: "#444" }}>{tp.length}</span>
                   </div>
-                  {tp.map(p => (
+                  {tp.map((p: Player) => (
                     <PlayerCard key={p.id} player={p} inParlay={parlay.includes(p.id)} onToggle={() => toggleParlay(p.id)} parkLabel={parkFactors[p.park]?.label} />
                   ))}
                 </div>
               );
-            })}
+            })
+            )}
           </>
         )}
 
@@ -1007,8 +1203,8 @@ export default function Home() {
               <h2 style={{ fontFamily: "'Bebas Neue'", fontSize: 22, color: "#FFD700", letterSpacing: 2, marginBottom: 4 }}>SHARP PARLAYS</h2>
               <p style={{ fontSize: 11, color: "#666" }}>Pre-built combinations from today's slate — tap to expand strategy</p>
             </div>
-            {parlays.map(p => (
-              <ParlayBuiltCard key={p.id} parlay={p} playerMap={playerMap} isOpen={openParlay === p.id} onToggle={() => setOpenParlay(prev => prev === p.id ? null : p.id)} />
+            {parlays.map((p: Parlay) => (
+              <ParlayBuiltCard key={p.id} parlay={p} playerMap={playerMap} isOpen={openParlay === p.id} onToggle={() => setOpenParlay((prev: string | null) => prev === p.id ? null : p.id)} />
             ))}
           </div>
         )}
@@ -1022,9 +1218,27 @@ export default function Home() {
                 C-tier players with real HR upside — favorable parks, overlooked matchups, or hot streaks. Ideal as tail legs on big parlays. {longshotPlayers.length} available today.
               </p>
             </div>
-            {longshotPlayers.map(p => (
-              <PlayerCard key={p.id} player={p} inParlay={parlay.includes(p.id)} onToggle={() => toggleParlay(p.id)} parkLabel={parkFactors[p.park]?.label} />
-            ))}
+            {/* Game filter for longshots */}
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+              <button style={filterBtnStyle(gameFilter === "ALL", "#aaa")} onClick={() => setGameFilter("ALL")}>All Games</button>
+              {ALL_GAMES.map(g => {
+                const cnt = longshotPlayers.filter((p: Player) => p.game === g).length;
+                if (!cnt) return null;
+                return (
+                  <button key={g} style={{ ...filterBtnStyle(gameFilter === g, "#FF6D00"), display: "flex", alignItems: "center", gap: 4 }} onClick={() => setGameFilter(gameFilter === g ? "ALL" : g)}>
+                    <span style={{ fontFamily: "'DM Mono', monospace", letterSpacing: 0.5 }}>{g}</span>
+                    <span style={{ background: gameFilter === g ? "rgba(255,109,0,0.25)" : "rgba(255,255,255,0.08)", borderRadius: 8, padding: "0px 5px", fontSize: 9, fontWeight: 900, color: gameFilter === g ? "#FF6D00" : "#555" }}>{cnt}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {filteredLongshots.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "24px", color: "#555", fontSize: 12 }}>No longshots match this game filter.</div>
+            ) : (
+              filteredLongshots.map((p: Player) => (
+                <PlayerCard key={p.id} player={p} inParlay={parlay.includes(p.id)} onToggle={() => toggleParlay(p.id)} parkLabel={parkFactors[p.park]?.label} />
+              ))
+            )}
           </div>
         )}
 
@@ -1052,7 +1266,7 @@ export default function Home() {
                 ) : (
                   <>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
-                      {parlayPlayers.map(p => (
+                      {parlayPlayers.map((p: Player) => (
                         <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "8px 12px" }}>
                           <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{p.name}</span>
                           <span style={{ fontSize: 11, color: "#888" }}>{p.team}</span>
@@ -1079,7 +1293,7 @@ export default function Home() {
           <div style={{ maxWidth: 700, margin: "0 auto", display: "flex", alignItems: "center", gap: 12, padding: "10px 12px" }}>
             <button
               style={{ flex: 1, background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.25)", borderRadius: 8, padding: "10px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, fontFamily: "inherit" }}
-              onClick={() => setParlayOpen(o => !o)}
+              onClick={() => setParlayOpen((o: boolean) => !o)}
             >
               <span style={{ fontSize: 13, fontWeight: 700, color: "#FFD700" }}>🎰 PARLAY BUILDER</span>
               <span style={{ background: "#FFD700", color: "#000", borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900 }}>{parlay.length}</span>
