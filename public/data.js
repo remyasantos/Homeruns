@@ -30,7 +30,6 @@ const PARK_FACTORS = {
   "loanDepot Park":           { rank: 19, label: "🏟️ Pitcher Friendly",   color: "#78909c" },
   "PNC Park":                 { rank: 20, label: "🏟️ Pitcher Friendly",   color: "#78909c" },
   "Progressive Field":        { rank: 21, label: "🏟️ Pitcher Friendly",   color: "#78909c" },
-  "Kauffman Stadium":         { rank: 22, label: "🏟️ Neutral",            color: "#b0bec5" },
 };
 
 const players = [
