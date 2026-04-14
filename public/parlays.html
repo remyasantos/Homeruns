@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HR Parlay Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+<script src="data.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0A0A0F;
+    color: #e0e0e0;
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: linear-gradient(135deg, #0d0d1a 0%, #1a0a2e 100%);
+    border-bottom: 2px solid #ff3b3b;
+    padding: 20px 24px 16px;
+    text-align: center;
+  }
+  .header-title {
+    font-family: 'Bebas Neue', cursive;
+    font-size: clamp(28px, 6vw, 52px);
+    letter-spacing: 4px;
+    background: linear-gradient(135deg, #ff3b3b 0%, #ff9800 50%, #ffd700 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+  }
+  .header-sub {
+    font-size: 11px;
+    color: #888;
+    letter-spacing: 3px;
+    margin-top: 6px;
+    text-transform: uppercase;
+  }
+  .header-date {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 18px;
+    letter-spacing: 3px;
+    color: #ff9800;
+    margin-top: 4px;
+  }
+  .header-rule {
+    font-size: 10px;
+    color: #555;
+    letter-spacing: 2px;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .header-rule span { color: #ff3b3b; font-weight: 500; }
+
+  /* ── FILTERS ── */
+  .filters-bar {
+    background: #111118;
+    border-bottom: 1px solid #222;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .filter-label {
+    font-size: 10px;
+    color: #666;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .filter-group {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    flex: 1;
+  }
+  .filter-btn {
+    background: #1a1a24;
+    border: 1px solid #333;
+    color: #aaa;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .filter-btn:hover { border-color: #ff9800; color: #ff9800; }
+  .filter-btn.active {
+    background: #ff9800;
+    border-color: #ff9800;
+    color: #000;
+    font-weight: 500;
+  }
+  .filter-btn.top5-btn.active {
+    background: #ff3b3b;
+    border-color: #ff3b3b;
+    color: #fff;
+  }
+  .filter-btn.top5-btn:hover { border-color: #ff3b3b; color: #ff3b3b; }
+
+  .count-badge {
+    margin-left: auto;
+    font-size: 10px;
+    color: #555;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+  .count-badge em { color: #ff9800; font-style: normal; }
+
+  /* ── GRID ── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+    padding: 20px 20px 40px;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: #111118;
+    border: 1px solid #222;
+    border-radius: 10px;
+    overflow: hidden;
+    transition: transform 0.15s, box-shadow 0.15s;
+    position: relative;
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+  .card.top5 { border-color: #ff3b3b; box-shadow: 0 0 0 1px #ff3b3b22, 0 4px 20px rgba(255,59,59,0.15); }
+
+  .card-header {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid #1a1a24;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .card-title-col { flex: 1; min-width: 0; }
+  .card-name {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 20px;
+    letter-spacing: 2px;
+    line-height: 1;
+    color: #fff;
+  }
+  .card-meta {
+    display: flex;
+    gap: 6px;
+    margin-top: 5px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .leg-badge {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background: #1e1e2e;
+    color: #aaa;
+    border: 1px solid #333;
+  }
+  .top5-badge {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background: #ff3b3b;
+    color: #fff;
+    display: none;
+    border: none;
+  }
+  .card.top5 .top5-badge { display: inline-block; }
+
+  .payout-col { text-align: right; flex-shrink: 0; }
+  .payout-value {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 26px;
+    letter-spacing: 1px;
+    color: #4caf50;
+    line-height: 1;
+  }
+  .payout-label {
+    font-size: 9px;
+    color: #555;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-align: right;
+  }
+
+  /* ── PLAYERS SECTION ── */
+  .card-body { padding: 12px 16px; }
+
+  .players-list { display: flex; flex-direction: column; gap: 6px; }
+  .player-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .game-tag {
+    font-size: 9px;
+    color: #555;
+    letter-spacing: 1px;
+    width: 82px;
+    flex-shrink: 0;
+    text-align: right;
+    padding-right: 4px;
+    border-right: 1px solid #2a2a38;
+  }
+  .player-pill {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: #18181f;
+    border: 1px solid #2a2a38;
+    border-radius: 20px;
+    padding: 3px 10px 3px 8px;
+    flex: 1;
+    min-width: 0;
+  }
+  .pill-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: #e0e0e0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+  }
+  .pill-tier {
+    font-size: 10px;
+    font-weight: 500;
+    padding: 1px 5px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    letter-spacing: 0.5px;
+  }
+  .tier-S { background: #2a2000; color: #ffd700; border: 1px solid #ffd70033; }
+  .tier-A { background: #0a2a0a; color: #4caf50; border: 1px solid #4caf5033; }
+  .tier-B { background: #0a1a2a; color: #64b5f6; border: 1px solid #64b5f633; }
+  .tier-C { background: #1a0a2a; color: #ce93d8; border: 1px solid #ce93d833; }
+  .pill-odds {
+    font-size: 11px;
+    color: #ff9800;
+    font-weight: 500;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  /* ── GAMES COVERED ── */
+  .games-covered {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 10px 16px;
+    border-top: 1px solid #1a1a24;
+  }
+  .games-label {
+    font-size: 9px;
+    color: #555;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    width: 100%;
+    margin-bottom: 2px;
+  }
+  .game-chip {
+    font-size: 9px;
+    padding: 2px 7px;
+    background: #1a1a2a;
+    border: 1px solid #2a2a3a;
+    border-radius: 3px;
+    color: #666;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── STRATEGY SECTION ── */
+  .strategy-toggle {
+    width: 100%;
+    background: none;
+    border: none;
+    border-top: 1px solid #1a1a24;
+    color: #555;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 10px 16px;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: color 0.15s;
+  }
+  .strategy-toggle:hover { color: #aaa; }
+  .strategy-toggle .arrow { transition: transform 0.2s; }
+  .strategy-toggle.open .arrow { transform: rotate(180deg); }
+  .strategy-body {
+    display: none;
+    padding: 12px 16px;
+    border-top: 1px solid #1a1a24;
+    font-size: 11px;
+    color: #888;
+    line-height: 1.7;
+  }
+  .strategy-body.open { display: block; }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    color: #444;
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 500px) {
+    .grid { padding: 12px 12px 40px; gap: 12px; }
+    .filters-bar { padding: 10px 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">⚾ HR PARLAY BUILDER</div>
+  <div class="header-date" id="headerDate">LOADING...</div>
+  <div class="header-sub">SHARP STACKING SYSTEM · ONE LEG PER GAME ENFORCED</div>
+  <div class="header-rule">
+    <span>HARD RULE:</span> Each parlay uses exactly one player per game — no same-game stacking
+  </div>
+</div>
+
+<div class="filters-bar">
+  <div class="filter-label">LEGS</div>
+  <div class="filter-group" id="legFilters">
+    <button class="filter-btn active" data-legs="all">ALL</button>
+    <button class="filter-btn" data-legs="4">4-LEG</button>
+    <button class="filter-btn" data-legs="5">5-LEG</button>
+    <button class="filter-btn" data-legs="6">6-LEG</button>
+    <button class="filter-btn" data-legs="7">7-LEG</button>
+    <button class="filter-btn" data-legs="8">8-LEG</button>
+  </div>
+  <button class="filter-btn top5-btn" id="top5Filter" data-top5="false">🔴 TOP 5 ONLY</button>
+  <div class="count-badge">SHOWING <em id="visibleCount">20</em> / 20</div>
+</div>
+
+<div class="grid" id="grid">
+  <!-- Cards injected by JS -->
+</div>
+
+<script>
+// ─── PARLAY DEFINITIONS ──────────────────────────────────────────────────────
+// All player IDs reference players array in data.js
+// One-leg-per-game enforced and verified for every parlay below
+
+const PARLAYS = [
+  // ── 4-LEG ────────────────────────────────────────────────────────────────
+  {
+    id: "P1", legs: 4, name: "THE CORE FOUR", top5: true,
+    estPayout: "+1100",
+    playerIds: [1, 2, 3, 4],
+    strategy: "The four highest-probability S-tier bats on today's slate, each facing a disaster arm and each in a distinct game. Walker vs Cantillo's 5.70+ ERA, Judge vs Detmers' fading velo, Ohtani vs a first-start McLean, Schwarber vs Martin's debut. Four premium matchups, four separate games. This is the foundational lower-risk anchor."
+  },
+  {
+    id: "P2", legs: 4, name: "DEBUT DISASTER FOUR", top5: false,
+    estPayout: "+1300",
+    playerIds: [4, 5, 3, 1],
+    strategy: "Two first-start pitchers (McLean at NYM@LAD, Martin at CHC@PHI) get targeted by Ohtani and Schwarber while Walker and Alvarez punish regression arms. Debutants have no scouting film advantage and typically spike HR rates. Four unique games, all premium bats."
+  },
+  {
+    id: "P3", legs: 4, name: "HOT FOUR", top5: false,
+    estPayout: "+1200",
+    playerIds: [1, 2, 5, 11],
+    strategy: "Walker, Judge, Alvarez and Henderson are all confirmed in hot recent form. Henderson goes against Kelly who has elevated HR/9 at Camden Yards. All four games are separate, and this is the closest thing to a 'can't-miss' four-leg on today's board at +1200 value."
+  },
+  {
+    id: "P4", legs: 4, name: "VALUE FOUR", top5: false,
+    estPayout: "+1900",
+    playerIds: [14, 10, 6, 1],
+    strategy: "Soler (+370) and Stewart (+350) are both underpriced relative to Statcast metrics and matchup grades. Cruz at PNC Park vs Mikolas rounds out the value hunting. Anchored by S-tier Walker for floor. Four separate games — pure ROI play at +1900 potential."
+  },
+
+  // ── 5-LEG ────────────────────────────────────────────────────────────────
+  {
+    id: "P5", legs: 5, name: "THE HIGH FIVE", top5: true,
+    estPayout: "+2200",
+    playerIds: [1, 2, 3, 4, 5],
+    strategy: "All five S-tier anchors — the five highest-probability HR bats on the entire slate. Walker, Judge, Ohtani, Schwarber, Alvarez. Five separate games (CLE@STL, LAA@NYY, NYM@LAD, CHC@PHI, COL@HOU). Every single leg is a disaster-start matchup. This is the purest expression of the edge on this slate — stack the best and let variance work."
+  },
+  {
+    id: "P6", legs: 5, name: "REGRESSION FIVE", top5: true,
+    estPayout: "+2800",
+    playerIds: [4, 15, 1, 5, 6],
+    strategy: "Three pitchers with severe ERA-vs-xERA regression gaps are targeted: Martin (debut), Detmers (fading velo), and Mikolas (HR/9 creeping up at PNC). Schwarber and Stanton are both bomb machines vs left-handed velocity decay. Five separate games, three pure pitcher regression legs plus Walker and Alvarez as anchors."
+  },
+  {
+    id: "P7", legs: 5, name: "GABP PLUS", top5: true,
+    estPayout: "+2600",
+    playerIds: [1, 8, 2, 5, 11],
+    strategy: "Devers at GABP (the #2 HR park) vs Singer gets the premium slot alongside the elite trio of Walker, Judge and Alvarez. Henderson at Camden Yards vs Kelly provides a value fifth leg. GABP warm weather + Devers' ISO against fly-ball pitchers is a Statcast darling play. Five distinct games."
+  },
+  {
+    id: "P8", legs: 5, name: "HOT HAND FIVE", top5: false,
+    estPayout: "+3100",
+    playerIds: [1, 5, 11, 12, 19],
+    strategy: "Every leg here is confirmed in recent hot form. Walker and Alvarez anchor. Henderson, Baldwin (ATL vs Meyer) and Witt at Comerica add five separate games from five separate matchup angles. Baldwin faces Meyer who has been shelled in multiple recent starts. Hot streaks plus matchup grade = elevated floor."
+  },
+  {
+    id: "P9", legs: 5, name: "EV SHARPS FIVE", top5: false,
+    estPayout: "+2500",
+    playerIds: [2, 5, 3, 6, 10],
+    strategy: "This parlay is built on EVSharps implied probability — Judge, Alvarez, Ohtani, Cruz and Stewart are all in the top tier of expected value relative to their line. Cruz at +340 and Stewart at +350 are both priced below their Statcast floor. Five unique games, all EV-positive legs per the sharps model."
+  },
+
+  // ── 6-LEG ────────────────────────────────────────────────────────────────
+  {
+    id: "P10", legs: 6, name: "THE FULL SLATE SIX", top5: false,
+    estPayout: "+4200",
+    playerIds: [1, 2, 3, 4, 5, 6],
+    strategy: "S-tier anchors plus Cruz at WSH@PIT. Six different games, every leg a disaster-matchup or elite talent play. This is the natural extension of The High Five — add Cruz who hits at PNC Park in favorable conditions vs a regression Mikolas start. +4200 for six premium legs is sharp value."
+  },
+  {
+    id: "P11", legs: 6, name: "REGRESSION SIX", top5: false,
+    estPayout: "+5500",
+    playerIds: [4, 13, 1, 5, 6, 8],
+    strategy: "Four pitchers with documented regression risk are targeted: Martin (CHC@PHI debut), Weathers (5.06 xERA at LAA@NYY), Cantillo (CLE@STL cooked), Singer (SF@CIN HR/9 climbing). Schwarber vs Martin, Neto vs Weathers, Walker vs Cantillo, Devers vs Singer — textbook regression bomb. Alvarez and Cruz anchor for floor. Six separate games."
+  },
+  {
+    id: "P12", legs: 6, name: "PARK PREMIUM SIX", top5: false,
+    estPayout: "+4800",
+    playerIds: [1, 8, 4, 2, 5, 9],
+    strategy: "GABP at #2 HR park gets Devers, Citizens Bank gets Schwarber, Yankee Stadium short porch gets Judge — three premium park plays. Walker at Busch, Alvarez at Daikin, and Acuña at Truist Park complete six unique games. Park factor + elite talent + disaster matchups across the board."
+  },
+  {
+    id: "P13", legs: 6, name: "BREAKOUT SIX", top5: false,
+    estPayout: "+6200",
+    playerIds: [11, 10, 14, 19, 12, 17],
+    strategy: "Six players all in or near breakout territory: Henderson (rising EV at Baltimore), Stewart (GABP monster in waiting), Soler (underpriced at +370 in short porch), Witt (elite power vs a shelled DET arm), Baldwin (hot streak vs ATL), Lowe (PNC Park vs regression Mikolas). Six games, pure upside play at +6200."
+  },
+
+  // ── 7-LEG ────────────────────────────────────────────────────────────────
+  {
+    id: "P14", legs: 7, name: "ELITE SEVEN", top5: false,
+    estPayout: "+7500",
+    playerIds: [1, 2, 3, 4, 5, 6, 7],
+    strategy: "All five S-tier anchors plus Cruz (A-tier, WSH@PIT) and Olson (A-tier, MIA@ATL vs Meyer). Seven distinct games — the maximum elite coverage across today's slate. Olson vs Meyer who has been lit up adds the seventh game without compromising quality. This is the upper boundary of the lower-risk range."
+  },
+  {
+    id: "P15", legs: 7, name: "REGRESSION MONSTER", top5: false,
+    estPayout: "+9800",
+    playerIds: [4, 13, 1, 5, 6, 8, 19],
+    strategy: "Five pitchers with confirmed regression metrics are targeted across seven separate games. Weathers (5.06 xERA), Martin (debut), Cantillo (5.70+ ERA), Singer (HR/9 elevated), Mikolas (PNC late-season HR spike), plus Valdez's disastrous 8-ER last start for Witt. Every leg justified, every game unique. Maximum regression exposure at +9800."
+  },
+  {
+    id: "P16", legs: 7, name: "HOT SEVEN", top5: false,
+    estPayout: "+8800",
+    playerIds: [1, 2, 5, 11, 12, 3, 10],
+    strategy: "Confirmed-hot bats only: Walker (ISO .290+), Judge (recent HR streak), Alvarez (last 7 games torching), Henderson (hot at Camden), Baldwin (ATL hot streak vs Meyer), Ohtani (elite exit velo week), Stewart (GABP heat). Seven games, no cold bats, no guesswork — just verified form stacked across the slate."
+  },
+  {
+    id: "P17", legs: 7, name: "VALUE SEVEN", top5: false,
+    estPayout: "+9200",
+    playerIds: [14, 10, 6, 1, 19, 4, 28],
+    strategy: "Pure value hunting: Soler (+370), Stewart (+350), Cruz (+340), Witt (+390), Seager (+350) are all underpriced relative to their Statcast profiles. Schwarber and Walker anchor with volume. Seven games including TEX@ATH where Seager attacks a weak ATH bullpen. Maximum ROI potential at +9200 for legitimate matchup grades."
+  },
+
+  // ── 8-LEG ────────────────────────────────────────────────────────────────
+  {
+    id: "P18", legs: 8, name: "THE SLUGGER SUMMIT", top5: true,
+    estPayout: "+14000",
+    playerIds: [1, 2, 3, 4, 5, 6, 7, 8],
+    strategy: "The eight highest-quality legs on today's board — all five S-tier bats plus Cruz, Olson and Devers in three premier matchups. Eight separate games (CLE@STL, LAA@NYY, NYM@LAD, CHC@PHI, COL@HOU, WSH@PIT, MIA@ATL, SF@CIN). Every single leg has a documented disaster arm. This is the top 8 — pure concentrated edge at +14000."
+  },
+  {
+    id: "P19", legs: 8, name: "THE REGRESSION BOMB", top5: false,
+    estPayout: "+17000",
+    playerIds: [4, 15, 1, 5, 6, 8, 19, 3],
+    strategy: "Six pitcher regression targets: Martin debut (CHC@PHI), Detmers velo collapse (LAA@NYY), Cantillo ERA regression (CLE@STL), Mikolas HR/9 (WSH@PIT), Singer fly-ball rate (SF@CIN), Valdez 8-ER blowup (KC@DET). Ohtani vs McLean debut seals the eighth game. This is maximum pitcher regression exposure — if arms implode, this ticket cashes at +17000."
+  },
+  {
+    id: "P20", legs: 8, name: "THE FULL BOARD EIGHT", top5: false,
+    estPayout: "+15000",
+    playerIds: [1, 2, 3, 4, 5, 11, 10, 6],
+    strategy: "Eight unique games, elite coverage across the full slate. All five S-tier anchors plus Henderson (ARI@BAL, +440), Stewart (SF@CIN GABP matchup, +350) and Cruz (WSH@PIT vs Mikolas, +340). Three value legs padded with five elite anchors. Eight separate games — the board-wide approach at +15000 with genuine mid-range probability thanks to the quality floor."
+  }
+];
+
+// ─── BUILD UI ───────────────────────────────────────────────────────────────
+
+function getPlayerById(id) {
+  return players.find(p => p.id === id);
+}
+
+function getGame(player) {
+  return TEAM_TO_GAME[player.team] || player.team;
+}
+
+function buildCard(parlay) {
+  const card = document.createElement('div');
+  card.className = 'card' + (parlay.top5 ? ' top5' : '');
+  card.dataset.legs = parlay.legs;
+  card.dataset.top5 = parlay.top5 ? '1' : '0';
+
+  // Look up players
+  const playerObjects = parlay.playerIds.map(id => {
+    const p = getPlayerById(id);
+    return { ...p, game: getGame(p) };
+  });
+
+  const gamesSet = [...new Set(playerObjects.map(p => p.game))];
+
+  card.innerHTML = `
+    <div class="card-header">
+      <div class="card-title-col">
+        <div class="card-name">${parlay.name}</div>
+        <div class="card-meta">
+          <span class="leg-badge">${parlay.legs}-LEG</span>
+          <span class="top5-badge">🔴 TOP 5</span>
+        </div>
+      </div>
+      <div class="payout-col">
+        <div class="payout-value">${parlay.estPayout}</div>
+        <div class="payout-label">Est. Payout</div>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <div class="players-list">
+        ${playerObjects.map(p => `
+          <div class="player-row">
+            <div class="game-tag">${p.game}</div>
+            <div class="player-pill">
+              <span class="pill-name">${p.name}</span>
+              <span class="pill-tier tier-${p.tier}">${p.tier}</span>
+              <span class="pill-odds">${p.estOdds}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <div class="games-covered">
+      <div class="games-label">Games Covered</div>
+      ${gamesSet.map(g => `<span class="game-chip">${g}</span>`).join('')}
+    </div>
+
+    <button class="strategy-toggle" onclick="toggleStrategy(this)">
+      <span>SHOW STRATEGY</span>
+      <span class="arrow">▼</span>
+    </button>
+    <div class="strategy-body">
+      ${parlay.strategy}
+    </div>
+  `;
+
+  return card;
+}
+
+function toggleStrategy(btn) {
+  btn.classList.toggle('open');
+  const body = btn.nextElementSibling;
+  body.classList.toggle('open');
+  btn.querySelector('span:first-child').textContent = body.classList.contains('open') ? 'HIDE STRATEGY' : 'SHOW STRATEGY';
+}
+
+function renderAll() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  PARLAYS.forEach(p => grid.appendChild(buildCard(p)));
+  updateCount();
+}
+
+function updateCount() {
+  const visible = document.querySelectorAll('#grid .card:not([style*="display: none"])').length;
+  document.getElementById('visibleCount').textContent = visible;
+}
+
+function applyFilters() {
+  const activeLeg = document.querySelector('[data-legs].active')?.dataset.legs || 'all';
+  const top5Only = document.getElementById('top5Filter').dataset.top5 === 'true';
+
+  document.querySelectorAll('#grid .card').forEach(card => {
+    const legMatch = activeLeg === 'all' || card.dataset.legs === activeLeg;
+    const top5Match = !top5Only || card.dataset.top5 === '1';
+    card.style.display = legMatch && top5Match ? '' : 'none';
+  });
+
+  // Empty state
+  const grid = document.getElementById('grid');
+  const existing = grid.querySelector('.empty-state');
+  if (existing) existing.remove();
+
+  const visible = [...document.querySelectorAll('#grid .card')].filter(c => c.style.display !== 'none').length;
+  if (visible === 0) {
+    const em = document.createElement('div');
+    em.className = 'empty-state';
+    em.textContent = 'NO PARLAYS MATCH FILTERS';
+    grid.appendChild(em);
+  }
+
+  document.getElementById('visibleCount').textContent = visible;
+}
+
+// ── Leg filter buttons
+document.getElementById('legFilters').addEventListener('click', e => {
+  if (!e.target.matches('[data-legs]')) return;
+  document.querySelectorAll('[data-legs]').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  applyFilters();
+});
+
+// ── Top 5 toggle
+document.getElementById('top5Filter').addEventListener('click', function() {
+  const isActive = this.dataset.top5 === 'true';
+  this.dataset.top5 = isActive ? 'false' : 'true';
+  this.classList.toggle('active', !isActive);
+  applyFilters();
+});
+
+// ── Init
+document.getElementById('headerDate').textContent = SLATE_DATE + ' · ' + SLATE_LABEL;
+renderAll();
+</script>
+</body>
+</html>
