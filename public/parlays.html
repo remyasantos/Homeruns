@@ -364,7 +364,7 @@
     <button class="filter-btn" data-legs="8">8-LEG</button>
   </div>
   <button class="filter-btn top5-btn" id="top5Filter" data-top5="false">🔴 TOP 5 ONLY</button>
-  <div class="count-badge">SHOWING <em id="visibleCount">20</em> / 20</div>
+  <div class="count-badge">SHOWING <em id="visibleCount">15</em> / <span id="totalCount">15</span></div>
 </div>
 
 <div class="grid" id="grid">
@@ -373,140 +373,18 @@
 
 <script>
 // ─── PARLAY DEFINITIONS ──────────────────────────────────────────────────────
-// All player IDs reference players array in data.js
-// One-leg-per-game enforced and verified for every parlay below
+// Sourced from parlays const in data.js — do not edit here, edit data.js instead
 
-const PARLAYS = [
-  // ── 4-LEG ────────────────────────────────────────────────────────────────
-  {
-    id: "P1", legs: 4, name: "THE CORE FOUR", top5: true,
-    estPayout: "+1100",
-    playerIds: [1, 2, 3, 4],
-    strategy: "The four highest-probability S-tier bats on today's slate, each facing a disaster arm and each in a distinct game. Walker vs Cantillo's 5.70+ ERA, Judge vs Detmers' fading velo, Ohtani vs a first-start McLean, Schwarber vs Martin's debut. Four premium matchups, four separate games. This is the foundational lower-risk anchor."
-  },
-  {
-    id: "P2", legs: 4, name: "DEBUT DISASTER FOUR", top5: false,
-    estPayout: "+1300",
-    playerIds: [4, 5, 3, 1],
-    strategy: "Two first-start pitchers (McLean at NYM@LAD, Martin at CHC@PHI) get targeted by Ohtani and Schwarber while Walker and Alvarez punish regression arms. Debutants have no scouting film advantage and typically spike HR rates. Four unique games, all premium bats."
-  },
-  {
-    id: "P3", legs: 4, name: "HOT FOUR", top5: false,
-    estPayout: "+1200",
-    playerIds: [1, 2, 5, 11],
-    strategy: "Walker, Judge, Alvarez and Henderson are all confirmed in hot recent form. Henderson goes against Kelly who has elevated HR/9 at Camden Yards. All four games are separate, and this is the closest thing to a 'can't-miss' four-leg on today's board at +1200 value."
-  },
-  {
-    id: "P4", legs: 4, name: "VALUE FOUR", top5: false,
-    estPayout: "+1900",
-    playerIds: [14, 10, 6, 1],
-    strategy: "Soler (+370) and Stewart (+350) are both underpriced relative to Statcast metrics and matchup grades. Cruz at PNC Park vs Mikolas rounds out the value hunting. Anchored by S-tier Walker for floor. Four separate games — pure ROI play at +1900 potential."
-  },
-
-  // ── 5-LEG ────────────────────────────────────────────────────────────────
-  {
-    id: "P5", legs: 5, name: "THE HIGH FIVE", top5: true,
-    estPayout: "+2200",
-    playerIds: [1, 2, 3, 4, 5],
-    strategy: "All five S-tier anchors — the five highest-probability HR bats on the entire slate. Walker, Judge, Ohtani, Schwarber, Alvarez. Five separate games (CLE@STL, LAA@NYY, NYM@LAD, CHC@PHI, COL@HOU). Every single leg is a disaster-start matchup. This is the purest expression of the edge on this slate — stack the best and let variance work."
-  },
-  {
-    id: "P6", legs: 5, name: "REGRESSION FIVE", top5: true,
-    estPayout: "+2800",
-    playerIds: [4, 15, 1, 5, 6],
-    strategy: "Three pitchers with severe ERA-vs-xERA regression gaps are targeted: Martin (debut), Detmers (fading velo), and Mikolas (HR/9 creeping up at PNC). Schwarber and Stanton are both bomb machines vs left-handed velocity decay. Five separate games, three pure pitcher regression legs plus Walker and Alvarez as anchors."
-  },
-  {
-    id: "P7", legs: 5, name: "GABP PLUS", top5: true,
-    estPayout: "+2600",
-    playerIds: [1, 8, 2, 5, 11],
-    strategy: "Devers at GABP (the #2 HR park) vs Singer gets the premium slot alongside the elite trio of Walker, Judge and Alvarez. Henderson at Camden Yards vs Kelly provides a value fifth leg. GABP warm weather + Devers' ISO against fly-ball pitchers is a Statcast darling play. Five distinct games."
-  },
-  {
-    id: "P8", legs: 5, name: "HOT HAND FIVE", top5: false,
-    estPayout: "+3100",
-    playerIds: [1, 5, 11, 12, 19],
-    strategy: "Every leg here is confirmed in recent hot form. Walker and Alvarez anchor. Henderson, Baldwin (ATL vs Meyer) and Witt at Comerica add five separate games from five separate matchup angles. Baldwin faces Meyer who has been shelled in multiple recent starts. Hot streaks plus matchup grade = elevated floor."
-  },
-  {
-    id: "P9", legs: 5, name: "EV SHARPS FIVE", top5: false,
-    estPayout: "+2500",
-    playerIds: [2, 5, 3, 6, 10],
-    strategy: "This parlay is built on EVSharps implied probability — Judge, Alvarez, Ohtani, Cruz and Stewart are all in the top tier of expected value relative to their line. Cruz at +340 and Stewart at +350 are both priced below their Statcast floor. Five unique games, all EV-positive legs per the sharps model."
-  },
-
-  // ── 6-LEG ────────────────────────────────────────────────────────────────
-  {
-    id: "P10", legs: 6, name: "THE FULL SLATE SIX", top5: false,
-    estPayout: "+4200",
-    playerIds: [1, 2, 3, 4, 5, 6],
-    strategy: "S-tier anchors plus Cruz at WSH@PIT. Six different games, every leg a disaster-matchup or elite talent play. This is the natural extension of The High Five — add Cruz who hits at PNC Park in favorable conditions vs a regression Mikolas start. +4200 for six premium legs is sharp value."
-  },
-  {
-    id: "P11", legs: 6, name: "REGRESSION SIX", top5: false,
-    estPayout: "+5500",
-    playerIds: [4, 13, 1, 5, 6, 8],
-    strategy: "Four pitchers with documented regression risk are targeted: Martin (CHC@PHI debut), Weathers (5.06 xERA at LAA@NYY), Cantillo (CLE@STL cooked), Singer (SF@CIN HR/9 climbing). Schwarber vs Martin, Neto vs Weathers, Walker vs Cantillo, Devers vs Singer — textbook regression bomb. Alvarez and Cruz anchor for floor. Six separate games."
-  },
-  {
-    id: "P12", legs: 6, name: "PARK PREMIUM SIX", top5: false,
-    estPayout: "+4800",
-    playerIds: [1, 8, 4, 2, 5, 9],
-    strategy: "GABP at #2 HR park gets Devers, Citizens Bank gets Schwarber, Yankee Stadium short porch gets Judge — three premium park plays. Walker at Busch, Alvarez at Daikin, and Acuña at Truist Park complete six unique games. Park factor + elite talent + disaster matchups across the board."
-  },
-  {
-    id: "P13", legs: 6, name: "BREAKOUT SIX", top5: false,
-    estPayout: "+6200",
-    playerIds: [11, 10, 14, 19, 12, 17],
-    strategy: "Six players all in or near breakout territory: Henderson (rising EV at Baltimore), Stewart (GABP monster in waiting), Soler (underpriced at +370 in short porch), Witt (elite power vs a shelled DET arm), Baldwin (hot streak vs ATL), Lowe (PNC Park vs regression Mikolas). Six games, pure upside play at +6200."
-  },
-
-  // ── 7-LEG ────────────────────────────────────────────────────────────────
-  {
-    id: "P14", legs: 7, name: "ELITE SEVEN", top5: false,
-    estPayout: "+7500",
-    playerIds: [1, 2, 3, 4, 5, 6, 7],
-    strategy: "All five S-tier anchors plus Cruz (A-tier, WSH@PIT) and Olson (A-tier, MIA@ATL vs Meyer). Seven distinct games — the maximum elite coverage across today's slate. Olson vs Meyer who has been lit up adds the seventh game without compromising quality. This is the upper boundary of the lower-risk range."
-  },
-  {
-    id: "P15", legs: 7, name: "REGRESSION MONSTER", top5: false,
-    estPayout: "+9800",
-    playerIds: [4, 13, 1, 5, 6, 8, 19],
-    strategy: "Five pitchers with confirmed regression metrics are targeted across seven separate games. Weathers (5.06 xERA), Martin (debut), Cantillo (5.70+ ERA), Singer (HR/9 elevated), Mikolas (PNC late-season HR spike), plus Valdez's disastrous 8-ER last start for Witt. Every leg justified, every game unique. Maximum regression exposure at +9800."
-  },
-  {
-    id: "P16", legs: 7, name: "HOT SEVEN", top5: false,
-    estPayout: "+8800",
-    playerIds: [1, 2, 5, 11, 12, 3, 10],
-    strategy: "Confirmed-hot bats only: Walker (ISO .290+), Judge (recent HR streak), Alvarez (last 7 games torching), Henderson (hot at Camden), Baldwin (ATL hot streak vs Meyer), Ohtani (elite exit velo week), Stewart (GABP heat). Seven games, no cold bats, no guesswork — just verified form stacked across the slate."
-  },
-  {
-    id: "P17", legs: 7, name: "VALUE SEVEN", top5: false,
-    estPayout: "+9200",
-    playerIds: [14, 10, 6, 1, 19, 4, 28],
-    strategy: "Pure value hunting: Soler (+370), Stewart (+350), Cruz (+340), Witt (+390), Seager (+350) are all underpriced relative to their Statcast profiles. Schwarber and Walker anchor with volume. Seven games including TEX@ATH where Seager attacks a weak ATH bullpen. Maximum ROI potential at +9200 for legitimate matchup grades."
-  },
-
-  // ── 8-LEG ────────────────────────────────────────────────────────────────
-  {
-    id: "P18", legs: 8, name: "THE SLUGGER SUMMIT", top5: true,
-    estPayout: "+14000",
-    playerIds: [1, 2, 3, 4, 5, 6, 7, 8],
-    strategy: "The eight highest-quality legs on today's board — all five S-tier bats plus Cruz, Olson and Devers in three premier matchups. Eight separate games (CLE@STL, LAA@NYY, NYM@LAD, CHC@PHI, COL@HOU, WSH@PIT, MIA@ATL, SF@CIN). Every single leg has a documented disaster arm. This is the top 8 — pure concentrated edge at +14000."
-  },
-  {
-    id: "P19", legs: 8, name: "THE REGRESSION BOMB", top5: false,
-    estPayout: "+17000",
-    playerIds: [4, 15, 1, 5, 6, 8, 19, 3],
-    strategy: "Six pitcher regression targets: Martin debut (CHC@PHI), Detmers velo collapse (LAA@NYY), Cantillo ERA regression (CLE@STL), Mikolas HR/9 (WSH@PIT), Singer fly-ball rate (SF@CIN), Valdez 8-ER blowup (KC@DET). Ohtani vs McLean debut seals the eighth game. This is maximum pitcher regression exposure — if arms implode, this ticket cashes at +17000."
-  },
-  {
-    id: "P20", legs: 8, name: "THE FULL BOARD EIGHT", top5: false,
-    estPayout: "+15000",
-    playerIds: [1, 2, 3, 4, 5, 11, 10, 6],
-    strategy: "Eight unique games, elite coverage across the full slate. All five S-tier anchors plus Henderson (ARI@BAL, +440), Stewart (SF@CIN GABP matchup, +350) and Cruz (WSH@PIT vs Mikolas, +340). Three value legs padded with five elite anchors. Eight separate games — the board-wide approach at +15000 with genuine mid-range probability thanks to the quality floor."
-  }
-];
+const top5Ids = new Set(["4A", "5A", "6B", "8A", "9A"]);
+const PARLAYS = parlays.map(p => ({
+  id: p.id,
+  legs: p.legs,
+  name: p.label,
+  top5: top5Ids.has(p.id),
+  estPayout: p.estPayout,
+  playerIds: p.playerIds,
+  strategy: p.strategy,
+}));
 
 // ─── BUILD UI ───────────────────────────────────────────────────────────────
 
@@ -596,6 +474,7 @@ function renderAll() {
 function updateCount() {
   const visible = document.querySelectorAll('#grid .card:not([style*="display: none"])').length;
   document.getElementById('visibleCount').textContent = visible;
+  document.getElementById('totalCount').textContent = PARLAYS.length;
 }
 
 function applyFilters() {
