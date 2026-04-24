@@ -911,9 +911,57 @@ export default function Home() {
     return `+${Math.round((dec.reduce((a: number, b: number) => a * b, 1) - 1) * 100).toLocaleString()}`;
   }, [parlayPlayers]);
 
+  // ── PARLAY VALIDATION HELPERS ─────────────────────────────────────────────
+  // Fix 1: No two players from the same game
+  const isGameConflict = useCallback((candidateId: number, currentIds: number[]): boolean => {
+    const candidate = playerMap[candidateId];
+    if (!candidate) return false;
+    return currentIds.some(id => {
+      const p = playerMap[id];
+      return p && p.game && candidate.game && p.game === candidate.game;
+    });
+  }, [playerMap]);
+
+  // Fix 2: S-tier cap — max 2 S legs per parlay
+  const wouldExceedSTierCap = useCallback((candidateId: number, currentIds: number[]): boolean => {
+    const candidate = playerMap[candidateId];
+    if (!candidate || candidate.tier !== "S") return false;
+    const currentSCount = currentIds.filter(id => playerMap[id]?.tier === "S").length;
+    return currentSCount >= 2;
+  }, [playerMap]);
+
+  // Fix 3: Warn when structure deviates from ideal (2S / 2-3A / 1-2B-C)
+  // Used to show a badge in the parlay builder — no hard reject, just guidance
+  const parlayStructureWarning = useMemo((): string | null => {
+    if (parlayPlayers.length < 4) return null;
+    const s  = parlayPlayers.filter(p => p.tier === "S").length;
+    const a  = parlayPlayers.filter(p => p.tier === "A").length;
+    const bc = parlayPlayers.filter(p => p.tier === "B" || p.tier === "C").length;
+    if (s > 2)          return `⚠ ${s} S-tier legs — cap is 2`;
+    if (s < 2)          return `⚠ Ideal: 2 S-tier anchors`;
+    if (a < 2)          return `⚠ Add 1-2 more A-tier legs`;
+    if (bc === 0)       return `⚠ Add 1 B/C value leg`;
+    return null; // structure is good
+  }, [parlayPlayers]);
+
+  // Fix 4: Sort parlay candidates by independent HR probability (edgeScore × hrProb),
+  // never by park/matchup grouping — enforced in filteredPlayers sort above.
+  // The "edge" sort already does this; we just make it the default and only meaningful sort.
+
   const toggleParlay = useCallback((id: number) => {
-    setParlay((prev: number[]) => prev.includes(id) ? prev.filter((x: number) => x !== id) : [...prev, id]);
-  }, []);
+    setParlay((prev: number[]) => {
+      if (prev.includes(id)) return prev.filter((x: number) => x !== id);
+      if (isGameConflict(id, prev)) {
+        alert("⛔ Same game! Pick one player per game to keep legs independent.");
+        return prev;
+      }
+      if (wouldExceedSTierCap(id, prev)) {
+        alert("⚠ S-tier cap reached — max 2 S-tier legs per parlay.");
+        return prev;
+      }
+      return [...prev, id];
+    });
+  }, [isGameConflict, wouldExceedSTierCap]);
 
   const tabStyle = (t: string) => ({
     padding: "8px 14px", borderRadius: 8, fontSize: 11, fontWeight: 700 as const,
@@ -1286,6 +1334,12 @@ export default function Home() {
                         </div>
                       ))}
                     </div>
+                    {parlayStructureWarning && (
+                      <div style={{ background: "rgba(255,152,0,0.08)", border: "1px solid rgba(255,152,0,0.3)", borderRadius: 8, padding: "8px 12px", marginBottom: 8, fontSize: 11, color: "#FF9800" }}>
+                        {parlayStructureWarning}
+                        <span style={{ color: "#888", marginLeft: 6 }}>Ideal: 2S · 2-3A · 1-2B/C</span>
+                      </div>
+                    )}
                     <div style={{ display: "flex", gap: 10, alignItems: "center", background: "rgba(255,215,0,0.06)", borderRadius: 8, padding: "10px 14px", marginBottom: 10 }}>
                       <span style={{ fontSize: 11, color: "#888", flex: 1 }}>{parlayPlayers.length}-LEG PARLAY EST.</span>
                       <span style={{ fontFamily: "'Bebas Neue'", fontSize: 24, color: "#FFD700" }}>{combinedOdds ?? "—"}</span>
