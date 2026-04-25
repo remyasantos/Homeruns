@@ -1,37 +1,47 @@
-// data.js — April 25, 2026
-// Games: NYY@HOU · CHC@LAD · DET@CIN · PHI@ATL · WSH@CWS · MIN@TB · PIT@MIL · BOS@BAL
-//         SEA@STL · CLE@TOR · ATH@TEX · LAA@KC · MIA@SF · SD@ARI(Mexico City)
-// Postponed: COL@NYM (doubleheader Apr 26)
-
+// ─── GAME MAP ─────────────────────────────────────────────────────────────────
 const TEAM_TO_GAME = {
-  "BOS": "BOS@BAL",
-  "BAL": "BOS@BAL",
-  "NYY": "NYY@HOU",
-  "HOU": "NYY@HOU",
-  "CHC": "CHC@LAD",
-  "LAD": "CHC@LAD",
-  "DET": "DET@CIN",
-  "CIN": "DET@CIN",
-  "PHI": "PHI@ATL",
-  "ATL": "PHI@ATL",
-  "WSH": "WSH@CWS",
-  "CWS": "WSH@CWS",
-  "MIN": "MIN@TB",
-  "TB": "MIN@TB",
-  "PIT": "PIT@MIL",
-  "MIL": "PIT@MIL",
-  "SEA": "SEA@STL",
-  "STL": "SEA@STL",
-  "CLE": "CLE@TOR",
-  "TOR": "CLE@TOR",
-  "ATH": "ATH@TEX",
-  "TEX": "ATH@TEX",
-  "LAA": "LAA@KC",
-  "KC": "LAA@KC",
-  "MIA": "MIA@SF",
-  "SF": "MIA@SF",
-  "SD": "SD@ARI",
-  "ARI": "SD@ARI"
+  NYY: "NYY@HOU", HOU: "NYY@HOU",
+  CHC: "CHC@LAD", LAD: "CHC@LAD",
+  DET: "DET@CIN", CIN: "DET@CIN",
+  PHI: "PHI@ATL", ATL: "PHI@ATL",
+  WSH: "WSH@CWS", CWS: "WSH@CWS",
+  MIN: "MIN@TB",  TB:  "MIN@TB",
+  PIT: "PIT@MIL", MIL: "PIT@MIL",
+  BOS: "BOS@BAL", BAL: "BOS@BAL",
+  SEA: "SEA@STL", STL: "SEA@STL",
+  CLE: "CLE@TOR", TOR: "CLE@TOR",
+  ATH: "ATH@TEX", TEX: "ATH@TEX",
+  LAA: "LAA@KC",  KC:  "LAA@KC",
+  MIA: "MIA@SF",  SF:  "MIA@SF",
+  SD:  "SD@ARI",  ARI: "SD@ARI",
+};
+
+const SLATE_DATE  = "APRIL 25, 2026";
+const SLATE_LABEL = "SATURDAY MLB SLATE";
+
+const CONTEXT_CARDS = [
+  { icon: "💣", label: "Daikin Park — NYY@HOU",        note: "Burrows 6.75 ERA — Worst SP on Today's Board",       sub: "Mike Burrows has a 6.75 ERA and 1-3 record — Aaron Judge, Giancarlo Stanton, and Ben Rice all get the short Crawford boxes in left field (315 ft) at Daikin Park vs the most hittable starter on Saturday's slate. Judge leads the AL with 9 HR and a 25% barrel rate." },
+  { icon: "🔥", label: "Great American Ball Park — DET@CIN", note: "Singer 5.32 ERA / #1 HR Park",               sub: "GABP is the #1 HR park in baseball and Brady Singer is carrying a 5.32 ERA — Elly De La Cruz and Tyler Stephenson get ideal warm conditions in the most HR-friendly environment on Saturday's board." },
+  { icon: "💨", label: "UNIQLO Field at Dodger Stadium — CHC@LAD", note: "Sasaki 6.11 ERA — CHC Bats Primed",  sub: "Roki Sasaki is 0-2 with a 6.11 ERA through his early 2026 struggles — Ian Happ, Seiya Suzuki, and Michael Busch all target a hittable young arm at Dodger Stadium with wind conditions favorable for elevated fly balls." },
+  { icon: "📈", label: "Rate Field — WSH@CWS",          note: "Irvin 6.16 ERA / xERA 5.09 — CWS Regression Bomb", sub: "Jake Irvin carries a 6.16 ERA and a 5.09 xERA — the worst confirmed regression arm on Saturday's board. Munetaka Murakami (MLB HR leader) and Colson Montgomery are the top CWS bats targeting Irvin's documented command issues." },
+];
+
+const PARK_FACTORS = {
+  "Great American Ball Park":       { rank: 1,  label: "🔥 #1 — Warm, Singer 5.32 ERA",               color: "#ff6b35" },
+  "Daikin Park":                    { rank: 2,  label: "💣 #2 — Dome, Crawford Boxes, Burrows 6.75 ERA", color: "#ffb347" },
+  "UNIQLO Field at Dodger Stadium": { rank: 3,  label: "💨 #3 — Wind Out to CF, Sasaki 6.11 ERA",       color: "#ffb347" },
+  "Dodger Stadium":                 { rank: 3,  label: "💨 #3 — Wind Out to CF, Sasaki 6.11 ERA",       color: "#ffb347" },
+  "Truist Park":                    { rank: 4,  label: "🌤️ #4 — Warm, Wheeler Ace Debut",              color: "#b0bec5" },
+  "Camden Yards":                   { rank: 5,  label: "💨 #5 — Rogers 4.08 ERA, Moderate Wind",        color: "#90e0ef" },
+  "Rate Field":                     { rank: 6,  label: "📈 #6 — Irvin 6.16 ERA / xERA 5.09",           color: "#ffb347" },
+  "Guaranteed Rate Field":          { rank: 6,  label: "📈 #6 — Irvin 6.16 ERA / xERA 5.09",           color: "#ffb347" },
+  "Kauffman Stadium":               { rank: 7,  label: "🌤️ #7 — Éury Pérez Young Arm",                color: "#b0bec5" },
+  "Tropicana Field":                { rank: 8,  label: "🏟️ Dome — McClanahan Elite, Bad HR Matchup",   color: "#78909c" },
+  "Oracle Park":                    { rank: 9,  label: "🌤️ #9 — Gore Solid, Springs Weak",            color: "#b0bec5" },
+  "Rogers Centre":                  { rank: 10, label: "🏟️ Dome — Cantillo Weak Arm",                 color: "#b0bec5" },
+  "American Family Field":          { rank: 11, label: "🏟️ Dome — Misiorowski 3.04 ERA",              color: "#78909c" },
+  "Globe Life Field":               { rank: 12, label: "🏟️ Dome — Ragans Quality Arm",                color: "#78909c" },
+  "Busch Stadium":                  { rank: 13, label: "🌬️ Wind In — Woo 2.25 ERA Elite",             color: "#78909c" },
 };
 
 const players = [
