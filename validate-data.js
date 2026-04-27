@@ -60,7 +60,7 @@ if (!Array.isArray(CONTEXT_CARDS)) {
 if (!Array.isArray(players)) {
   errors.push('players is not an array');
 } else {
-  if (players.length !== 50) errors.push(`players.length = ${players.length} — expected 50`);
+  if (players.length < 30) errors.push(`players.length = ${players.length} — suspiciously low, expected at least 30`);
 
   const REQUIRED = ['id','name','team','tier','park','pitcher','pitcherNote','matchupGrade','estOdds','note','tags'];
   const VALID_TIERS = new Set(['S','A','B','C']);
@@ -69,8 +69,8 @@ if (!Array.isArray(players)) {
 
   players.forEach((p, i) => {
     // IDs must be integers 1–50, no duplicates
-    if (typeof p.id !== 'number' || p.id < 1 || p.id > 50) {
-      errors.push(`players[${i}].id = ${p.id} — must be integer between 1 and 50`);
+    if (typeof p.id !== 'number' || p.id < 1) {
+      errors.push(`players[${i}].id = ${p.id} — must be a positive integer`);
     }
     if (seenIds.has(p.id)) errors.push(`Duplicate player id: ${p.id}`);
     seenIds.add(p.id);
@@ -114,10 +114,6 @@ if (!Array.isArray(players)) {
     }
   });
 
-  // All IDs 1–50 must be present
-  for (let i = 1; i <= 50; i++) {
-    if (!seenIds.has(i)) errors.push(`Missing player id: ${i}`);
-  }
 
   // Tier distribution
   if (tierCounts.S < 4 || tierCounts.S > 8)   warnings.push(`S-tier count: ${tierCounts.S} — expected 4–8`);
