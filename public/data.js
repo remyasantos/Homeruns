@@ -22,7 +22,7 @@ const SLATE_LABEL = "MONDAY MLB SLATE";
 
 const CONTEXT_CARDS = [
   { icon: "💨", label: "Dodger Stadium", note: "12 mph Wind Out to CF", sub: "LAD elite power core gets massive wind boost against Eury Perez." },
-  { icon: "🏟️", label: "Globe Life Field", note: "Dome/Roof Closed — NYY vs Rocker", sub: "Zero weather variance as Judge and Soto target Rocker's command issues." },
+  { icon: "🏟️", label: "Globe Life Field", note: "Dome/Roof Closed — NYY vs Rocker", sub: "Zero weather variance as Judge targets Rocker's command issues." },
   { icon: "🔥", label: "Progressive Field", note: "Yandy Diaz Hot Streak", sub: "Diaz homered Sunday and leads the Rays into a favorable wind matchup vs Messick." },
   { icon: "📉", label: "Rate Field", note: "Pitcher Regression Targets", sub: "Crochet and Silseth face aggressive offenses in hitter-friendly conditions." }
 ];
@@ -55,7 +55,7 @@ const players = [
   {
     id: 2,
     name: "Juan Soto",
-    team: "NYY",
+    team: "NYM",
     tier: "S",
     park: "Globe Life Field",
     pitcher: "Kumar Rocker",
@@ -354,7 +354,7 @@ const players = [
   {
     id: 25,
     name: "Taylor Ward",
-    team: "LAA",
+    team: "BAL",
     tier: "B",
     park: "Rate Field",
     pitcher: "Garrett Crochet",
@@ -480,19 +480,6 @@ const players = [
     estOdds: "+360",
     note: "Lewis consistently generates maximum exit velocity in premium counts. He has quickly become the most reliable power threat in the Minnesota infield.",
     tags: ["🔥 Hot", "📈 Breakout"]
-  },
-  {
-    id: 35,
-    name: "Rafael Devers",
-    team: "BOS",
-    tier: "S",
-    park: "Rogers Centre",
-    pitcher: "Kevin Gausman",
-    pitcherNote: "Splitter missing less bats — elevated barrel rate against",
-    matchupGrade: "A",
-    estOdds: "+290",
-    note: "Devers lives for right-handed splitters that catch too much of the zone. The zero-weather variance inside Rogers Centre solidifies his S-tier billing.",
-    tags: ["👑 MVP/Elite", "💣 SP Disaster", "🔥 Hot"]
   },
   {
     id: 36,
@@ -716,14 +703,14 @@ const parlays = [
   },
   {
     id: "5A",
-    legs: 5,
+    legs: 4,
     label: "THE HIGH FIVE",
     risk: "Lower Risk",
     riskColor: "#4caf50",
     estPayout: "+2000",
     description: "S-tier anchors combined with top wind/park plays.",
-    playerIds: [1, 10, 24, 35, 46],
-    strategy: "Judge (NYY), Ohtani (LAD), Trout (LAA), Devers (BOS), and Ramirez (CLE). We target the best players in the most protected or wind-aided environments."
+    playerIds: [1, 10, 24, 46],
+    strategy: "Judge (NYY), Ohtani (LAD), Trout (LAA), and Ramirez (CLE). We target the best players in the most protected or wind-aided environments."
   },
   {
     id: "5B",
@@ -760,25 +747,25 @@ const parlays = [
   },
   {
     id: "6B",
-    legs: 6,
+    legs: 5,
     label: "PITCHER DISASTER MATRIX",
     risk: "Lower Risk",
     riskColor: "#4caf50",
     estPayout: "+3100",
     description: "Full stack against today's absolute worst starting pitchers.",
-    playerIds: [1, 10, 35, 48, 49, 50],
-    strategy: "Using Judge, Ohtani, and Devers as anchors, then fully stacking the Tampa Bay Rays (Diaz, Paredes, Lowe) against the wildly overperforming Parker Messick."
+    playerIds: [1, 10, 48, 49, 50],
+    strategy: "Using Judge and Ohtani as anchors, then fully stacking the Tampa Bay Rays (Diaz, Paredes, Lowe) against the wildly overperforming Parker Messick."
   },
   {
     id: "7A",
-    legs: 7,
+    legs: 6,
     label: "THE DOME CRUSHER",
     risk: "Medium Risk",
     riskColor: "#ff9800",
     estPayout: "+6500",
     description: "Max exposure to all closed-roof parks today.",
-    playerIds: [1, 2, 5, 35, 36, 38, 39],
-    strategy: "Judge (NYY), Soto (NYY), Seager (TEX), Devers (BOS), Casas (BOS), Guerrero Jr. (TOR), and Bichette (TOR). Playing entirely inside Globe Life Field and Rogers Centre."
+    playerIds: [1, 2, 5, 36, 38, 39],
+    strategy: "Judge (NYY), Soto (NYM), Seager (TEX), Casas (BOS), Guerrero Jr. (TOR), and Bichette (TOR). Playing entirely inside Globe Life Field and Rogers Centre."
   },
   {
     id: "7B",
@@ -793,25 +780,25 @@ const parlays = [
   },
   {
     id: "7C",
-    legs: 7,
+    legs: 6,
     label: "THE HOT HAND",
     risk: "Medium Risk",
     riskColor: "#ff9800",
     estPayout: "+6800",
     description: "Players confirmed in recent peak hot form.",
-    playerIds: [1, 10, 17, 20, 27, 35, 48],
-    strategy: "Judge, Ohtani, Tatis, Suzuki, Robert Jr., Devers, and Diaz. Diaz hit a nuke yesterday, and everyone else here is sitting top-10 in weekly ISO."
+    playerIds: [1, 10, 17, 20, 27, 48],
+    strategy: "Judge, Ohtani, Tatis, Suzuki, Robert Jr., and Diaz. Diaz hit a nuke yesterday, and everyone else here is sitting top-10 in weekly ISO."
   },
   {
     id: "8A",
-    legs: 8,
+    legs: 7,
     label: "THE SLUGGER SUMMIT",
     risk: "Medium-High Risk",
     riskColor: "#ff5722",
     estPayout: "+9500",
     description: "All S-tier anchors plus the top A-tier matchups.",
-    playerIds: [1, 10, 17, 24, 35, 46, 5, 2],
-    strategy: "Judge, Ohtani, Tatis, Trout, Devers, Ramirez, Seager, and Soto. An 8-leg masterclass featuring the 8 best hitters on the Monday slate."
+    playerIds: [1, 10, 17, 24, 46, 5, 2],
+    strategy: "Judge, Ohtani, Tatis, Trout, Ramirez, Seager, and Soto. A 7-leg masterclass featuring the best hitters on the Monday slate."
   },
   {
     id: "8B",
@@ -826,14 +813,14 @@ const parlays = [
   },
   {
     id: "9A",
-    legs: 9,
+    legs: 8,
     label: "THE GRAND SALAMI",
     risk: "High Risk",
     riskColor: "#e91e63",
     estPayout: "+18000",
-    description: "9-leg monster covering every premium S-tier context.",
-    playerIds: [1, 2, 5, 10, 17, 24, 28, 35, 46],
-    strategy: "Judge, Soto, Seager, Ohtani, Tatis, Trout, Murakami, Devers, and Ramirez. Only premium bats with a path to clear outfields."
+    description: "8-leg monster covering every premium S-tier context.",
+    playerIds: [1, 2, 5, 10, 17, 24, 28, 46],
+    strategy: "Judge, Soto, Seager, Ohtani, Tatis, Trout, Murakami, and Ramirez. Only premium bats with a path to clear outfields."
   },
   {
     id: "9B",
@@ -848,13 +835,13 @@ const parlays = [
   },
   {
     id: "10A",
-    legs: 10,
+    legs: 9,
     label: "THE LOTTERY TICKET",
     risk: "Max Risk",
     riskColor: "#9c27b0",
     estPayout: "+35000",
     description: "Elite core surrounded by C-tier moon shot lottery legs.",
-    playerIds: [1, 10, 17, 35, 46, 2, 5, 16, 19, 41],
-    strategy: "Anchoring heavily with Judge, Ohtani, Tatis, Devers, Ramirez, Soto, and Seager. The massive odds jump comes from three pure lottery picks: Sanchez, Merrill, and Goldschmidt."
+    playerIds: [1, 10, 17, 46, 2, 5, 16, 19, 41],
+    strategy: "Anchoring heavily with Judge, Ohtani, Tatis, Ramirez, Soto, and Seager. The massive odds jump comes from three pure lottery picks: Sanchez, Merrill, and Goldschmidt."
   }
 ];
