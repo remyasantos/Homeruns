@@ -819,3 +819,4 @@ const parlays = [
     strategy: "Anchoring heavily with Judge, Ohtani, Tatis, Ramirez, and Seager. The massive odds jump comes from three pure lottery picks: Sanchez, Merrill, and Goldschmidt."
   }
 ];
+
