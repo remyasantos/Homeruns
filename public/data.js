@@ -521,19 +521,6 @@ const players = [
     tags: ["🎰 Longshot"]
   },
   {
-    id: 41,
-    name: "Paul Goldschmidt",
-    team: "NYY",
-    tier: "C",
-    park: "Globe Life Field",
-    pitcher: "Kumar Rocker",
-    pitcherNote: "4.3 BB/9 command issues — walks set up HR opportunities",
-    matchupGrade: "C",
-    estOdds: "+700",
-    note: "Goldschmidt brings veteran power to the Yankees lineup inside the dome. A pure longshot play if Rocker's command issues produce a hittable mistake.",
-    tags: ["🎰 Longshot", "🔜 Due"]
-  },
-  {
     id: 42,
     name: "Nolan Arenado",
     team: "STL",
@@ -809,14 +796,14 @@ const parlays = [
   },
   {
     id: "10A",
-    legs: 8,
+    legs: 7,
     label: "THE LOTTERY TICKET",
     risk: "Max Risk",
     riskColor: "#9c27b0",
     estPayout: "+35000",
     description: "Elite core surrounded by C-tier moon shot lottery legs.",
-    playerIds: [1, 10, 17, 46, 5, 16, 19, 41],
-    strategy: "Anchoring heavily with Judge, Ohtani, Tatis, Ramirez, and Seager. The massive odds jump comes from three pure lottery picks: Sanchez, Merrill, and Goldschmidt."
+    playerIds: [1, 10, 17, 46, 5, 16, 19],
+    strategy: "Anchoring heavily with Judge, Ohtani, Tatis, Ramirez, and Seager. The massive odds jump comes from two pure lottery picks: Sanchez and Merrill."
   }
 ];
 
