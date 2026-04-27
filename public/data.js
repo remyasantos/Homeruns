@@ -523,14 +523,14 @@ const players = [
   {
     id: 41,
     name: "Paul Goldschmidt",
-    team: "STL",
+    team: "NYY",
     tier: "C",
-    park: "PNC Park",
-    pitcher: "Paul Skenes",
-    pitcherNote: "Generational velocity — nearly impossible matchup",
-    matchupGrade: "F",
+    park: "Globe Life Field",
+    pitcher: "Kumar Rocker",
+    pitcherNote: "4.3 BB/9 command issues — walks set up HR opportunities",
+    matchupGrade: "C",
     estOdds: "+700",
-    note: "Goldschmidt is operating on the twilight of his career against a generational talent. The wind blowing in at PNC Park cements this as a pure fade or extreme lottery.",
+    note: "Goldschmidt brings veteran power to the Yankees lineup inside the dome. A pure longshot play if Rocker's command issues produce a hittable mistake.",
     tags: ["🎰 Longshot", "🔜 Due"]
   },
   {
