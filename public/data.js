@@ -599,7 +599,7 @@ const players = [
     team: "BAL",
     tier: "B",
     park: "Oriole Park at Camden Yards",
-    pitcher:="Hayden Birdsong",
+    pitcher: "Hayden Birdsong",
     pitcherNote: "Teng (HOU): limited MLB track record, inconsistent command",
     matchupGrade: "B+",
     estOdds: "+440",
