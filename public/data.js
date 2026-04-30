@@ -149,19 +149,6 @@ const players = [
     tags: ["👑 MVP/Elite", "💨 Wind Boost", "🔥 Hot"]
   },
   {
-    id: 8,
-    name: "Kyle Tucker",
-    team: "HOU",
-    tier: "A",
-    park: "Oriole Park at Camden Yards",
-    pitcher: "Brandon Young",
-    pitcherNote: "Young: short track record — xFIP elevated in advanced scouting",
-    matchupGrade: "A",
-    estOdds: "+370",
-    note: "Tucker has recovered from his slow start and is now posting a 94th-percentile hard-hit rate with an uppercut swing that converts wind-aided conditions into HR equity. Camden Yards at 13.9 mph out amplifies every well-struck ball from Tucker's right-handed pull profile.",
-    tags: ["💨 Wind Boost", "🔥 Hot"]
-  },
-  {
     id: 9,
     name: "Gunnar Henderson",
     team: "BAL",
