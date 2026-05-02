@@ -1,11 +1,11 @@
 {
   "status": "push-failed",
-  "date": "2026-05-01",
-  "slateLabel": "FRIDAY MLB SLATE",
+  "date": "2026-05-02",
+  "slateLabel": "SATURDAY MLB SLATE",
   "games": 15,
   "players": 50,
   "parlays": 15,
   "validation": "passed",
-  "error": "Authentication failed for remote push — PAT lacks Contents write scope",
-  "timestamp": "2026-05-01T11:34:18Z"
+  "error": "PAT returned 401 — token expired or revoked, cannot authenticate with GitHub",
+  "timestamp": "2026-05-02T11:45:00Z"
 }
