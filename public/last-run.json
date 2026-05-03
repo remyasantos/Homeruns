@@ -1,10 +1,11 @@
 {
-  "status": "success",
-  "date": "2026-05-02",
-  "slateLabel": "SATURDAY MLB SLATE",
+  "status": "push-failed",
+  "date": "2026-05-03",
+  "slateLabel": "SUNDAY MLB SLATE",
   "games": 15,
   "players": 50,
   "parlays": 15,
   "validation": "passed",
-  "timestamp": "2026-05-02T11:50:00Z"
+  "error": "PAT returned 401 — token expired or lacks write scope. Data validated locally.",
+  "timestamp": "2026-05-03T11:45:00Z"
 }
