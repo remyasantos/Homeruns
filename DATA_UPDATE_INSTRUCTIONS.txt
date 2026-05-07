@@ -1,0 +1,140 @@
+====================================================
+  HOMERUNS MLB HR PARLAY BOARD — DATA UPDATE GUIDE
+====================================================
+
+This file is read by the daily scheduled agent (Step 1).
+Follow all rules exactly. Validation will catch violations.
+
+────────────────────────────────────────────────────
+  FILE: public/data.js
+────────────────────────────────────────────────────
+
+TOP-LEVEL CONSTANTS
+  SLATE_DATE   string  "MAY 7, 2026"   (uppercase, no leading zeros)
+  SLATE_LABEL  string  "THURSDAY MLB SLATE"  (DAY + "MLB SLATE")
+
+TEAM_TO_GAME
+  One entry per team for every game on the slate.
+  Format: AWAY: "AWAY@HOME",  HOME: "AWAY@HOME"
+  Both keys must be present and point to the same string.
+
+CONTEXT_CARDS  (exactly 4 entries)
+  Fields: icon, label, note, sub
+  Pick the 4 best HR contexts of the day:
+    1. Best SP-disaster (worst ERA / xERA gap)
+    2. Best outdoor wind/weather park
+    3. Best dome same-game stack
+    4. Best overall value / park-factor play
+  note  = 1 sentence summary
+  sub   = 2-3 sentence deep dive
+
+PARK_FACTORS  (one entry per park in today's slate)
+  Fields: rank (1 = best HR context), label, color
+  color codes: #ff6b35 (elite), #ffb347 (good), #b0bec5 (neutral), #78909c (suppressive)
+
+────────────────────────────────────────────────────
+  PLAYERS  (exactly 50, IDs 1–50, no gaps or duplicates)
+────────────────────────────────────────────────────
+
+TIER COUNTS
+  S  4–8   players   (best SP disaster + park context)
+  A  12–16 players   (strong matchup or park context)
+  B  16–20 players   (solid value, moderate context)
+  C  6–10  players   (longshot / talent ceiling plays)
+  Total must be exactly 50.
+
+REQUIRED FIELDS PER PLAYER
+  id            integer 1–50
+  name          string
+  team          string  (must exist as key in TEAM_TO_GAME)
+  tier          "S" | "A" | "B" | "C"
+  park          string  (must exist as key in PARK_FACTORS)
+                Use the park where TODAY's game is played,
+                even for away teams.
+  pitcher       string  name of the OPPOSING starting pitcher
+  pitcherNote   string  1 sentence on why the pitcher is (or isn't) exploitable
+  matchupGrade  string  e.g. "A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-"
+  estOdds       string  must start with "+" or "-"  e.g. "+310"
+  note          string  EXACTLY 2 sentences explaining the HR case
+  tags          array   2–4 items from the approved list below
+
+APPROVED TAGS
+  "👑 MVP/Elite"      top-5 power bat in the game
+  "💣 SP Disaster"    opposing pitcher ERA or xERA is a red flag
+  "🔥 Hot"            player on a confirmed recent HR streak
+  "📈 Breakout"       emerging player with improving Statcast metrics
+  "💨 Wind Boost"     outdoor park with 10+ mph favorable wind
+  "🏔️ Coors Boost"    playing at Coors Field (elevation HR boost)
+  "🔜 Due"            player hasn't HR'd in 5+ games despite good exit velo
+  "💰 Value"          odds-to-context ratio is strong (underpriced)
+  "🎰 Longshot"       C-tier ceiling/lottery play
+
+────────────────────────────────────────────────────
+  PARLAYS  (14–16 entries)
+────────────────────────────────────────────────────
+
+REQUIRED FIELDS PER PARLAY
+  id          string  e.g. "4A", "5B", "10A"
+  legs        integer  MUST equal playerIds.length
+  label       string  short punchy name in ALL CAPS
+  risk        "Lower Risk" | "Medium Risk" | "Medium-High Risk" | "High Risk" | "Max Risk"
+  riskColor   hex string matching risk level:
+                Lower Risk      #4caf50
+                Medium Risk     #ff9800
+                Medium-High Risk #ff5722
+                High Risk       #e91e63
+                Max Risk        #9c27b0
+  estPayout   string  starts with "+"  e.g. "+2200"
+  description string  1 sentence overview
+  playerIds   array of integers  all must exist in players, no duplicates within parlay
+  strategy    string  3–6 sentences explaining the construction logic
+
+PARLAY RULES
+  - No duplicate playerIds within a single parlay
+  - Parlay 10A must include at least 2 C-tier players
+  - legs must exactly equal playerIds.length
+  - Include a mix of 4-leg through 10-leg parlays
+  - Aim for 15 parlays total (14–16 acceptable)
+
+────────────────────────────────────────────────────
+  DOME / ROOF RULES
+────────────────────────────────────────────────────
+
+Retractable-roof parks (treat as closed unless confirmed open):
+  Chase Field, American Family Field, Globe Life Field,
+  loanDepot park, T-Mobile Park, Daikin Park (Houston)
+
+For closed-roof games:
+  - PARK_FACTORS label must say "Dome/Roof Closed"
+  - Do NOT add wind-boost tags to players in that park
+  - Weather from outside the park is irrelevant
+
+────────────────────────────────────────────────────
+  JAVASCRIPT FORMAT RULES
+────────────────────────────────────────────────────
+
+  - No ES module export statements (no "export const", "export default")
+  - Use plain "const" declarations at the top level
+  - File must execute cleanly with node (no syntax errors)
+  - Run node validate-data.js before committing — fix all errors
+
+────────────────────────────────────────────────────
+  GIT / PUSH INSTRUCTIONS
+────────────────────────────────────────────────────
+
+Credentials are stored in /root/.git-credentials (persists across runs).
+Git is configured globally to use that file as the credential store.
+
+After cloning, reset the remote to the clean URL so credential store is used:
+  git remote set-url origin https://github.com/remyasantos/Homeruns.git
+
+Then push normally:
+  git add public/data.js public/parlays.html
+  git commit -m "data: DATE DAY slate - N games, 50 players, 15 parlays"
+  git push origin main
+
+If push fails with auth error, the PAT in /root/.git-credentials is expired.
+Update it with:
+  printf 'https://remyasantos:NEW_PAT@github.com\n' > /root/.git-credentials
+
+====================================================
