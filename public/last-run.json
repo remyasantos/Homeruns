@@ -1,10 +1,10 @@
 {
   "status": "success",
-  "date": "2026-05-04",
-  "slateLabel": "MONDAY MLB SLATE",
-  "games": 12,
+  "date": "2026-05-07",
+  "slateLabel": "THURSDAY MLB SLATE",
+  "games": 10,
   "players": 50,
   "parlays": 15,
   "validation": "passed",
-  "timestamp": "2026-05-04T11:35:00Z"
+  "timestamp": "2026-05-07T11:35:00Z"
 }
