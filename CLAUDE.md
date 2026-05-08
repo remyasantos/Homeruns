@@ -1,9 +1,18 @@
 # Homeruns MLB HR Parlay Board
 
-## Authentication Setup (CRITICAL — run this first)
+## Authentication Setup (CRITICAL — run this first, every run)
 
-Git credentials are stored persistently in `/root/.git-credentials`.
-After every clone, reset the remote to the clean URL so the credential store is used instead of any embedded PAT in the clone URL:
+The session prompt always contains a `PAT=github_pat_...` variable at the top. **At the very start of Step 0**, write that PAT into the credential store and configure git to use it. This must happen before the clone:
+
+```bash
+printf 'https://remyasantos:PASTE_PAT_HERE@github.com\n' > /root/.git-credentials
+chmod 600 /root/.git-credentials
+git config --global credential.helper store
+```
+
+Replace `PASTE_PAT_HERE` with the exact token from the `PAT=` line in the session prompt.
+
+After cloning, reset the remote to the clean URL (no embedded PAT):
 
 ```bash
 git remote set-url origin https://github.com/remyasantos/Homeruns.git
@@ -14,12 +23,9 @@ Then push with:
 git push origin main
 ```
 
-**Never push with a hardcoded PAT in the URL.** The credential store handles auth automatically and does not expire with the clone URL.
+**Why this works:** writing the PAT to `/root/.git-credentials` on every run means the credential store is always up to date with whatever token was provided in the session prompt. The push step never needs the token in the URL, and a stale or expired credential is overwritten automatically on the next run.
 
-If push fails with 401/auth error, update the stored credential:
-```bash
-printf 'https://remyasantos:NEW_PAT@github.com\n' > /root/.git-credentials
-```
+**Never push with a hardcoded PAT in the URL.** The credential store handles auth automatically once set up.
 
 ## Project Structure
 
@@ -33,6 +39,7 @@ printf 'https://remyasantos:NEW_PAT@github.com\n' > /root/.git-credentials
 
 See the session prompt for the full step-by-step. Key overrides from this file:
 
-1. After cloning, always run: `git remote set-url origin https://github.com/remyasantos/Homeruns.git`
-2. Push with `git push origin main` — do NOT use the hardcoded PAT URL from the session prompt's Step 7
-3. Read `DATA_UPDATE_INSTRUCTIONS.txt` in full before generating data.js
+1. **Step 0 — before clone:** write the session PAT into `/root/.git-credentials` and run `git config --global credential.helper store`
+2. **After cloning:** run `git remote set-url origin https://github.com/remyasantos/Homeruns.git`
+3. **Step 7 push:** use `git push origin main` — do NOT use the hardcoded PAT URL from the session prompt's Step 7
+4. Read `DATA_UPDATE_INSTRUCTIONS.txt` in full before generating data.js
