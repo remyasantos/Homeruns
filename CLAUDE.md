@@ -2,17 +2,31 @@
 
 ## Authentication Setup (CRITICAL — run this first, every run)
 
-The session prompt always contains a `PAT=github_pat_...` variable at the top. **At the very start of Step 0**, write that PAT into the credential store and configure git to use it. This must happen before the clone:
+**Step 0 — before clone**, run this block exactly:
 
 ```bash
-printf 'https://remyasantos:PASTE_PAT_HERE@github.com\n' > /root/.git-credentials
+PAT_FROM_PROMPT="PASTE_PAT_HERE"   # replace with PAT= value from session prompt
+
+# 1. Write to credential store
+printf 'https://remyasantos:%s@github.com\n' "$PAT_FROM_PROMPT" > /root/.git-credentials
 chmod 600 /root/.git-credentials
 git config --global credential.helper store
+
+# 2. Verify the PAT works before continuing — catch expired tokens immediately
+HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
+  -H "Authorization: Bearer $PAT_FROM_PROMPT" \
+  https://api.github.com/repos/remyasantos/Homeruns)
+if [ "$HTTP" != "200" ]; then
+  echo "❌ PAT INVALID (HTTP $HTTP) — stopping. Provide a fresh token."
+  exit 1
+fi
+echo "✅ PAT verified (HTTP $HTTP)"
 ```
 
-Replace `PASTE_PAT_HERE` with the exact token from the `PAT=` line in the session prompt.
+If the PAT check fails (HTTP 401), **stop immediately** and tell the user:
+> "The PAT in the session prompt is expired. Please go to GitHub → Settings → Developer Settings → Personal Access Tokens and generate a new one with repo scope, then paste it at the top of the session prompt as `PAT=github_pat_...`"
 
-After cloning, reset the remote to the clean URL (no embedded PAT):
+After cloning, reset the remote to the clean URL:
 
 ```bash
 git remote set-url origin https://github.com/remyasantos/Homeruns.git
@@ -23,9 +37,23 @@ Then push with:
 git push origin main
 ```
 
-**Why this works:** writing the PAT to `/root/.git-credentials` on every run means the credential store is always up to date with whatever token was provided in the session prompt. The push step never needs the token in the URL, and a stale or expired credential is overwritten automatically on the next run.
+**Push fallback:** If `git push origin main` fails despite the credential store being written, push directly with the PAT embedded in the URL:
+```bash
+git push https://remyasantos:${PAT_FROM_PROMPT}@github.com/remyasantos/Homeruns.git main
+```
 
-**Never push with a hardcoded PAT in the URL.** The credential store handles auth automatically once set up.
+---
+
+## Avoiding Daily Token Rotation (recommended one-time fix)
+
+The current PAT is a **fine-grained token** that expires. To eliminate daily token pasting:
+
+1. Go to GitHub → Settings → Developer Settings → Personal Access Tokens → **Tokens (classic)**
+2. Generate a new classic token with **`repo`** scope and **no expiration**
+3. Replace the `PAT=` value in the daily session prompt with this permanent token
+4. It will never need to be rotated unless revoked
+
+---
 
 ## Project Structure
 
@@ -39,7 +67,7 @@ git push origin main
 
 See the session prompt for the full step-by-step. Key overrides from this file:
 
-1. **Step 0 — before clone:** write the session PAT into `/root/.git-credentials` and run `git config --global credential.helper store`
+1. **Step 0 — before clone:** verify PAT via API (HTTP 200), write to `/root/.git-credentials`, run `git config --global credential.helper store`
 2. **After cloning:** run `git remote set-url origin https://github.com/remyasantos/Homeruns.git`
-3. **Step 7 push:** use `git push origin main` — do NOT use the hardcoded PAT URL from the session prompt's Step 7
+3. **Step 7 push:** try `git push origin main` first; if it fails auth, push with the PAT embedded in the URL as the fallback
 4. Read `DATA_UPDATE_INSTRUCTIONS.txt` in full before generating data.js
