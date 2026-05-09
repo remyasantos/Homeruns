@@ -1,9 +1,10 @@
 {
   "status": "push-failed",
-  "reason": "PAT expired — GitHub API returns 401. Data generated and validated successfully. Commit staged locally as 268d9bd.",
-  "date": "MAY 8, 2026",
+  "reason": "PAT expired — GitHub API returns 401 Bad Credentials. data.js generated and validated successfully (50 players, 15 parlays, 15 games). Commit is staged locally. Please update PAT and re-run or push manually.",
+  "date": "MAY 9, 2026",
   "games": 15,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-05-08T11:55:00Z"
+  "validation": "passed",
+  "timestamp": "2026-05-09T11:45:00Z"
 }
