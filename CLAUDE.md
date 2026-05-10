@@ -44,14 +44,21 @@ git push https://remyasantos:${PAT_FROM_PROMPT}@github.com/remyasantos/Homeruns.
 
 ---
 
-## Avoiding Daily Token Rotation (recommended one-time fix)
+## ⚠️ PERMANENT FIX — Stop the daily token rotation
 
-The current PAT is a **fine-grained token** that expires. To eliminate daily token pasting:
+The session prompt currently uses a **fine-grained PAT that expires**. This is why a new token is required every run.
 
-1. Go to GitHub → Settings → Developer Settings → Personal Access Tokens → **Tokens (classic)**
-2. Generate a new classic token with **`repo`** scope and **no expiration**
-3. Replace the `PAT=` value in the daily session prompt with this permanent token
-4. It will never need to be rotated unless revoked
+**One-time fix (takes 5 minutes):**
+
+1. Go to: https://github.com/settings/tokens → **"Tokens (classic)"** tab
+2. Click **"Generate new token (classic)"**
+3. Set expiration to **"No expiration"**
+4. Check only the **`repo`** scope
+5. Generate and copy the token (it will start with `ghp_`)
+6. Open the **scheduled agent session prompt** and replace the `PAT=github_pat_...` line with the new `ghp_...` token
+7. Done — never touch it again unless you manually revoke it
+
+Classic tokens with no expiration are supported by GitHub and will persist indefinitely. Fine-grained PATs (github_pat_...) have mandatory expiration enforced by GitHub policy.
 
 ---
 
