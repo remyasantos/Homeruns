@@ -24,7 +24,7 @@ echo "✅ PAT verified (HTTP $HTTP)"
 ```
 
 If the PAT check fails (HTTP 401), **stop immediately** and tell the user:
-> "The PAT in the session prompt is expired. Please go to GitHub → Settings → Developer Settings → Personal Access Tokens and generate a new one with repo scope, then paste it at the top of the session prompt as `PAT=github_pat_...`"
+> "The PAT in the session prompt is expired. To permanently fix this, follow the **PERMANENT FIX** section below and generate a classic token (`ghp_...`) with no expiration. Until then, provide a fresh token and update the session prompt PAT= line."
 
 After cloning, reset the remote to the clean URL:
 
@@ -44,21 +44,26 @@ git push https://remyasantos:${PAT_FROM_PROMPT}@github.com/remyasantos/Homeruns.
 
 ---
 
-## ⚠️ PERMANENT FIX — Stop the daily token rotation
+## 🚨 PERMANENT FIX — YOU MUST DO THIS ONCE TO STOP DAILY TOKEN FAILURES
 
-The session prompt currently uses a **fine-grained PAT that expires**. This is why a new token is required every run.
+**Why this keeps breaking:** You are using a fine-grained PAT (`github_pat_...`).
+GitHub **forces these to expire** — there is no way around it in automation.
+Every day the token expires, the agent fails to push.
 
-**One-time fix (takes 5 minutes):**
+**The fix takes 3 minutes and is permanent:**
 
-1. Go to: https://github.com/settings/tokens → **"Tokens (classic)"** tab
+1. Open: **https://github.com/settings/tokens** — click **"Tokens (classic)"** tab
 2. Click **"Generate new token (classic)"**
-3. Set expiration to **"No expiration"**
-4. Check only the **`repo`** scope
-5. Generate and copy the token (it will start with `ghp_`)
-6. Open the **scheduled agent session prompt** and replace the `PAT=github_pat_...` line with the new `ghp_...` token
-7. Done — never touch it again unless you manually revoke it
+3. Set **Expiration → "No expiration"**
+4. Check only the **`repo`** scope checkbox
+5. Click **Generate token** — copy the token (starts with `ghp_`, NOT `github_pat_`)
+6. In your **scheduled agent session prompt**, replace the `PAT=github_pat_...` line with `PAT=ghp_...`
+7. That's it — you never touch it again
 
-Classic tokens with no expiration are supported by GitHub and will persist indefinitely. Fine-grained PATs (github_pat_...) have mandatory expiration enforced by GitHub policy.
+**Classic tokens with no expiration never rotate.** The `ghp_` prefix means classic.
+The `github_pat_` prefix means fine-grained = expires = breaks daily.
+
+Until you do this, you will need to paste a new token into the session prompt every time the current one expires.
 
 ---
 
