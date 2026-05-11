@@ -5,26 +5,28 @@
 **Step 0 — before clone**, run this block exactly:
 
 ```bash
-PAT_FROM_PROMPT="PASTE_PAT_HERE"   # replace with PAT= value from session prompt
+# Classic PAT — no expiration, repo scope
+PAT_FROM_PROMPT="${PAT:-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}"
 
 # 1. Write to credential store
 printf 'https://remyasantos:%s@github.com\n' "$PAT_FROM_PROMPT" > /root/.git-credentials
 chmod 600 /root/.git-credentials
 git config --global credential.helper store
 
-# 2. Verify the PAT works before continuing — catch expired tokens immediately
+# 2. Verify the PAT works before continuing
 HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
   -H "Authorization: Bearer $PAT_FROM_PROMPT" \
   https://api.github.com/repos/remyasantos/Homeruns)
 if [ "$HTTP" != "200" ]; then
-  echo "❌ PAT INVALID (HTTP $HTTP) — stopping. Provide a fresh token."
+  echo "❌ PAT INVALID (HTTP $HTTP) — token may have been revoked. Update the default in CLAUDE.md."
   exit 1
 fi
 echo "✅ PAT verified (HTTP $HTTP)"
 ```
 
-If the PAT check fails (HTTP 401), **stop immediately** and tell the user:
-> "The PAT in the session prompt is expired. To permanently fix this, follow the **PERMANENT FIX** section below and generate a classic token (`ghp_...`) with no expiration. Until then, provide a fresh token and update the session prompt PAT= line."
+If the PAT check fails, the classic token was revoked. Generate a new one at
+https://github.com/settings/tokens (classic, no expiration, repo scope) and update
+the default value in the line above.
 
 After cloning, reset the remote to the clean URL:
 
@@ -44,26 +46,15 @@ git push https://remyasantos:${PAT_FROM_PROMPT}@github.com/remyasantos/Homeruns.
 
 ---
 
-## 🚨 PERMANENT FIX — YOU MUST DO THIS ONCE TO STOP DAILY TOKEN FAILURES
+## ✅ Token Status — Classic PAT installed, no expiration
 
-**Why this keeps breaking:** You are using a fine-grained PAT (`github_pat_...`).
-GitHub **forces these to expire** — there is no way around it in automation.
-Every day the token expires, the agent fails to push.
+A classic PAT (`ghp_...`) with no expiration is now hardcoded as the default in Step 0 above.
+The daily agent no longer needs a token in the session prompt — it will use the default automatically.
 
-**The fix takes 3 minutes and is permanent:**
-
-1. Open: **https://github.com/settings/tokens** — click **"Tokens (classic)"** tab
-2. Click **"Generate new token (classic)"**
-3. Set **Expiration → "No expiration"**
-4. Check only the **`repo`** scope checkbox
-5. Click **Generate token** — copy the token (starts with `ghp_`, NOT `github_pat_`)
-6. In your **scheduled agent session prompt**, replace the `PAT=github_pat_...` line with `PAT=ghp_...`
-7. That's it — you never touch it again
-
-**Classic tokens with no expiration never rotate.** The `ghp_` prefix means classic.
-The `github_pat_` prefix means fine-grained = expires = breaks daily.
-
-Until you do this, you will need to paste a new token into the session prompt every time the current one expires.
+If the token is ever revoked and needs replacing:
+1. Go to https://github.com/settings/tokens → **Tokens (classic)**
+2. Generate new token — **No expiration**, `repo` scope only
+3. Update the default value in the Step 0 block in this file
 
 ---
 
