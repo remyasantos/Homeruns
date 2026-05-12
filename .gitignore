@@ -1,0 +1,8 @@
+# Generated pipeline intermediates — regenerated fresh each workflow run
+scripts/raw_slate.json
+scripts/scored_players.json
+scripts/parlays.json
+
+# Python
+__pycache__/
+*.pyc
