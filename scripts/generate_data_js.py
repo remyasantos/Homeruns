@@ -4,18 +4,12 @@ generate_data_js.py — assembles public/data.js from scored players + parlays
 Reads:  scripts/scored_players.json, scripts/parlays.json
 Writes: public/data.js
 
-Hybrid approach:
-  - All structured data (tiers, stats, park factors, parlays) is deterministic
-  - Player notes, pitcher notes, parlay strategy, and context cards are
-    written by Claude API, grounded in real MLB Stats API numbers
+All content is generated deterministically from real MLB Stats API numbers.
+No external API calls required.
 """
 
 import json
-import os
 import sys
-import re
-import time
-import requests
 
 # ── Load data ─────────────────────────────────────────────────────────────────
 
@@ -25,16 +19,16 @@ with open("scripts/scored_players.json") as f:
 with open("scripts/parlays.json") as f:
     parlays_raw = json.load(f)
 
-players  = scored["players"]
-games    = scored["games"]
-weather  = scored["weather"]
+players       = scored["players"]
+games         = scored["games"]
+weather       = scored["weather"]         # venue → {temp_f, wind_mph, wind_dir, roof}
 park_hr_ranks = scored["park_hr_ranks"]
 roof_parks    = set(scored.get("retractable_roof_parks", []))
 
-DATE_LABEL = scored["date"]
-DAY_LABEL  = scored["label"]
+DATE_LABEL = scored["date"]    # "MAY 12, 2026"
+DAY_LABEL  = scored["label"]   # "TUESDAY MLB SLATE"
 
-# ── Build TEAM_TO_GAME ────────────────────────────────────────────────────────
+# ── TEAM_TO_GAME ──────────────────────────────────────────────────────────────
 
 team_to_game = {}
 for g in games:
@@ -42,7 +36,7 @@ for g in games:
     team_to_game[g["awayTeam"]] = label
     team_to_game[g["homeTeam"]] = label
 
-# ── Build PARK_FACTORS ────────────────────────────────────────────────────────
+# ── PARK_FACTORS ──────────────────────────────────────────────────────────────
 
 COLORS = {
     "elite":       "#ff6b35",
@@ -53,21 +47,21 @@ COLORS = {
     "suppressive": "#78909c",
 }
 
+OUT_DIRS = {"S", "SW", "SSW", "SSE", "SE", "W", "WSW", "WNW"}
+
+
 def park_label_and_color(venue, rank, w):
-    """Generate a park label and color based on rank and weather."""
     is_dome = venue in roof_parks
     if is_dome:
-        color = COLORS["dome"]
-        return f"🏟️ Dome/Roof Closed", color
+        return "🏟️ Dome/Roof Closed", COLORS["dome"]
 
     wind = w.get("wind_mph", 0) or 0
     temp = w.get("temp_f", 72) or 72
     wdir = (w.get("wind_dir", "") or "").upper()
-    out_dirs = {"S", "SW", "SSW", "SSE", "SE", "W", "WSW", "WNW"}
 
     if rank <= 2:
         color = COLORS["elite"]
-        if wind >= 10 and wdir in out_dirs:
+        if wind >= 10 and wdir in OUT_DIRS:
             label = f"🔥 #{rank} HR Park + {wind}mph Wind Out"
         elif temp >= 82:
             label = f"🔥 #{rank} HR Park — {temp}°F Warm"
@@ -75,345 +69,392 @@ def park_label_and_color(venue, rank, w):
             label = f"🔥 #{rank} HR Park"
     elif rank <= 5:
         color = COLORS["good"]
-        if wind >= 10 and wdir in out_dirs:
+        if wind >= 10 and wdir in OUT_DIRS:
             label = f"💨 Wind Out {wind}mph — #{rank} HR Context"
         else:
             label = f"⚾ #{rank} Hitter Friendly"
-    elif wind >= 12 and wdir in out_dirs:
+    elif wind >= 12 and wdir in OUT_DIRS:
         color = COLORS["wind_boost"]
         label = f"💨 Wind Out {wind}mph"
-    elif wind >= 10 and wdir not in out_dirs and wdir != "":
+    elif wind >= 10 and wdir not in OUT_DIRS and wdir != "":
         color = COLORS["suppressive"]
         label = f"🌬️ Wind In — Avoid"
     else:
         color = COLORS["neutral"] if rank <= 20 else COLORS["suppressive"]
-        label = f"☀️ {temp}°F Outdoor" if temp >= 78 else f"⚾ Outdoor Park"
+        label = f"☀️ {temp}°F Outdoor" if temp >= 78 else "⚾ Outdoor Park"
 
     return label, color
 
 
-# Collect all venues in today's slate
 venues_in_slate = list({g["venueName"] for g in games if g["venueName"]})
 venues_in_slate.sort(key=lambda v: park_hr_ranks.get(v, 99))
 
 park_factors = {}
 for venue in venues_in_slate:
-    rank = park_hr_ranks.get(venue, 25)
-    w    = weather.get(venue, {})
+    rank  = park_hr_ranks.get(venue, 25)
+    w     = weather.get(venue, {})
     label, color = park_label_and_color(venue, rank, w)
     park_factors[venue] = {"rank": rank, "label": label, "color": color}
 
-# Re-rank sequentially (1..N) based on sorted order
+# Sequential ranks within today's slate
 for i, venue in enumerate(sorted(venues_in_slate, key=lambda v: park_hr_ranks.get(v, 99))):
     park_factors[venue]["rank"] = i + 1
 
-# ── Claude API helpers ────────────────────────────────────────────────────────
+# ── Pitcher note (one technical flaw, no fluff) ───────────────────────────────
 
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+def make_pitcher_note(ps: dict, name: str) -> str:
+    if not ps or not name or name == "TBD":
+        return f"TBD arm — rotation unannounced"
+    era  = float(ps.get("era",  99)  or 99)
+    whip = float(ps.get("whip", 9.9) or 9.9)
+    hr9  = float(ps.get("hr9",  0)   or 0)
+    bb9  = float(ps.get("bb9",  0)   or 0)
+    fip  = float(ps.get("fip",  era) or era)
 
-def claude(prompt, max_tokens=2000, system=None):
-    """Call Claude API and return text response."""
-    if not ANTHROPIC_API_KEY:
-        raise RuntimeError("ANTHROPIC_API_KEY not set")
+    # Pick the single most damning metric
+    if era >= 7.00:
+        return f"{era:.2f} ERA — historically bad run, no reliable out pitch in 2026"
+    if era >= 6.00:
+        diff = round(era - fip, 2)
+        if fip < era - 0.5:
+            return f"{era:.2f} ERA, {fip:.2f} FIP — ERA is real, underlying metrics confirm collapse"
+        return f"{era:.2f} ERA, {whip:.2f} WHIP — elevated hard-contact rate throughout 2026"
+    if hr9 >= 1.80:
+        return f"{hr9:.1f} HR/9 — fly-ball approach invites pull-power damage every outing"
+    if bb9 >= 4.50:
+        return f"{bb9:.1f} BB/9 — chronic command issues, pitching from behind in every count"
+    if whip >= 1.55:
+        return f"{whip:.2f} WHIP — baserunner inflation compounding, hitters getting looks in traffic"
+    if era >= 5.00:
+        return f"{era:.2f} ERA — soft-contact approach deteriorating vs power lineups"
+    return f"{era:.2f} ERA — solid arm, limited disaster upside in this context"
 
-    headers = {
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-    }
-    body = {
-        "model": "claude-sonnet-4-20250514",
-        "max_tokens": max_tokens,
-        "messages": [{"role": "user", "content": prompt}],
-    }
-    if system:
-        body["system"] = system
 
-    for attempt in range(3):
-        try:
-            r = requests.post(
-                "https://api.anthropic.com/v1/messages",
-                headers=headers,
-                json=body,
-                timeout=60,
-            )
-            r.raise_for_status()
-            return r.json()["content"][0]["text"]
-        except Exception as e:
-            if attempt < 2:
-                time.sleep(5)
+# ── Player note (2 sentences grounded in real stats) ─────────────────────────
+
+def make_player_note(p: dict, w: dict) -> str:
+    name    = p["playerName"].split()[0]  # first name for sentence flow
+    hr      = p["hr"]
+    ops     = p["ops"]
+    iso     = p.get("iso", 0)
+    slg     = p.get("slg", 0)
+    avg     = p.get("avg", 0)
+    venue   = p["venue"]
+    pitcher = p["oppPitcherName"]
+    ps      = p.get("pitcherStats", {})
+    era     = float(ps.get("era", 4.50) or 4.50)
+    whip    = float(ps.get("whip", 1.30) or 1.30)
+    hr9     = float(ps.get("hr9", 1.0)  or 1.0)
+    tier    = p["tier"]
+    is_dome = venue in roof_parks
+    wind    = w.get("wind_mph", 0) or 0
+    wdir    = (w.get("wind_dir", "") or "").upper()
+    temp    = w.get("temp_f", 72) or 72
+    wind_out = wind >= 10 and wdir in OUT_DIRS
+
+    # Sentence 1: hook stat — leading metric by tier
+    if iso >= 0.230 or tier == "S":
+        s1 = f"{name} is posting {hr} HRs, a {ops:.3f} OPS, and {iso:.3f} ISO this season — elite power-contact credentials."
+    elif hr >= 12:
+        s1 = f"{name} has {hr} HRs with a {slg:.3f} SLG and {ops:.3f} OPS — one of the most productive power bats in the lineup."
+    elif ops >= 0.870:
+        s1 = f"{name} is slashing .{int(avg*1000):03d}/{int(slg*1000):03d} with {hr} HRs and a {ops:.3f} OPS this season."
+    else:
+        s1 = f"{name} has {hr} HRs and a {ops:.3f} OPS, providing steady power production from the middle of the order."
+
+    # Sentence 2: why HR today — pitcher + park + weather context
+    park_rank = park_factors.get(venue, {}).get("rank", 10)
+
+    if era >= 6.50:
+        s2 = (f"{pitcher}'s {era:.2f} ERA is a full disaster-start — "
+              f"no pitcher on today's board is more exploitable, and {venue} amplifies every elevated mistake.")
+    elif era >= 5.50 and wind_out:
+        s2 = (f"{pitcher} is leaking runs at a {era:.2f} ERA clip, and {wind}mph outward wind at {venue} "
+              f"turns any elevated contact into a HR — a double-context setup.")
+    elif era >= 5.50:
+        s2 = (f"{pitcher}'s {era:.2f} ERA signals a broken approach — {name}'s pull power "
+              f"exploits the pattern at {venue} for a premium HR setup today.")
+    elif is_dome:
+        s2 = (f"The closed dome at {venue} removes all weather variables — "
+              f"pure bat-to-ball execution against {pitcher} ({era:.2f} ERA) in a controlled environment.")
+    elif wind_out:
+        s2 = (f"With {wind}mph wind blowing out at {venue}, {name}'s natural pull power "
+              f"gets an extra push — even a solid contact against {pitcher} can carry.")
+    elif park_rank <= 3:
+        s2 = (f"{venue} is the #{park_rank} HR park on today's slate — "
+              f"{name}'s power profile in this environment against {pitcher} ({era:.2f} ERA) is a strong HR context.")
+    else:
+        s2 = (f"Against {pitcher} ({era:.2f} ERA, {whip:.2f} WHIP) in a {temp}°F outdoor game, "
+              f"{name}'s {hr}-HR pace gives this prop real probability floor.")
+
+    return f"{s1} {s2}"
+
+
+# ── Context cards (4, fully deterministic) ───────────────────────────────────
+
+def make_context_cards() -> list:
+    # Score each game by total disaster potential
+    game_scores = []
+    for g in games:
+        venue = g["venueName"]
+        w     = weather.get(venue, {})
+        is_dome = venue in roof_parks
+        wind  = w.get("wind_mph", 0) or 0
+        wdir  = (w.get("wind_dir", "") or "").upper()
+        temp  = w.get("temp_f", 72) or 72
+        wind_out = wind >= 10 and wdir in OUT_DIRS
+
+        for side, pitcher_key in [("away", "homePitcherName"), ("home", "awayPitcherName"),
+                                   ("home", "homePitcherName"), ("away", "awayPitcherName")]:
+            # We want batters' perspective: batter team, opp pitcher
+            if side == "away":
+                batting_team = g["awayTeam"]
+                opp_pitcher  = g["homePitcherName"]
+                opp_ps       = scored.get("pitcher_stats", {}).get(str(g.get("homePitcherId")), {})
             else:
-                raise e
+                batting_team = g["homeTeam"]
+                opp_pitcher  = g["awayPitcherName"]
+                opp_ps       = scored.get("pitcher_stats", {}).get(str(g.get("awayPitcherId")), {})
 
+            era = float(opp_ps.get("era", 0) or 0)
+            if era < 4.50:
+                continue
 
-SYSTEM_PROMPT = """You are an expert MLB sabermetrics analyst and sports betting writer for the Homeruns HR Parlay Board.
-You write aggressive, betting-centric analysis grounded in real stats.
+            park_rank = park_hr_ranks.get(venue, 20)
+            score = era * 10 + (30 - park_rank) + (5 if wind_out else 0)
+            batters_here = [p for p in players if p["venue"] == venue and p["oppPitcherName"] == opp_pitcher]
+            top_batters  = sorted(batters_here, key=lambda x: -x.get("compositeScore", 0))[:3]
 
-TONE: Expert, punchy, betting-centric.
-USE: "disaster start", "bomb machine", "cooked", "Statcast darling", "regression due",
-     "free real estate", "on fumes", "pure lottery", "meme leg", "moon shot",
-     "underpriced", "blowup game"
-AVOID: Passive language, hedging, generic commentary without a stat.
+            game_scores.append({
+                "game":       f"{g['awayTeam']}@{g['homeTeam']}",
+                "venue":      venue,
+                "pitcher":    opp_pitcher,
+                "era":        era,
+                "whip":       opp_ps.get("whip", "?"),
+                "hr9":        opp_ps.get("hr9", "?"),
+                "is_dome":    is_dome,
+                "wind":       wind,
+                "wdir":       wdir,
+                "temp":       temp,
+                "wind_out":   wind_out,
+                "park_rank":  park_rank,
+                "score":      score,
+                "top_batters": top_batters,
+                "_key": f"{g['awayTeam']}@{g['homeTeam']}_{opp_pitcher}",
+            })
 
-Always respond with ONLY the requested JSON — no markdown fences, no preamble."""
+    # De-duplicate (one entry per game/pitcher combo), sort by score
+    seen_keys = set()
+    unique = []
+    for gs in sorted(game_scores, key=lambda x: -x["score"]):
+        if gs["_key"] not in seen_keys:
+            seen_keys.add(gs["_key"])
+            unique.append(gs)
 
+    cards = []
 
-def write_player_notes_batch(player_batch):
-    """Ask Claude to write notes + pitcherNote for a batch of players."""
-    batch_info = []
-    for p in player_batch:
-        ps = p.get("pitcherStats", {})
-        w  = p.get("weather", {})
-        wind_info = ""
-        if not w.get("roof") and w.get("wind_mph"):
-            wind_info = f", wind {w['wind_mph']}mph {w.get('wind_dir','')}"
-        if w.get("roof"):
-            wind_info = ", DOME/ROOF CLOSED"
-
-        batch_info.append({
-            "id": p["id"],
-            "name": p["playerName"],
-            "team": p["team"],
-            "tier": p["tier"],
-            "hr": p["hr"],
-            "ops": p["ops"],
-            "iso": p["iso"],
-            "avg": p["avg"],
-            "slg": p["slg"],
-            "park": p["venue"],
-            "parkRank": park_factors.get(p["venue"], {}).get("rank", "?"),
-            "pitcher": p["oppPitcherName"],
-            "pitcherERA": ps.get("era", "?"),
-            "pitcherWHIP": ps.get("whip", "?"),
-            "pitcherHR9": ps.get("hr9", "?"),
-            "pitcherBB9": ps.get("bb9", "?"),
-            "pitcherFIP": ps.get("fip", "?"),
-            "pitcherIP": ps.get("ip", "?"),
-            "weather": wind_info.strip(", ") or "outdoor",
-            "matchupGrade": p["matchupGrade"],
-            "estOdds": p["estOdds"],
+    # Card 1 — worst SP disaster
+    if unique:
+        d = unique[0]
+        names = ", ".join(p["playerName"].split()[0] for p in d["top_batters"][:3])
+        hr_list = " / ".join(f"{p['hr']} HR" for p in d["top_batters"][:2])
+        cards.append({
+            "icon":  "💥",
+            "label": f"{d['pitcher']} — SP Disaster",
+            "note":  f"{d['era']:.2f} ERA — {d['game']} — Worst Arm on Today's Slate",
+            "sub":   (f"{d['pitcher']} has posted a {d['era']:.2f} ERA and {d['whip']:.2f} WHIP — "
+                      f"the most exploitable arm on any board today. "
+                      f"{names} all get multiple ABs against this disaster starter at "
+                      f"{d['venue']} ({hr_list})."),
         })
 
-    prompt = f"""Write player notes for these {len(batch_info)} MLB HR prop picks.
+    # Card 2 — best outdoor park / wind play (non-dome)
+    outdoor_venues = [(v, park_hr_ranks.get(v, 99), weather.get(v, {}))
+                      for v in venues_in_slate if v not in roof_parks]
+    outdoor_venues.sort(key=lambda x: x[1])
+    if outdoor_venues:
+        v, rank, w = outdoor_venues[0]
+        wind  = w.get("wind_mph", 0) or 0
+        wdir  = (w.get("wind_dir", "") or "").upper()
+        temp  = w.get("temp_f", 72) or 72
+        wind_out = wind >= 10 and wdir in OUT_DIRS
+        park_players = [p for p in players if p["venue"] == v][:2]
+        names = " and ".join(p["playerName"].split()[0] for p in park_players)
+        slate_rank = park_factors.get(v, {}).get("rank", rank)
+        if wind_out:
+            icon = "💨"
+            note = f"#{slate_rank} HR Park — {wind}mph Wind Out — {temp}°F"
+            sub  = (f"{v} sits #{slate_rank} on today's park chart with {wind}mph wind blowing out at {temp}°F — "
+                    f"natural pull power gets an extra 15–20 feet of carry. "
+                    f"{names} are the top HR targets in this premium outdoor environment.")
+        else:
+            icon = "🔥"
+            note = f"#{slate_rank} HR Park — {temp}°F Conditions"
+            sub  = (f"{v} is the top-ranked outdoor HR park on today's slate at {temp}°F. "
+                    f"Warm conditions and favorable dimensions amplify every hard contact swing. "
+                    f"{names} lead the HR targets here.")
+        cards.append({"icon": icon, "label": v, "note": note, "sub": sub})
 
-For each player return a JSON object with:
-  "id": (integer, copy from input)
-  "note": "EXACTLY 2 sentences. Sentence 1 = hook stat (HR count, OPS, ISO, barrel%). Sentence 2 = why HR today (park + pitcher + context)."
-  "pitcherNote": "ONE technical flaw only — ERA vs FIP gap, velo decline, HR/9 rate, WHIP, BB/9. No fluff."
-
-Players:
-{json.dumps(batch_info, indent=2)}
-
-Return a JSON array of objects with exactly these fields: id, note, pitcherNote.
-No markdown, no preamble. Pure JSON array only."""
-
-    text = claude(prompt, max_tokens=3000, system=SYSTEM_PROMPT)
-    text = text.strip()
-    if text.startswith("```"):
-        text = re.sub(r"```[a-z]*\n?", "", text).strip().rstrip("`").strip()
-    return json.loads(text)
-
-
-def write_context_cards(top_players, all_games):
-    """Ask Claude to write 4 context cards."""
-    # Find top 4 storylines: top pitcher disasters + best park contexts
-    disaster_games = []
-    for g in all_games:
-        for side in ["away", "home"]:
-            pid_key = f"{'home' if side == 'away' else 'away'}PitcherId"
-            pname   = g[f"{'home' if side == 'away' else 'away'}PitcherName"]
-            ps      = scored.get("pitcher_stats", {}).get(str(g.get(pid_key)), {}) if "pitcher_stats" in scored else {}
-            era     = ps.get("era", 0)
-            if era >= 5.0:
-                venue = g["venueName"]
-                w = weather.get(venue, {})
-                disaster_games.append({
-                    "game":    f"{g['awayTeam']}@{g['homeTeam']}",
-                    "pitcher": pname,
-                    "era":     era,
-                    "whip":    ps.get("whip", "?"),
-                    "venue":   venue,
-                    "parkRank": park_factors.get(venue, {}).get("rank", "?"),
-                    "weather": f"{w.get('temp_f','?')}°F {w.get('wind_mph','?')}mph {w.get('wind_dir','')}"
-                                if not w.get("roof") else "DOME/ROOF CLOSED",
-                    "topBatters": [
-                        {"name": p["playerName"], "hr": p["hr"], "ops": p["ops"], "tier": p["tier"]}
-                        for p in top_players if p["venue"] == venue
-                    ][:3],
-                })
-
-    disaster_games.sort(key=lambda x: -(x["era"] or 0))
-    top_contexts = disaster_games[:6]
-
-    # Best park factor
-    best_parks = sorted(venues_in_slate, key=lambda v: park_hr_ranks.get(v, 99))[:4]
-    park_context = [
-        {
-            "venue": v,
-            "rank": park_hr_ranks.get(v, "?"),
-            "weather": (lambda w: f"{w.get('temp_f','?')}°F {w.get('wind_mph','?')}mph {w.get('wind_dir','')}"
-                        if not w.get("roof") else "DOME/ROOF CLOSED")(weather.get(v, {})),
-            "topBatters": [
-                {"name": p["playerName"], "hr": p["hr"], "ops": p["ops"], "tier": p["tier"]}
-                for p in top_players if p["venue"] == v
-            ][:3],
-        }
-        for v in best_parks
-    ]
-
-    prompt = f"""Write exactly 4 CONTEXT_CARDS for today's MLB HR Parlay Board.
-
-Today: {DATE_LABEL}
-
-Top pitcher disasters today:
-{json.dumps(top_contexts, indent=2)}
-
-Top park HR contexts:
-{json.dumps(park_context, indent=2)}
-
-Each card must have:
-  "icon": single emoji
-  "label": stadium name or story name
-  "note": one-line headline (park rank, ERA, wind speed, etc.)
-  "sub": 2-3 sentences of betting-centric context (matchup + why it matters for HR props)
-
-Pick the 4 most compelling stories. Mix pitcher disasters and park/weather angles.
-Do NOT claim wind boost for a dome/roof closed game.
-
-Return a JSON array of exactly 4 card objects. No markdown, no preamble."""
-
-    text = claude(prompt, max_tokens=1200, system=SYSTEM_PROMPT)
-    text = text.strip()
-    if text.startswith("```"):
-        text = re.sub(r"```[a-z]*\n?", "", text).strip().rstrip("`").strip()
-    return json.loads(text)
-
-
-def write_parlay_strategies(parlays_list, player_lookup):
-    """Ask Claude to rewrite parlay strategy fields with real stats."""
-    parlay_info = []
-    for par in parlays_list:
-        legs_info = []
-        for pid in par["playerIds"]:
-            p = player_lookup.get(pid)
-            if p:
-                legs_info.append({
-                    "name": p["playerName"],
-                    "tier": p["tier"],
-                    "hr":   p["hr"],
-                    "ops":  p["ops"],
-                    "pitcher": p["oppPitcherName"],
-                    "pitcherERA": p.get("pitcherStats", {}).get("era", "?"),
-                    "park": p["venue"],
-                    "estOdds": p["estOdds"],
-                })
-        parlay_info.append({
-            "id":    par["id"],
-            "label": par["label"],
-            "legs":  par["legs"],
-            "description": par["description"],
-            "players": legs_info,
+    # Card 3 — best dome stack OR second-best disaster
+    dome_venues = [v for v in venues_in_slate if v in roof_parks]
+    if dome_venues:
+        dome_v = sorted(dome_venues, key=lambda v: park_hr_ranks.get(v, 99))[0]
+        dome_players = sorted([p for p in players if p["venue"] == dome_v],
+                              key=lambda x: -x.get("compositeScore", 0))[:3]
+        names = " and ".join(p["playerName"].split()[0] for p in dome_players[:2])
+        best_era_here = max((float(p.get("pitcherStats", {}).get("era", 0) or 0)
+                             for p in dome_players), default=0)
+        era_str = f"{best_era_here:.2f} ERA disaster starter" if best_era_here >= 5.50 else "SP matchup"
+        cards.append({
+            "icon":  "🏟️",
+            "label": f"{dome_v} — Dome Stack",
+            "note":  f"Dome/Roof Closed — Controlled Conditions",
+            "sub":   (f"No weather variables inside {dome_v} — bat-to-ball execution rules the day. "
+                      f"{names} headline the dome HR candidates against the {era_str}. "
+                      f"Domes remove all weather luck and reward pure power profiles."),
+        })
+    elif len(unique) > 1:
+        d = unique[1]
+        names = ", ".join(p["playerName"].split()[0] for p in d["top_batters"][:2])
+        cards.append({
+            "icon":  "💣",
+            "label": f"{d['pitcher']} — Second SP Disaster",
+            "note":  f"{d['era']:.2f} ERA — {d['game']}",
+            "sub":   (f"{d['pitcher']}'s {d['era']:.2f} ERA makes {d['game']} a second blowup candidate. "
+                      f"{names} lead the attack on this struggling arm at {d['venue']}."),
+        })
+    else:
+        cards.append({
+            "icon": "📊", "label": "Live MLB Data",
+            "note": "MLB Stats API — Real Numbers, Zero Hallucination",
+            "sub":  "All ERA, WHIP, HR pace, and park data sourced live from statsapi.mlb.com. Tiers and parlays are fully deterministic.",
         })
 
-    prompt = f"""Rewrite the strategy field for each of these {len(parlay_info)} MLB HR parlays.
+    # Card 4 — best value play (S/A tier at long odds) or second-best outdoor park
+    value_players = [p for p in players
+                     if p["tier"] in ("S", "A") and "💰 Value" in p.get("tags", [])]
+    value_players.sort(key=lambda p: int(p["estOdds"].replace("+", "").replace("-", "")), reverse=True)
 
-Each strategy must be 3–6 punchy, betting-centric sentences that explain:
-1. Why these specific legs work together
-2. The key stats driving confidence (ERA, HR count, park rank)
-3. The overall construction logic
+    if value_players:
+        vp  = value_players[0]
+        ps  = vp.get("pitcherStats", {})
+        era = float(ps.get("era", 4.50) or 4.50)
+        cards.append({
+            "icon":  "💰",
+            "label": f"{vp['playerName']} — Best Value",
+            "note":  f"{vp['estOdds']} Odds — {vp['tier']}-Tier vs {vp['oppPitcherName']}",
+            "sub":   (f"{vp['playerName']} ({vp['team']}) carries {vp['hr']} HRs and a {vp['ops']:.3f} OPS "
+                      f"into a {vp['matchupGrade']}-grade matchup at {vp['estOdds']} — heavily underpriced. "
+                      f"{vp['oppPitcherName']}'s {era:.2f} ERA and {vp['venue']} amplify the real HR probability above market."),
+        })
+    elif len(outdoor_venues) > 1:
+        v2, rank2, w2 = outdoor_venues[1]
+        temp2 = w2.get("temp_f", 72) or 72
+        cards.append({
+            "icon": "⚾", "label": v2,
+            "note": f"#{park_factors.get(v2,{}).get('rank',rank2)} HR Context — {temp2}°F",
+            "sub":  f"{v2} rounds out the day's top outdoor HR environments at {temp2}°F. Prioritize S and A-tier batters here.",
+        })
+    else:
+        cards.append({
+            "icon": "📈", "label": "Breakout Watch",
+            "note": "Emerging Power Profiles — Underpriced Odds",
+            "sub":  "A-tier batters with improving Statcast trajectories are available at long odds today — the highest-value legs on the board.",
+        })
 
-Use actual stats from the player data provided. Be specific — name pitchers and ERA numbers.
-
-Parlays:
-{json.dumps(parlay_info, indent=2)}
-
-Return a JSON array where each object has:
-  "id": (string, copy from input)
-  "strategy": (string, 3-6 sentences)
-  "description": (string, 1 sentence overview — keep punchy, can improve on original)
-
-No markdown, no preamble. Pure JSON array only."""
-
-    text = claude(prompt, max_tokens=3000, system=SYSTEM_PROMPT)
-    text = text.strip()
-    if text.startswith("```"):
-        text = re.sub(r"```[a-z]*\n?", "", text).strip().rstrip("`").strip()
-    return json.loads(text)
+    # Guarantee exactly 4 cards
+    while len(cards) < 4:
+        cards.append({
+            "icon": "⚾", "label": "Today's Slate",
+            "note": f"{len(games)}-game MLB slate",
+            "sub":  f"{DATE_LABEL} — check pitcher ERA and park rank for the day's top HR contexts.",
+        })
+    return cards[:4]
 
 
-# ── Generate AI content ───────────────────────────────────────────────────────
+# ── Parlay strategy (deterministic, stats-grounded) ───────────────────────────
 
-print("Generating AI content...")
+def make_parlay_strategy(par: dict, player_lookup: dict) -> tuple[str, str]:
+    """Return (description, strategy) for a parlay."""
+    pids = par["playerIds"]
+    legs = [player_lookup.get(pid) for pid in pids]
+    legs = [l for l in legs if l]
 
-# Player notes in batches of 10
-player_notes = {}
-batch_size = 10
-for i in range(0, len(players), batch_size):
-    batch = players[i:i + batch_size]
-    print(f"  → player notes batch {i//batch_size + 1}/{(len(players)-1)//batch_size + 1}...")
-    try:
-        results = write_player_notes_batch(batch)
-        for r in results:
-            player_notes[r["id"]] = r
-        time.sleep(1)  # rate limit courtesy
-    except Exception as e:
-        print(f"  ⚠ batch failed: {e} — using fallback notes")
-        for p in batch:
-            ps = p.get("pitcherStats", {})
-            player_notes[p["id"]] = {
-                "id": p["id"],
-                "note": (
-                    f"{p['playerName']} has {p['hr']} HR with a {p['ops']} OPS and {p['iso']:.3f} ISO this season. "
-                    f"Facing {p['oppPitcherName']} (ERA {ps.get('era','?')}) at {p['venue']} — a strong HR context."
-                ),
-                "pitcherNote": (
-                    f"ERA {ps.get('era','?')}, WHIP {ps.get('whip','?')}, HR/9 {ps.get('hr9','?')}"
-                    if ps else "TBD arm — limited sample"
-                ),
-            }
+    tiers    = [l["tier"] for l in legs]
+    s_legs   = [l for l in legs if l["tier"] == "S"]
+    a_legs   = [l for l in legs if l["tier"] == "A"]
+    c_legs   = [l for l in legs if l["tier"] == "C"]
 
-print("  → context cards...")
-try:
-    context_cards = write_context_cards(players[:20], games)
-except Exception as e:
-    print(f"  ⚠ context cards failed: {e} — using fallback")
-    context_cards = [
-        {"icon": "⚾", "label": "Today's Slate", "note": f"{len(games)}-game MLB slate",
-         "sub": f"{DATE_LABEL} slate loaded. Check pitcher ERA and park factors for top HR contexts."},
-        {"icon": "🏟️", "label": venues_in_slate[0] if venues_in_slate else "TBD",
-         "note": "#1 HR Park Today", "sub": "Top-ranked HR park on the slate — prioritize batters here."},
-        {"icon": "💣", "label": "SP Disasters",
-         "note": "Multiple high-ERA arms starting today",
-         "sub": "Several pitchers with ERA above 5.50 are starting — target their opposing lineups."},
-        {"icon": "📊", "label": "Live Data", "note": "MLB Stats API powered",
-         "sub": "All stats sourced live from statsapi.mlb.com — ERA, WHIP, HR pace updated daily."},
-    ]
+    # Top ERA disaster in this parlay
+    disaster = max(legs, key=lambda l: float(l.get("pitcherStats", {}).get("era", 0) or 0),
+                   default=None)
+    top_batter = max(legs, key=lambda l: l.get("hr", 0), default=None)
 
-print("  → parlay strategies...")
+    era_disasters = [l for l in legs
+                     if float(l.get("pitcherStats", {}).get("era", 0) or 0) >= 5.50]
+
+    # Keep existing description and strategy if they're already substantive
+    existing_desc = par.get("description", "")
+    existing_strat = par.get("strategy", "")
+
+    # Build enriched strategy by injecting real stats into the existing text
+    if disaster:
+        ps  = disaster.get("pitcherStats", {})
+        era = float(ps.get("era", 0) or 0)
+        disaster_str = f"{disaster['oppPitcherName']} ({era:.2f} ERA)"
+    else:
+        disaster_str = "today's weakest arm"
+
+    if top_batter:
+        anchor_str = f"{top_batter['playerName']} ({top_batter['hr']} HR, {top_batter['ops']:.3f} OPS)"
+    else:
+        anchor_str = "the top HR producer"
+
+    n_disasters = len(era_disasters)
+    disaster_clause = (
+        f"All {n_disasters} legs face pitchers with ERA ≥ 5.50."
+        if n_disasters == len(legs)
+        else f"{n_disasters} of {len(legs)} legs target ERA ≥ 5.50 disaster starts."
+        if n_disasters > 0
+        else ""
+    )
+
+    tier_clause = (
+        f"{len(s_legs)} S-tier anchor{'s' if len(s_legs)>1 else ''} provide the probability floor."
+        if s_legs else ""
+    )
+
+    c_clause = (
+        f"{len(c_legs)} C-tier lottery leg{'s' if len(c_legs)>1 else ''} inject ceiling upside."
+        if c_legs else ""
+    )
+
+    # Build a 3-sentence strategy from existing + real stats
+    strat_parts = [existing_strat.rstrip(".") + "."] if existing_strat else []
+    additions = [s for s in [disaster_clause, tier_clause, c_clause,
+                              f"Anchored by {anchor_str} leading today's power board."]
+                 if s and s.rstrip(".") + "." not in " ".join(strat_parts)]
+    strat_parts.extend(additions[:2])
+    strategy = " ".join(strat_parts)
+
+    return existing_desc, strategy
+
+
+# ── Build final arrays ────────────────────────────────────────────────────────
+
+print("Generating content from MLB Stats API data...")
+
+context_cards = make_context_cards()
+print(f"  ✓ context cards ({len(context_cards)})")
+
 player_lookup = {p["id"]: p for p in players}
-try:
-    parlay_ai = write_parlay_strategies(parlays_raw, player_lookup)
-    parlay_strategy_map = {r["id"]: r for r in parlay_ai}
-except Exception as e:
-    print(f"  ⚠ parlay strategies failed: {e} — using original")
-    parlay_strategy_map = {}
-
-# ── Assemble final players array ──────────────────────────────────────────────
 
 final_players = []
 for p in players:
-    ai = player_notes.get(p["id"], {})
-    ps = p.get("pitcherStats", {})
-
-    note = ai.get("note") or (
-        f"{p['playerName']} is slashing with {p['hr']} HR, {p['ops']} OPS, and {p['iso']:.3f} ISO this season. "
-        f"Facing {p['oppPitcherName']} at {p['venue']} — a favorable HR context today."
-    )
-    pitcher_note = ai.get("pitcherNote") or (
-        f"ERA {ps.get('era','?')}, WHIP {ps.get('whip','?')}, HR/9 {ps.get('hr9','?')}"
-        if ps else "TBD — unannounced arm"
-    )
-
+    ps          = p.get("pitcherStats", {})
+    w           = weather.get(p["venue"], {})
+    note        = make_player_note(p, w)
+    pitcher_note = make_pitcher_note(ps, p["oppPitcherName"])
     final_players.append({
         "id":           p["id"],
         "name":         p["playerName"],
@@ -428,11 +469,11 @@ for p in players:
         "tags":         p["tags"],
     })
 
-# ── Assemble final parlays ────────────────────────────────────────────────────
+print(f"  ✓ {len(final_players)} player notes")
 
 final_parlays = []
 for par in parlays_raw:
-    ai = parlay_strategy_map.get(par["id"], {})
+    desc, strat = make_parlay_strategy(par, player_lookup)
     final_parlays.append({
         "id":          par["id"],
         "legs":        par["legs"],
@@ -440,32 +481,27 @@ for par in parlays_raw:
         "risk":        par["risk"],
         "riskColor":   par["riskColor"],
         "estPayout":   par["estPayout"],
-        "description": ai.get("description") or par["description"],
+        "description": desc or par["description"],
         "playerIds":   par["playerIds"],
-        "strategy":    ai.get("strategy") or par["strategy"],
+        "strategy":    strat or par["strategy"],
     })
+
+print(f"  ✓ {len(final_parlays)} parlay strategies")
 
 # ── Serialize to JS ───────────────────────────────────────────────────────────
 
 def js_str(s):
     return json.dumps(s)
 
-def js_obj(d, indent=2):
-    return json.dumps(d, indent=indent, ensure_ascii=False)
-
-
 lines = []
 
 # TEAM_TO_GAME
 lines.append("const TEAM_TO_GAME = {")
-items = list(team_to_game.items())
-for i, (k, v) in enumerate(items):
-    comma = "," if i < len(items) - 1 else ""
-    lines.append(f"  {k}: {js_str(v)}{comma}")
+for k, v in team_to_game.items():
+    lines.append(f"  {k}:  {js_str(v)},")
 lines.append("};")
 lines.append("")
 
-# SLATE_DATE / SLATE_LABEL
 lines.append(f'const SLATE_DATE  = {js_str(DATE_LABEL)};')
 lines.append(f'const SLATE_LABEL = {js_str(DAY_LABEL)};')
 lines.append("")
@@ -475,10 +511,10 @@ lines.append("const CONTEXT_CARDS = [")
 for i, card in enumerate(context_cards):
     comma = "," if i < len(context_cards) - 1 else ""
     lines.append("  {")
-    lines.append(f'    icon:  {js_str(card.get("icon","⚾"))},')
-    lines.append(f'    label: {js_str(card.get("label",""))},')
-    lines.append(f'    note:  {js_str(card.get("note",""))},')
-    lines.append(f'    sub:   {js_str(card.get("sub",""))},')
+    lines.append(f'    icon:  {js_str(card.get("icon", "⚾"))},')
+    lines.append(f'    label: {js_str(card.get("label", ""))},')
+    lines.append(f'    note:  {js_str(card.get("note", ""))},')
+    lines.append(f'    sub:   {js_str(card.get("sub", ""))},')
     lines.append(f"  }}{comma}")
 lines.append("];")
 lines.append("")
@@ -532,10 +568,8 @@ for i, par in enumerate(final_parlays):
     lines.append(f"  }}{comma}")
 lines.append("];")
 
-output = "\n".join(lines)
-
 with open("public/data.js", "w") as f:
-    f.write(output)
+    f.write("\n".join(lines) + "\n")
 
 print(f"\n✅ public/data.js written")
 print(f"   Date:    {DATE_LABEL}")

@@ -2,8 +2,8 @@ name: Daily MLB HR Slate
 
 on:
   schedule:
-    # 10:30 AM ET daily (14:30 UTC) — after probable pitchers post
-    - cron: '30 14 * * *'
+    # 9:00 AM ET daily (13:00 UTC) — after probable pitchers post
+    - cron: '0 13 * * *'
   workflow_dispatch:
     # Allow manual trigger from GitHub Actions UI
     inputs:
@@ -57,10 +57,8 @@ jobs:
         if: env.OFF_DAY == 'false'
         run: python scripts/parlay_builder.py
 
-      - name: Generate data.js (Claude API)
+      - name: Generate data.js
         if: env.OFF_DAY == 'false'
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: python scripts/generate_data_js.py
 
       - name: Validate data.js
