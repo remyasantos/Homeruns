@@ -1,9 +1,9 @@
 {
-  "status": "push-auth-failed",
-  "date": "MAY 11, 2026",
-  "games": 6,
+  "status": "success",
+  "date": "MAY 12, 2026",
+  "label": "TUESDAY MLB SLATE",
+  "games": 15,
   "players": 50,
   "parlays": 15,
-  "reason": "GitHub PAT expired (HTTP 401). data.js generated and validated successfully. Re-run with a fresh PAT to complete push.",
-  "timestamp": "2026-05-11T11:45:00Z"
+  "timestamp": "2026-05-12T11:35:00Z"
 }
