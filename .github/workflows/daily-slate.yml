@@ -1,0 +1,158 @@
+name: Daily MLB HR Slate
+
+on:
+  schedule:
+    # 10:30 AM ET daily (14:30 UTC) — after probable pitchers post
+    - cron: '30 14 * * *'
+  workflow_dispatch:
+    # Allow manual trigger from GitHub Actions UI
+    inputs:
+      date_override:
+        description: 'Override date (MM/DD/YYYY) — leave blank for today'
+        required: false
+        default: ''
+
+jobs:
+  generate-slate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install MLB-StatsAPI requests
+
+      - name: Set up Node.js (for validation)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch today's slate from MLB Stats API
+        run: python scripts/fetch_slate.py
+
+      - name: Check for games (off-day guard)
+        run: |
+          STATUS=$(python3 -c "import json; d=json.load(open('scripts/raw_slate.json')); print(d['status'])")
+          echo "Slate status: $STATUS"
+          if [ "$STATUS" = "no-games" ]; then
+            echo "OFF_DAY=true" >> $GITHUB_ENV
+            echo "⚠ Off day or fewer than 4 games — skipping slate generation"
+          else
+            echo "OFF_DAY=false" >> $GITHUB_ENV
+          fi
+
+      - name: Score and tier players
+        if: env.OFF_DAY == 'false'
+        run: python scripts/tier_engine.py
+
+      - name: Build parlays
+        if: env.OFF_DAY == 'false'
+        run: python scripts/parlay_builder.py
+
+      - name: Generate data.js (Claude API)
+        if: env.OFF_DAY == 'false'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python scripts/generate_data_js.py
+
+      - name: Validate data.js
+        if: env.OFF_DAY == 'false'
+        run: |
+          node validate-data.js
+          if [ $? -ne 0 ]; then
+            echo "❌ Validation failed"
+            exit 1
+          fi
+
+      - name: Write last-run.json (success)
+        if: env.OFF_DAY == 'false'
+        run: |
+          python3 -c "
+          import json, datetime, subprocess
+          result = subprocess.run(['node', '-e', '''
+            const vm=require('vm');const fs=require('fs');
+            const s={};vm.createContext(s);
+            vm.runInContext(fs.readFileSync('public/data.js','utf8').replace(/^(?:const|let)\\\\s+/gm,'var '),s);
+            console.log(JSON.stringify({games:Object.keys(s.TEAM_TO_GAME).length/2,players:s.players.length,parlays:s.parlays.length,date:s.SLATE_DATE,label:s.SLATE_LABEL}));
+          '''], capture_output=True, text=True)
+          info = json.loads(result.stdout.strip())
+          payload = {
+            'status': 'success',
+            'date': info['date'],
+            'label': info['label'],
+            'games': int(info['games']),
+            'players': info['players'],
+            'parlays': info['parlays'],
+            'timestamp': datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'source': 'mlb-stats-api'
+          }
+          json.dump(payload, open('public/last-run.json','w'), indent=2)
+          print('last-run.json:', json.dumps(payload))
+          "
+
+      - name: Write last-run.json (off-day)
+        if: env.OFF_DAY == 'true'
+        run: |
+          python3 -c "
+          import json, datetime
+          payload = {
+            'status': 'no-games',
+            'date': datetime.date.today().strftime('%B %-d, %Y').upper(),
+            'timestamp': datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+          }
+          json.dump(payload, open('public/last-run.json','w'), indent=2)
+          "
+
+      - name: Commit and push
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add public/data.js public/last-run.json
+
+          # Check if anything actually changed
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          # Build commit message
+          if [ "$OFF_DAY" = "true" ]; then
+            MSG="data: off-day $(date +'%b %-d') — no games"
+          else
+            INFO=$(python3 -c "
+          import json
+          d = json.load(open('public/last-run.json'))
+          print(f\"{d['date']} {d['label'].split()[0].title()} slate - {d['games']} games, {d['players']} players, {d['parlays']} parlays\")
+          ")
+            MSG="data: $INFO"
+          fi
+
+          git commit -m "$MSG"
+          git push origin main
+
+      - name: Write last-run.json (validation failed)
+        if: failure() && env.OFF_DAY == 'false'
+        run: |
+          python3 -c "
+          import json, datetime
+          payload = {
+            'status': 'validation-failed',
+            'date': datetime.date.today().strftime('%B %-d, %Y').upper(),
+            'timestamp': datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+          }
+          json.dump(payload, open('public/last-run.json','w'), indent=2)
+          " || true
+          git config user.name  "github-actions[bot]" || true
+          git config user.email "github-actions[bot]@users.noreply.github.com" || true
+          git add public/last-run.json || true
+          git commit -m "data: validation-failed $(date +'%b %-d')" || true
+          git push origin main || true
