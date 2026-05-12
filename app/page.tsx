@@ -1005,7 +1005,10 @@ export default function Home() {
         ::-webkit-scrollbar-track { background: #111; }
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
         .parlay-sticky { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; }
+        .cx { max-width: 700px; margin: 0 auto; }
+        .pg { }
         @media (max-width: 600px) { .hero-title { font-size: 36px !important; } .stat-row { gap: 12px !important; } }
+        @media (min-width: 960px) { .cx { max-width: 1080px; } .pg { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; } }
       `}</style>
 
       <header>
@@ -1042,7 +1045,7 @@ export default function Home() {
 
       {/* TOP PICKS BANNER */}
       <div style={{ background: "rgba(255,215,0,0.04)", borderBottom: "1px solid rgba(255,215,0,0.1)", padding: "16px" }}>
-        <div style={{ maxWidth: 700, margin: "0 auto" }}>
+        <div className="cx">
           <div style={{ fontSize: 10, letterSpacing: 3, color: "#FFD700", fontWeight: 900, marginBottom: 10 }}>🏆 BEST HR BETS TODAY</div>
           <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
             {topPicks.map((p: Player) => (
@@ -1059,7 +1062,7 @@ export default function Home() {
       {/* CONTEXT CARDS */}
       {contextCards.length > 0 && (
         <div style={{ background: "rgba(255,140,0,0.03)", borderBottom: "1px solid rgba(255,140,0,0.12)", padding: "14px 16px" }}>
-          <div style={{ maxWidth: 700, margin: "0 auto" }}>
+          <div className="cx">
             <div style={{ fontSize: 10, letterSpacing: 3, color: "#FF9800", fontWeight: 900, marginBottom: 10 }}>📍 TODAY'S KEY CONTEXTS</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
               {contextCards.map((c: { icon: string; label: string; note: string; sub: string }, i: number) => (
@@ -1081,7 +1084,7 @@ export default function Home() {
 
       <main id="main-content">
       {/* MAIN CONTENT */}
-      <div style={{ maxWidth: 700, margin: "0 auto", padding: "16px 12px 130px" }}>
+      <div className="cx" style={{ padding: "16px 12px 130px" }}>
 
         {/* Tabs — now 4 tabs */}
         <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
@@ -1235,9 +1238,11 @@ export default function Home() {
                     <span style={{ fontSize: 10, color: "#555" }}>— {tc.desc}</span>
                     <span style={{ marginLeft: "auto", fontSize: 11, color: "#444" }}>{tp.length}</span>
                   </div>
-                  {tp.map((p: Player) => (
-                    <PlayerCard key={p.id} player={p} inParlay={parlay.includes(p.id)} onToggle={() => toggleParlay(p.id)} parkLabel={parkFactors[p.park]?.label} />
-                  ))}
+                  <div className="pg">
+                    {tp.map((p: Player) => (
+                      <PlayerCard key={p.id} player={p} inParlay={parlay.includes(p.id)} onToggle={() => toggleParlay(p.id)} parkLabel={parkFactors[p.park]?.label} />
+                    ))}
+                  </div>
                 </div>
               );
             })
@@ -1292,9 +1297,9 @@ export default function Home() {
             {filteredLongshots.length === 0 ? (
               <div style={{ textAlign: "center", padding: "24px", color: "#555", fontSize: 12 }}>No longshots match this game filter.</div>
             ) : (
-              filteredLongshots.map((p: Player) => (
+              <div className="pg">{filteredLongshots.map((p: Player) => (
                 <PlayerCard key={p.id} player={p} inParlay={parlay.includes(p.id)} onToggle={() => toggleParlay(p.id)} parkLabel={parkFactors[p.park]?.label} />
-              ))
+              ))}</div>
             )}
           </div>
         )}
@@ -1318,7 +1323,7 @@ export default function Home() {
         <div style={{ background: "#111118", borderTop: "1px solid rgba(255,215,0,0.25)" }}>
           {parlayOpen && (
             <div style={{ background: "#13131A", maxHeight: "55vh", overflowY: "auto", padding: "16px" }}>
-              <div style={{ maxWidth: 700, margin: "0 auto" }}>
+              <div className="cx">
                 <div style={{ fontSize: 10, letterSpacing: 3, color: "#FFD700", marginBottom: 12 }}>YOUR PARLAY BUILDER</div>
                 {parlayPlayers.length === 0 ? (
                   <p style={{ fontSize: 12, color: "#aaa", textAlign: "center", padding: "20px 0" }}>Add players from the picks tab to build your parlay</p>
@@ -1355,7 +1360,7 @@ export default function Home() {
               </div>
             </div>
           )}
-          <div style={{ maxWidth: 700, margin: "0 auto", display: "flex", alignItems: "center", gap: 12, padding: "10px 12px" }}>
+          <div className="cx" style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px" }}>
             <button
               style={{ flex: 1, background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.25)", borderRadius: 8, padding: "10px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, fontFamily: "inherit" }}
               onClick={() => setParlayOpen((o: boolean) => !o)}
