@@ -6,7 +6,7 @@
 
 ```bash
 # Classic PAT — no expiration, repo scope
-PAT_FROM_PROMPT="${PAT:-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}"
+PAT_FROM_PROMPT="${PAT:-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}"
 
 # 1. Write to credential store
 printf 'https://remyasantos:%s@github.com\n' "$PAT_FROM_PROMPT" > /root/.git-credentials
