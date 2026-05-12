@@ -1,502 +1,196 @@
   HOMERUNS APP — DAILY DATA UPDATE INSTRUCTIONS
-  File to update: public/data.js
+  File updated by pipeline: public/data.js
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  AUTOMATED PIPELINE (PRIMARY — runs via GitHub Actions daily at 10:30 AM ET)
+  AUTOMATED PIPELINE (PRIMARY — runs via GitHub Actions daily at 9:00 AM ET)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-The site is now fully automated. The pipeline runs automatically every day:
+The site is fully automated. No Claude API tokens are consumed. The pipeline
+runs every day at 9:00 AM ET (13:00 UTC) via GitHub Actions:
 
-  scripts/fetch_slate.py       → pulls live data from statsapi.mlb.com
+  scripts/fetch_slate.py       → pulls live data from statsapi.mlb.com + wttr.in
   scripts/tier_engine.py       → scores and tiers 50 players (S/A/B/C)
   scripts/parlay_builder.py    → constructs 15 validated parlay combos
-  scripts/generate_data_js.py  → assembles data.js (Claude API writes notes)
+  scripts/generate_data_js.py  → assembles data.js (fully deterministic, no API)
   validate-data.js             → validates schema before push
   .github/workflows/daily-slate.yml → GitHub Actions cron orchestration
 
-Data sources:
-  - Schedule + probable pitchers: statsapi.mlb.com (MLB Stats API, free)
+Data sources (all free, no API keys required):
+  - Schedule + probable pitchers: statsapi.mlb.com (MLB Stats API)
   - Pitcher stats (ERA/WHIP/HR9/FIP): MLB Stats API
   - Batter stats (HR/OPS/ISO/SLG): MLB Stats API
   - Weather (temp/wind/direction): wttr.in (free, no key)
   - Park HR factors: static ranked table in fetch_slate.py (update annually)
-  - Player notes + strategy text: Claude API (claude-sonnet-4-20250514)
+  - Player notes + context cards: deterministic templates using real stat fields
 
-Required GitHub secret: ANTHROPIC_API_KEY
-  → Go to: github.com/remyasantos/Homeruns → Settings → Secrets → Actions
-  → Add secret named ANTHROPIC_API_KEY with your Anthropic API key
+No GitHub secrets required. The pipeline costs $0 to run.
 
 Manual trigger:
   → github.com/remyasantos/Homeruns → Actions → "Daily MLB HR Slate" → Run workflow
 
-Fallback (if pipeline fails): The manual AI-agent workflow below still works.
-Check public/last-run.json status field: "success" | "no-games" | "validation-failed"
+Status check:
+  → public/last-run.json → status field: "success" | "no-games" | "validation-failed"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  MANUAL AI AGENT (FALLBACK — use only if GitHub Actions fails)
+  MANUAL FALLBACK (use only if GitHub Actions fails)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+If the pipeline fails (check last-run.json status), paste the prompt below
+into a Claude chat to regenerate public/data.js manually.
 
-ROLE
-----
-You are an expert Sports Data Analyst specializing in MLB Sabermetrics and
-Betting Markets. Generate a complete replacement for public/data.js in the
-Homeruns web app. This file drives the daily Home Run Parlay Board.
-
-OUTPUT RULES
-------------
-- Return ONLY the valid JavaScript code block
-- No markdown fences (no ```js ... ```)
-- No comments outside the file itself
-- No export statements, no module.exports
-- Plain JS constants loaded via <script> tag
-
-OUTPUT ORDER (must follow exactly)
------------------------------------
-1. const TEAM_TO_GAME
-2. const SLATE_DATE
-3. const SLATE_LABEL
-4. const CONTEXT_CARDS
-5. const PARK_FACTORS
-6. const players
-7. const parlays
-
-  SECTION 1 — THE CORE LOGIC ENGINE
-
-Populate the players array by analyzing today's MLB slate using three factors:
-
-  PARK FACTOR (30%)
-  - Prioritize high-altitude parks (Coors Field) and small dimensions
-    (Great American Ball Park, Yankee Stadium)
-  - Check daily weather — wind blowing OUT at >10 mph = Tier S boost
-  - DOME/ROOF CHECK: For retractable-roof parks (Daikin Park/Minute Maid,
-    American Family Field, Globe Life Field, loanDepot Park, Chase Field),
-    verify whether the roof is open or closed today. A closed roof eliminates
-    wind entirely — do NOT apply a wind boost and update the PARK_FACTORS label
-    to "Dome/Roof Closed" instead of "Warm/Wind Out". EVSharps weather column
-    shows "Roof" for closed-dome games.
-
-  PITCHER DISASTER METRIC (40%)
-  - Identify SPs with high HR/9 rates, declining velocity, elevated fly-ball %,
-    or a large ERA-to-xERA gap
-
-  STATCAST HEAT (30%)
-  - Use recent Barrel %, Hard-Hit %, and Exit Velocity
-  - 90th+ percentile EV this week = priority pick
-  - Cross-reference evsharps.com/dingers for real-time barrel%, EV, and
-    game-level matchup % (see Section 1.5 below)
-
-  SECTION 1.5 — https://www.mlb.com/stats/ (run AFTER initial player list)
-
-After generating the initial player list, cross-check https://www.mlb.com/stats/.
-The page loads dynamically — if you cannot fetch it, ask the user to paste
-the raw table data. Audit the following:
-
-  1. GAME-LEVEL MATCHUP %
-     Each row shows a +/- % for the game context. Use this to calibrate grades:
-       +15% or higher  → confirm or upgrade matchup grades
-       0% to +14%      → treat as neutral, no adjustment needed
-       Negative (−1% or worse) → downgrade matchupGrade by 1 notch for every
-                                  player in that game; note in pitcherNote
-     Example from April 14: SF@CIN was +24% (GABP confirmed elite),
-     MIA@ATL was -11% (ATL batters vs Meyer downgraded from A/A+ → A-/B+).
-
-  2. EXIT VELOCITY AND BARREL % CROSS-CHECK
-     EVSharps shows current-week EV and barrel% per player. Flag any player
-     whose EVSharps EV is in the top 10 on the board but is not in the
-     data.js player list — these are omissions that must be added.
-     Key threshold: any player with EV ≥ 95.0 mph and barrel% ≥ 15%
-     facing a +8% or better matchup should be B-tier minimum.
-
-  3. ROSTER VERIFICATION
-     EVSharps displays each player's current team tricode (e.g. "tex", "laa").
-     Verify that every player's team in your data.js matches the EVSharps
-     team code. Mismatches = roster error — correct the team, park, and pitcher.
-     Example from April 14: Jake Burger was listed as MIA in data.js but
-     EVSharps confirmed he was TEX, in the TEX@ATH game vs Springs.
-
-  4. WEATHER / ROOF COLUMN
-     The rightmost column in EVSharps shows weather (e.g. "12 mph 75°") or
-     "Roof" for closed-dome games. Use this to confirm or override any park
-     weather assumptions made in Section 1.
-
-  5. PITCHER ASSIGNMENT CHECK
-     EVSharps shows the opposing SP for each batter in "[team][pitcher]" format
-     (e.g. "nyyWeathersL"). Spot-check 5–10 players to confirm opposing pitchers
-     match what is in data.js. The pitcher field = the OTHER team's starter.
-
-  SECTION 2 — FULL DATA SCHEMA
-
---------------------------------------------------------------------------------
-  1. TEAM_TO_GAME
---------------------------------------------------------------------------------
-Maps every playing team's tricode to its game label in "AWAY@HOME" format.
-Include BOTH teams from each game. Only include teams playing today.
-The UI auto-generates the game filter from this object.
-
-Example:
-  const TEAM_TO_GAME = {
-    LAD: "TEX@LAD", TEX: "TEX@LAD",
-    PHI: "ATL@PHI", ATL: "ATL@PHI",
-    COL: "SD@COL",  SD:  "SD@COL",
-  };
-
---------------------------------------------------------------------------------
-  2. SLATE_DATE and SLATE_LABEL
---------------------------------------------------------------------------------
-  const SLATE_DATE  = "APRIL 11, 2026";    // "MONTH DAY, YEAR" — all caps
-  const SLATE_LABEL = "SATURDAY MLB SLATE"; // "DAY_OF_WEEK MLB SLATE" — all caps
-
---------------------------------------------------------------------------------
-  3. CONTEXT_CARDS
---------------------------------------------------------------------------------
-Exactly 4 story cards. Top narrative angles: park wind, pitcher regression,
-weather, revenge games.
-
-Shape:
-  { icon: "🏔️", label: "Coors Field", note: "One-line headline", sub: "One-line detail" }
-
-Fields:
-  icon   — single emoji
-  label  — stadium name or story name
-  note   — short headline (park rank, wind speed, temp, etc.)
-  sub    — one sentence of context (matchup + why it matters)
-
-Example:
-  const CONTEXT_CARDS = [
-    { icon: "🏔️", label: "Coors Field",      note: "#1 HR Park — Rockies host SD",   sub: "COL vs SD — mystery SP, altitude in full effect" },
-    { icon: "💨", label: "Citi Field",        note: "12 mph Wind Out to LCF",         sub: "ATH @ NYM — wind boost for pull hitters, Mets offense rolling" },
-    { icon: "🌅", label: "Dodger Stadium",    note: "11.4 mph Wind Out — TEX @ LAD",  sub: "LAD power core unleashed at home vs Mahle" },
-    { icon: "🔥", label: "Great American BP", note: "71°F Warm — #3 HR Park",         sub: "LAA @ CIN — warm day, Detmers cooked, Reds bats alive" },
-  ];
-
---------------------------------------------------------------------------------
-  4. PARK_FACTORS
---------------------------------------------------------------------------------
-Rank ALL stadiums in today's slate from #1 (most HR-friendly) to last.
-Include today's weather/wind in the label when relevant.
-
-Shape:
-  "Stadium Name": { rank: 1, label: "🏔️ #1 HR Park", color: "#ff6b35" }
-
-Color guide:
-  Top HR parks     → warm: #ff6b35, #ffb347
-  Wind-boosted     → blue: #90e0ef
-  Neutral          → gray: #b0bec5
-  Pitcher-friendly → dark gray: #78909c
-  Wind IN / avoid  → muted: #78909c
-
-Example:
-  const PARK_FACTORS = {
-    "Coors Field":               { rank: 1,  label: "🏔️ #1 HR Park",          color: "#ff6b35" },
-    "Great American Ball Park":  { rank: 2,  label: "🔥 #2 HR Park",          color: "#ffb347" },
-    "Citizens Bank Park":        { rank: 3,  label: "🔶 #3 Hitter Friendly",  color: "#ffb347" },
-    "UNIQLO Field at Dodger Stadium": { rank: 4, label: "💨 Wind Out 11mph", color: "#90e0ef" },
-    "Yankee Stadium":            { rank: 5,  label: "⚾ Short Porch",          color: "#c0c0c0" },
-    "T-Mobile Park":             { rank: 6,  label: "🏟️ Pitcher Friendly",    color: "#78909c" },
-    "Wrigley Field":             { rank: 7,  label: "🌬️ Wind IN — Avoid",     color: "#78909c" },
-  };
-
---------------------------------------------------------------------------------
-  5. PLAYERS — 50 total
---------------------------------------------------------------------------------
-Shape (all fields required):
-  {
-    id:            1,            // sequential integer 1–50
-    name:          "Full Name",
-    team:          "TRICODE",    // must match a key in TEAM_TO_GAME
-    tier:          "S",          // S | A | B | C  (see tier guide below)
-    park:          "Stadium Name", // must match a key in PARK_FACTORS
-    pitcher:       "Opposing SP Name",
-    pitcherNote:   "One technical flaw only",
-    matchupGrade:  "A+",         // A+ | A | A- | B+ | B | B- | C+ | C | F
-    estOdds:       "+310",       // Vegas HR prop odds as string
-    note:          "Two-sentence analysis. Sentence 1 = hook stat. Sentence 2 = why HR today.",
-    tags:          ["🔥 Hot", "💨 Wind Boost", "🏔️ Coors"], // 2–4 tags
-  }
-
-TIER GUIDE:
-  S — Elite must-play: elite talent + elite matchup + elite context  (4–8 per slate)
-  A — Strong play: good talent OR good matchup OR good context       (12–16 per slate)
-  B — Solid value: one or two favorable factors                      (16–20 per slate)
-  C — Longshot/lottery: low probability, high payout                 (6–10 per slate)
-
-TAG ICON CONVENTIONS:
-  🔥 Hot            — confirmed recent hot streak
-  🏔️ Coors          — playing at Coors Field
-  💨 Wind Boost     — wind blowing out >10 mph
-  💰 Value          — underpriced odds relative to probability
-  💣 SP Disaster    — opposing pitcher is a regression/disaster target
-  📈 Breakout       — due for or starting a breakout
-  👑 MVP/Elite      — former MVP or top-5 offensive player
-  🎰 Longshot       — C-tier lottery play
-  ⚾ Short Porch    — Yankee Stadium right-field advantage
-  97th Barrel       — 97th+ percentile barrel rate (use exact percentile)
-  🔜 Due            — cold streak, metrics say HR is coming
-  ♻️ Run Back       — ran this player yesterday, hit again
-
-PITCHER NOTE GUIDE:
-  - One technical flaw only — no fluff
-  - Examples: "velo down 1.5 mph", "5.40 xERA vs 0.90 ERA", "FB% climbing",
-    "4.8 BB/9 through 2 starts", "199 pitches in 2 starts — arm cooked"
-  - For unknown/TBD arms: "TBD [TEAM] SP — [rotation status]"
-    Example: "TBD COL SP — rotation in chaos, unannounced arm"
-
-NOTE FIELD GUIDE:
-  - Exactly 2 sentences
-  - Sentence 1: the hook stat (ISO, SLG, EV, barrel %, HR rate, OPS, BvP)
-  - Sentence 2: why that + today's context = HR
-
---------------------------------------------------------------------------------
-  6. PARLAYS — 14 to 16 total
---------------------------------------------------------------------------------
-Shape (all fields required):
-  {
-    id:          "4A",           // size + letter: 4A, 4B, 5A, 5B, ..., 10A
-    legs:        4,              // integer — must equal playerIds.length
-    label:       "THE CORE FOUR", // all caps punchy name
-    risk:        "Lower Risk",   // see risk levels below
-    riskColor:   "#4caf50",      // hex — see color guide below
-    estPayout:   "+900",         // estimated combined payout as string
-    description: "One sentence explaining this parlay's angle.",
-    playerIds:   [1, 2, 4, 20], // all IDs must exist in players array
-    strategy:    "2–3 sentences on why these legs work together.",
-  }
-
-RISK LEVELS AND COLORS:
-  "Lower Risk"       → #4caf50   (green)
-  "Medium Risk"      → #ff9800   (orange)
-  "Medium-High Risk" → #ff5722   (deep orange)
-  "High Risk"        → #e91e63   (pink)
-  "Max Risk"         → #9c27b0   (purple)
-
-REQUIRED PARLAY SET (minimum — add more as fits the slate):
-
-  ID   LEGS  LABEL                   RISK              DESCRIPTION
-  ---- ----- ----------------------- ----------------- ------------------------------------------
-  4A   4     THE CORE FOUR           Lower Risk        The 4 highest-probability S-tier legs
-  4B   4     (park/theme stack)      Lower Risk        Best single-park or single-pitcher stack
-  5A   5     THE HIGH FIVE           Lower Risk        S-tier anchors + top wind/park plays
-  5B   5     THE EV SPECIAL          Medium Risk       5 players with highest EV/Barrel % this week
-  5C   5     THE REGRESSION BOMB     Medium Risk       Target pitchers with biggest ERA-vs-xERA gap
-  6A   6     (park stack)            Lower Risk        Full stack of top HR park today
-  6B   6     (pitcher target stack)  Lower Risk        Full stack vs today's worst SP
-  7A   7     (altitude/theme)        Medium Risk       Max exposure to best park factor today
-  7B   7     THE WIND CHASER         Medium Risk       Stack both wind-boosted parks (>10 mph out)
-  7C   7     THE HOT HAND            Medium Risk       Players confirmed in recent hot form
-  8A   8     THE SLUGGER SUMMIT      Medium-High Risk  All S-tier + top A-tier matchups
-  8B   8     THE VALUE MATRIX        Medium-High Risk  S-tier anchors + highest-value B-tier plays
-  9A   9     THE GRAND SALAMI        High Risk         9-leg monster covering every premium context
-  9B   9     THE SLEEPER STACK       High Risk         S-tier anchors + hot bats + breakout candidates
-  10A  10    THE LOTTERY TICKET      Max Risk          Elite core + 2 C-tier lottery legs (moon shot)
-
-PARLAY VALIDATION RULES:
-  - Every playerIds entry must correspond to a real id in players
-  - legs must equal playerIds.length
-  - No player appears twice in the same parlay
-  - THE LOTTERY TICKET (10A) must include at least 2 C-tier players
-
-  SECTION 3 — CONTENT STYLE GUIDE
-
-TONE: Expert, aggressive, betting-centric.
-
-USE THESE TERMS:
-  "disaster start"    "bomb machine"     "cooked"
-  "Statcast darling"  "regression due"   "free real estate"
-  "on fumes"          "pure lottery"     "meme leg"
-  "moon shot"         "underpriced"      "blowup game"
-
-AVOID: Passive language, hedging, generic commentary without a stat.
-
-  SECTION 4 — DAILY CHECKLIST
-
-Before submitting the file, verify:
-
-  SCHEMA CHECKS
-  [ ] TEAM_TO_GAME has both teams from every game today
-  [ ] SLATE_DATE and SLATE_LABEL match today's actual date and day
-  [ ] CONTEXT_CARDS has exactly 4 entries, each with icon/label/note/sub
-  [ ] PARK_FACTORS covers every park in today's slate
-  [ ] players has exactly 50 entries, ids 1–50 sequential
-  [ ] Every player's team tricode exists in TEAM_TO_GAME
-  [ ] Every player's park name exists in PARK_FACTORS
-  [ ] All player notes are exactly 2 sentences
-  [ ] parlays has 14–16 entries
-  [ ] Every playerIds value in parlays matches a real player id
-  [ ] THE LOTTERY TICKET (10A) has at least 2 C-tier playerIds
-  [ ] legs field equals playerIds.length for every parlay
-  [ ] No export statements anywhere in the file
-
-  EVSHARPS CROSS-REFERENCE CHECKS (Section 1.5)
-  [ ] EVSharps game-level matchup % reviewed for every game on today's slate
-  [ ] Any game at −1% or worse has its players' matchupGrades stepped down
-  [ ] Any player with EV ≥ 95.0 mph and barrel% ≥ 15% vs a +8%+ game is included
-  [ ] Every player's team tricode verified against EVSharps team column
-  [ ] Opposing pitcher for each player verified against EVSharps pitcher column
-  [ ] Retractable-roof parks checked — "Roof" in EVSharps = closed dome, no wind
-
-  CONTEXT CARD CHECKS
-  [ ] No context card claims "wind" or "outdoor warm" for a closed-dome game
-  [ ] PARK_FACTORS label uses "Dome/Roof Closed" when EVSharps shows "Roof"
-
-  HOW TO USE THIS FILE
+WHAT CHANGED SINCE THE LAST SLATE
+  - If a player got traded, update their team tricode and park
+  - If a pitcher is scratched, swap to the actual starter's stats
+  - Apply any Baseball Savant corrections to barrel% or EV that look off
 
 STEP 1 — GENERATE
-  Paste this entire file into a new chat with the message:
+  Paste this prompt into a new Claude chat:
 
-    "Using live MLB data for [TODAY'S DATE], generate public/data.js
-     following these instructions."
+  ────────────────────────────────────────────────────────────────────────────
+  ROLE: Expert MLB Sabermetrics analyst. Generate a complete replacement for
+  public/data.js in the Homeruns web app (daily Home Run Parlay Board).
 
-  The model will return the complete ready-to-paste data.js replacement.
+  OUTPUT RULES:
+  - Return ONLY valid JavaScript — no markdown fences, no export statements
+  - Plain const declarations at top level, loaded via <script> tag
 
-STEP 2 — https://www.mlb.com/stats/ & https://baseballsavant.mlb.com/  AUDIT (do this after writing data.js)
-  Open https://www.mlb.com/stats/ & https://baseballsavant.mlb.com/ in your browser. If the page has loaded data,
-  paste or screenshot the table and ask:
+  OUTPUT ORDER:
+  1. const TEAM_TO_GAME    — both teams per game, "AWAY@HOME" format
+  2. const SLATE_DATE      — "MAY 12, 2026" (all caps, no leading zeros)
+  3. const SLATE_LABEL     — "TUESDAY MLB SLATE" (day + "MLB SLATE", all caps)
+  4. const CONTEXT_CARDS   — exactly 4 cards (see schema below)
+  5. const PARK_FACTORS    — one entry per park in today's slate (see schema)
+  6. const players         — exactly 50 players, ids 1–50 (see schema)
+  7. const parlays         — 14–16 parlays (see schema)
 
-    "Review this data against today's data.js and flag any
-     omissions, roster errors, matchup grade issues, or roof/weather
-     corrections needed. Apply the patch if there are any findings."
+  SCORING MODEL (per player):
+    Pitcher Disaster  40% — ERA, WHIP, HR/9, FIP
+    Park Factor       30% — HR rank + weather (wind out >10mph = boost)
+    Batter Power      30% — HR pace, OPS, ISO
 
-  This step typically finds 3–7 corrections per slate and takes under
-  5 minutes. It is the single highest-ROI quality check in the workflow.
+  TIER COUNTS:
+    S  4–8   players  (elite talent + elite matchup + elite park)
+    A  12–16 players  (strong on at least two of the three factors)
+    B  16–20 players  (one favorable factor, solid value)
+    C  6–10  players  (longshot / lottery play)
+
+  DOME RULE: For retractable-roof parks (Chase Field, American Family Field,
+  Globe Life Field, loanDepot park, T-Mobile Park, Daikin Park), treat as
+  closed unless confirmed open. No wind tags for closed domes. PARK_FACTORS
+  label = "Dome/Roof Closed".
+
+  SCHEMA — CONTEXT_CARDS (exactly 4):
+    { icon: "💥", label: "Pitcher Name — SP Disaster",
+      note: "ERA headline", sub: "2–3 sentence detail" }
+  Angles: worst SP disaster, best outdoor park, best dome stack, best value.
+
+  SCHEMA — PARK_FACTORS:
+    "Stadium Name": { rank: 1, label: "🔥 #1 HR Park", color: "#ff6b35" }
+  Colors: elite #ff6b35, good #ffb347, wind-boost #90e0ef,
+          neutral #b0bec5, suppressive #78909c
+
+  SCHEMA — PLAYERS (all fields required):
+    {
+      id:            1,
+      name:          "Full Name",
+      team:          "TRICODE",        // must be a key in TEAM_TO_GAME
+      tier:          "S",              // S | A | B | C
+      park:          "Stadium Name",   // must be a key in PARK_FACTORS
+      pitcher:       "Opposing SP Name",
+      pitcherNote:   "One technical flaw — ERA, WHIP, HR/9, or command",
+      matchupGrade:  "A+",            // A+ A A- B+ B B- C+ C C-
+      estOdds:       "+310",          // string starting with + or -
+      note:          "Two sentences. S1: hook stat. S2: why HR today.",
+      tags:          ["👑 MVP/Elite", "💣 SP Disaster"],  // 2–4 tags
+    }
+
+  APPROVED TAGS: 👑 MVP/Elite  💣 SP Disaster  🔥 Hot  📈 Breakout
+                 💨 Wind Boost  🏔️ Coors Boost  🔜 Due  💰 Value  🎰 Longshot
+
+  SCHEMA — PARLAYS (14–16 entries, all fields required):
+    {
+      id:          "4A",
+      legs:        4,               // MUST equal playerIds.length
+      label:       "THE CORE FOUR",
+      risk:        "Lower Risk",    // Lower | Medium | Medium-High | High | Max
+      riskColor:   "#4caf50",       // green/orange/deep-orange/pink/purple
+      estPayout:   "+800",
+      description: "One sentence.",
+      playerIds:   [1, 2, 4, 7],   // all must exist in players; no duplicates
+      strategy:    "2–3 sentences on why these legs work together.",
+    }
+
+  REQUIRED PARLAYS: 4A 4B 5A 5B 5C 6A 6B 7A 7B 7C 8A 8B 9A 9B 10A
+  10A RULE: must include at least 2 C-tier playerIds.
+
+  VALIDATION CHECKLIST (verify before returning):
+  [ ] TEAM_TO_GAME has both teams from every game
+  [ ] CONTEXT_CARDS has exactly 4 entries
+  [ ] players has exactly 50 entries, ids 1–50 sequential, no gaps/duplicates
+  [ ] Every player team exists in TEAM_TO_GAME, every player park in PARK_FACTORS
+  [ ] Every parlay legs == playerIds.length
+  [ ] 10A has at least 2 C-tier playerIds
+  [ ] No export statements
+
+  Using live MLB data for [TODAY'S DATE], generate public/data.js.
+  ────────────────────────────────────────────────────────────────────────────
+
+STEP 2 — BASEBALL SAVANT AUDIT (highest ROI quality check, ~5 min)
+  Open https://baseballsavant.mlb.com/ and paste or screenshot the barrel%
+  and EV table. Ask Claude:
+    "Review this data against today's data.js and flag any barrel%,
+     EV, or roster corrections needed. Apply the patch."
+  This typically finds 3–7 corrections per slate.
 
 STEP 3 — VALIDATE AND PUSH
-  Run the Node validation script or ask the model to validate, then push.
-
-  HOMERUNS MLB HR PARLAY BOARD — DATA UPDATE GUIDE
-
-This file is read by the daily scheduled agent (Step 1).
-Follow all rules exactly. Validation will catch violations.
-
-────────────────────────────────────────────────────
-  FILE: public/data.js
-────────────────────────────────────────────────────
-
-TOP-LEVEL CONSTANTS
-  SLATE_DATE   string  "MAY 7, 2026"   (uppercase, no leading zeros)
-  SLATE_LABEL  string  "THURSDAY MLB SLATE"  (DAY + "MLB SLATE")
-
-TEAM_TO_GAME
-  One entry per team for every game on the slate.
-  Format: AWAY: "AWAY@HOME",  HOME: "AWAY@HOME"
-  Both keys must be present and point to the same string.
-
-CONTEXT_CARDS  (exactly 4 entries)
-  Fields: icon, label, note, sub
-  Pick the 4 best HR contexts of the day:
-    1. Best SP-disaster (worst ERA / xERA gap)
-    2. Best outdoor wind/weather park
-    3. Best dome same-game stack
-    4. Best overall value / park-factor play
-  note  = 1 sentence summary
-  sub   = 2-3 sentence deep dive
-
-PARK_FACTORS  (one entry per park in today's slate)
-  Fields: rank (1 = best HR context), label, color
-  color codes: #ff6b35 (elite), #ffb347 (good), #b0bec5 (neutral), #78909c (suppressive)
-
-────────────────────────────────────────────────────
-  PLAYERS  (exactly 50, IDs 1–50, no gaps or duplicates)
-────────────────────────────────────────────────────
-
-TIER COUNTS
-  S  4–8   players   (best SP disaster + park context)
-  A  12–16 players   (strong matchup or park context)
-  B  16–20 players   (solid value, moderate context)
-  C  6–10  players   (longshot / talent ceiling plays)
-  Total must be exactly 50.
-
-REQUIRED FIELDS PER PLAYER
-  id            integer 1–50
-  name          string
-  team          string  (must exist as key in TEAM_TO_GAME)
-  tier          "S" | "A" | "B" | "C"
-  park          string  (must exist as key in PARK_FACTORS)
-                Use the park where TODAY's game is played,
-                even for away teams.
-  pitcher       string  name of the OPPOSING starting pitcher
-  pitcherNote   string  1 sentence on why the pitcher is (or isn't) exploitable
-  matchupGrade  string  e.g. "A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-"
-  estOdds       string  must start with "+" or "-"  e.g. "+310"
-  note          string  EXACTLY 2 sentences explaining the HR case
-  tags          array   2–4 items from the approved list below
-
-APPROVED TAGS
-  "👑 MVP/Elite"      top-5 power bat in the game
-  "💣 SP Disaster"    opposing pitcher ERA or xERA is a red flag
-  "🔥 Hot"            player on a confirmed recent HR streak
-  "📈 Breakout"       emerging player with improving Statcast metrics
-  "💨 Wind Boost"     outdoor park with 10+ mph favorable wind
-  "🏔️ Coors Boost"    playing at Coors Field (elevation HR boost)
-  "🔜 Due"            player hasn't HR'd in 5+ games despite good exit velo
-  "💰 Value"          odds-to-context ratio is strong (underpriced)
-  "🎰 Longshot"       C-tier ceiling/lottery play
-
-────────────────────────────────────────────────────
-  PARLAYS  (14–16 entries)
-────────────────────────────────────────────────────
-
-REQUIRED FIELDS PER PARLAY
-  id          string  e.g. "4A", "5B", "10A"
-  legs        integer  MUST equal playerIds.length
-  label       string  short punchy name in ALL CAPS
-  risk        "Lower Risk" | "Medium Risk" | "Medium-High Risk" | "High Risk" | "Max Risk"
-  riskColor   hex string matching risk level:
-                Lower Risk      #4caf50
-                Medium Risk     #ff9800
-                Medium-High Risk #ff5722
-                High Risk       #e91e63
-                Max Risk        #9c27b0
-  estPayout   string  starts with "+"  e.g. "+2200"
-  description string  1 sentence overview
-  playerIds   array of integers  all must exist in players, no duplicates within parlay
-  strategy    string  3–6 sentences explaining the construction logic
-
-PARLAY RULES
-  - No duplicate playerIds within a single parlay
-  - Parlay 10A must include at least 2 C-tier players
-  - legs must exactly equal playerIds.length
-  - Include a mix of 4-leg through 10-leg parlays
-  - Aim for 15 parlays total (14–16 acceptable)
-
-────────────────────────────────────────────────────
-  DOME / ROOF RULES
-────────────────────────────────────────────────────
-
-Retractable-roof parks (treat as closed unless confirmed open):
-  Chase Field, American Family Field, Globe Life Field,
-  loanDepot park, T-Mobile Park, Daikin Park (Houston)
-
-For closed-roof games:
-  - PARK_FACTORS label must say "Dome/Roof Closed"
-  - Do NOT add wind-boost tags to players in that park
-  - Weather from outside the park is irrelevant
-
-────────────────────────────────────────────────────
-  JAVASCRIPT FORMAT RULES
-────────────────────────────────────────────────────
-
-  - No ES module export statements (no "export const", "export default")
-  - Use plain "const" declarations at the top level
-  - File must execute cleanly with node (no syntax errors)
-  - Run node validate-data.js before committing — fix all errors
-
-────────────────────────────────────────────────────
-  GIT / PUSH INSTRUCTIONS
-────────────────────────────────────────────────────
-
-Credentials are stored in /root/.git-credentials (persists across runs).
-Git is configured globally to use that file as the credential store.
-
-After cloning, reset the remote to the clean URL so credential store is used:
-  git remote set-url origin https://github.com/remyasantos/Homeruns.git
-
-Then push normally:
-  git add public/data.js public/parlays.html
-  git commit -m "data: DATE DAY slate - N games, 50 players, 15 parlays"
+  node validate-data.js
+  git add public/data.js
+  git commit -m "data: manual update [DATE]"
   git push origin main
 
-If push fails with auth error, the PAT in /root/.git-credentials is expired.
-Update it with:
-  printf 'https://remyasantos:NEW_PAT@github.com\n' > /root/.git-credentials
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  FULL DATA SCHEMA REFERENCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+This section documents every field for reference when writing or patching data.js.
+
+TOP-LEVEL CONSTANTS
+  SLATE_DATE   string  "MAY 12, 2026"       (uppercase, no leading zeros)
+  SLATE_LABEL  string  "TUESDAY MLB SLATE"  (DAY + "MLB SLATE")
+
+TEAM_TO_GAME
+  Both teams per game. Format: AWAY: "AWAY@HOME", HOME: "AWAY@HOME"
+
+CONTEXT_CARDS (exactly 4)
+  Fields: icon, label, note, sub
+  Best 4 HR angles of the day:
+    1. Worst SP disaster (ERA / ERA-FIP gap)
+    2. Best outdoor wind/weather park
+    3. Best dome stack
+    4. Best value play (S/A-tier at long odds)
+
+PARK_FACTORS (one per park in today's slate)
+  rank: 1 = best HR context on today's slate
+  label: describe why (park rank, wind, dome)
+  color: #ff6b35 elite / #ffb347 good / #90e0ef wind-boost /
+         #b0bec5 neutral / #78909c suppressive
+
+PLAYERS (50 total, ids 1–50)
+  See schema above. Key rules:
+  - team must be a key in TEAM_TO_GAME
+  - park must be a key in PARK_FACTORS (use today's game park, even for away teams)
+  - pitcher = the OPPOSING starter
+  - tags: 2–4 items from approved list
+  - note: exactly 2 sentences (hook stat + why HR today)
+
+PARLAYS (14–16 total)
+  Risk colors:
+    Lower Risk       #4caf50   4-leg / 5-leg top tier
+    Medium Risk      #ff9800   5–7 leg mixed
+    Medium-High Risk #ff5722   8-leg
+    High Risk        #e91e63   9-leg
+    Max Risk         #9c27b0   10-leg lottery
+
+RETRACTABLE-ROOF PARKS (treat as closed unless confirmed open)
+  Chase Field, American Family Field, Globe Life Field,
+  loanDepot park, T-Mobile Park, Daikin Park (Houston)

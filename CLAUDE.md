@@ -1,76 +1,110 @@
 # Homeruns MLB HR Parlay Board
 
-## Authentication Setup (CRITICAL — run this first, every run)
-
-**Step 0 — before clone**, run this block exactly:
+## Authentication Setup (run this first every session)
 
 ```bash
-# Classic PAT — no expiration, repo scope
 PAT_FROM_PROMPT="${PAT:-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}"
 
-# 1. Write to credential store
 printf 'https://remyasantos:%s@github.com\n' "$PAT_FROM_PROMPT" > /root/.git-credentials
 chmod 600 /root/.git-credentials
 git config --global credential.helper store
 
-# 2. Verify the PAT works before continuing
 HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
   -H "Authorization: Bearer $PAT_FROM_PROMPT" \
   https://api.github.com/repos/remyasantos/Homeruns)
-if [ "$HTTP" != "200" ]; then
-  echo "❌ PAT INVALID (HTTP $HTTP) — token may have been revoked. Update the default in CLAUDE.md."
-  exit 1
-fi
-echo "✅ PAT verified (HTTP $HTTP)"
+[ "$HTTP" = "200" ] && echo "✅ PAT ok" || echo "❌ PAT invalid — regenerate at github.com/settings/tokens"
 ```
 
-If the PAT check fails, the classic token was revoked. Generate a new one at
-https://github.com/settings/tokens (classic, no expiration, repo scope) and update
-the default value in the line above.
+If the PAT fails, generate a new classic token (no expiration, `repo` scope) at
+https://github.com/settings/tokens and update the default above.
 
-After cloning, reset the remote to the clean URL:
-
+After cloning, reset the remote URL:
 ```bash
 git remote set-url origin https://github.com/remyasantos/Homeruns.git
 ```
 
-Then push with:
-```bash
-git push origin main
-```
-
-**Push fallback:** If `git push origin main` fails despite the credential store being written, push directly with the PAT embedded in the URL:
+Push fallback (if credential store doesn't work):
 ```bash
 git push https://remyasantos:${PAT_FROM_PROMPT}@github.com/remyasantos/Homeruns.git main
 ```
 
 ---
 
-## ✅ Token Status — Classic PAT installed, no expiration
+## Project Overview
 
-A classic PAT (`ghp_...`) with no expiration is now hardcoded as the default in Step 0 above.
-The daily agent no longer needs a token in the session prompt — it will use the default automatically.
+Daily MLB HR Parlay Board. The pipeline runs automatically every morning at
+9:00 AM ET and commits an updated `public/data.js` to the repo.
 
-If the token is ever revoked and needs replacing:
-1. Go to https://github.com/settings/tokens → **Tokens (classic)**
-2. Generate new token — **No expiration**, `repo` scope only
-3. Update the default value in the Step 0 block in this file
+**The pipeline costs $0 — no Claude API, no secrets required.**
+
+```
+scripts/fetch_slate.py       MLB Stats API + wttr.in → scripts/raw_slate.json
+scripts/tier_engine.py       Score/tier 50 players  → scripts/scored_players.json
+scripts/parlay_builder.py    Build 15 parlays        → scripts/parlays.json
+scripts/generate_data_js.py  Deterministic notes     → public/data.js
+validate-data.js             Schema validation
+.github/workflows/daily-slate.yml  Orchestration (cron 9 AM ET)
+```
+
+Intermediate JSON files (`scripts/*.json`) are generated at runtime and are
+gitignored — do not commit them.
 
 ---
 
 ## Project Structure
 
-- `public/data.js` — main data file, regenerated daily by the scheduled agent
-- `public/parlays.html` — the board UI, loads data.js at runtime
-- `public/last-run.json` — status of the last agent run
-- `validate-data.js` — schema validator, run with `node validate-data.js`
-- `DATA_UPDATE_INSTRUCTIONS.txt` — full data format spec for the daily agent
+```
+public/
+  parlays.html    — the UI (static HTML, loads data.js via <script>)
+  data.js         — daily generated data (committed by the pipeline)
+  last-run.json   — pipeline status: success | no-games | validation-failed
+scripts/
+  fetch_slate.py  — MLB Stats API fetch + weather enrichment
+  tier_engine.py  — scoring model + tier assignment
+  parlay_builder.py — parlay construction
+  generate_data_js.py — JS serializer with deterministic text generation
+  requirements.txt
+validate-data.js  — Node schema validator (uses only built-in modules)
+DATA_UPDATE_INSTRUCTIONS.txt — full schema reference + manual fallback prompt
+```
 
-## Daily Agent Steps
+---
 
-See the session prompt for the full step-by-step. Key overrides from this file:
+## Manual Trigger
 
-1. **Step 0 — before clone:** verify PAT via API (HTTP 200), write to `/root/.git-credentials`, run `git config --global credential.helper store`
-2. **After cloning:** run `git remote set-url origin https://github.com/remyasantos/Homeruns.git`
-3. **Step 7 push:** try `git push origin main` first; if it fails auth, push with the PAT embedded in the URL as the fallback
-4. Read `DATA_UPDATE_INSTRUCTIONS.txt` in full before generating data.js
+GitHub Actions UI:
+> github.com/remyasantos/Homeruns → Actions → "Daily MLB HR Slate" → Run workflow
+
+---
+
+## Manual Data Patch (quick fix)
+
+To patch a single player stat in `public/data.js` without regenerating:
+
+```bash
+git clone https://github.com/remyasantos/Homeruns.git
+cd Homeruns
+git remote set-url origin https://github.com/remyasantos/Homeruns.git
+# edit public/data.js
+node validate-data.js
+git add public/data.js
+git commit -m "data: manual patch — [reason]"
+git push origin main
+```
+
+---
+
+## Manual Full Regeneration (pipeline failure fallback)
+
+See `DATA_UPDATE_INSTRUCTIONS.txt` — the manual fallback section has a
+self-contained Claude prompt that generates a complete `data.js` replacement.
+Use this only when `public/last-run.json` shows `"status": "validation-failed"`.
+
+---
+
+## Commit Signing
+
+GitHub Actions runner requires:
+```bash
+git config --global commit.gpgsign false
+```
