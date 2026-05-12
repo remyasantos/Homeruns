@@ -1,6 +1,42 @@
   HOMERUNS APP — DAILY DATA UPDATE INSTRUCTIONS
   File to update: public/data.js
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  AUTOMATED PIPELINE (PRIMARY — runs via GitHub Actions daily at 10:30 AM ET)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The site is now fully automated. The pipeline runs automatically every day:
+
+  scripts/fetch_slate.py       → pulls live data from statsapi.mlb.com
+  scripts/tier_engine.py       → scores and tiers 50 players (S/A/B/C)
+  scripts/parlay_builder.py    → constructs 15 validated parlay combos
+  scripts/generate_data_js.py  → assembles data.js (Claude API writes notes)
+  validate-data.js             → validates schema before push
+  .github/workflows/daily-slate.yml → GitHub Actions cron orchestration
+
+Data sources:
+  - Schedule + probable pitchers: statsapi.mlb.com (MLB Stats API, free)
+  - Pitcher stats (ERA/WHIP/HR9/FIP): MLB Stats API
+  - Batter stats (HR/OPS/ISO/SLG): MLB Stats API
+  - Weather (temp/wind/direction): wttr.in (free, no key)
+  - Park HR factors: static ranked table in fetch_slate.py (update annually)
+  - Player notes + strategy text: Claude API (claude-sonnet-4-20250514)
+
+Required GitHub secret: ANTHROPIC_API_KEY
+  → Go to: github.com/remyasantos/Homeruns → Settings → Secrets → Actions
+  → Add secret named ANTHROPIC_API_KEY with your Anthropic API key
+
+Manual trigger:
+  → github.com/remyasantos/Homeruns → Actions → "Daily MLB HR Slate" → Run workflow
+
+Fallback (if pipeline fails): The manual AI-agent workflow below still works.
+Check public/last-run.json status field: "success" | "no-games" | "validation-failed"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  MANUAL AI AGENT (FALLBACK — use only if GitHub Actions fails)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
 ROLE
 ----
 You are an expert Sports Data Analyst specializing in MLB Sabermetrics and
