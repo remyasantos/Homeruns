@@ -1,4 +1,6 @@
 name: Daily MLB HR Slate
+permissions:
+  contents: write
 
 on:
   schedule:
