@@ -32,6 +32,67 @@ Status check:
   → public/last-run.json → status field: "success" | "no-games" | "validation-failed"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  OPTIONAL ENHANCEMENT SESSION (run after the pipeline for better copy)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The pipeline generates correct data with deterministic note templates. When you
+want more colorful, stats-grounded copy, run this Claude session AFTER the
+pipeline has already committed data.js. All structure, scoring, tiers, parlays,
+and IDs are already locked in — Claude only rewrites the descriptive text.
+
+WHEN TO USE
+  - Any day you want sharper note quality
+  - After a big slate with premium matchups worth highlighting
+  - Takes ~2 minutes and requires no setup
+
+HOW TO RUN
+  Open a new Claude chat (claude.ai or Claude Code). Paste this prompt:
+
+  ────────────────────────────────────────────────────────────────────────────
+  I have a MLB HR Parlay Board app. The automated pipeline has already run
+  today and committed public/data.js with correct player scores, tiers,
+  parlays, and all structural data.
+
+  Clone the repo (https://github.com/remyasantos/Homeruns), then:
+
+  1. READ public/data.js in full.
+
+  2. REWRITE the "note" and "pitcherNote" fields for every S-tier and A-tier
+     player only. Rules:
+     - note: exactly 2 sentences.
+       Sentence 1: hook stat — the single most impressive number (ISO, OPS,
+       HR count, SLG). Use the numbers already in the existing note.
+       Sentence 2: why HR today — pitcher ERA flaw + park/weather context.
+       Be specific: cite ERA, HR/9, or WHIP from the existing pitcherNote.
+     - pitcherNote: 1 sentence, one technical flaw. Reference a real number.
+     - Tone: sharp, betting-centric. Use: "disaster start", "free real
+       estate", "cooked", "bomb machine", "underpriced", "pure lottery".
+     - Do NOT invent stats. Every number must already appear in data.js.
+
+  3. REWRITE the "strategy" field for the first 5 parlays. 2-3 sentences.
+     Name real players and cite real ERA or HR numbers from the file.
+     Same sharp tone.
+
+  4. Do NOT change anything else: ids, names, teams, tiers, park, pitcher,
+     matchupGrade, estOdds, tags, playerIds, parlay structure, or any
+     B/C-tier player fields.
+
+  5. Run: node validate-data.js
+     Fix any validation errors before committing.
+
+  6. Commit and push:
+     git add public/data.js
+     git commit -m "data: note enhancement [TODAY'S DATE]"
+     git push origin main
+  ────────────────────────────────────────────────────────────────────────────
+
+WHY THIS WORKS
+  - Pipeline handles all the hard analysis (scoring, tiering, parlay logic)
+  - Claude only rewrites ~20-25 text fields — very fast, very cheap
+  - No risk of schema errors: Claude isn't touching structure, only copy
+  - Validate-data.js catches any slip before it hits the repo
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   MANUAL FALLBACK (use only if GitHub Actions fails)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
