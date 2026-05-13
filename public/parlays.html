@@ -110,7 +110,7 @@
 
   .bet-top {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 8px;
   }
   .bet-rank {
@@ -196,6 +196,7 @@
   .bet-stat-item {
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 1px;
   }
   .bet-stat-val {
@@ -203,6 +204,7 @@
     font-weight: 500;
     color: #e0e0e0;
     line-height: 1;
+    text-align: center;
   }
   .bet-stat-val.dim { color: #555; }
   .bet-stat-lbl {
@@ -812,7 +814,21 @@ function renderContextCards() {
 }
 
 // ── Parlay board
-const top5Ids = new Set(["4A", "5A", "6B", "8A", "9A"]);
+// Rank each parlay by the average compositeScore of its legs, pick the top 5.
+// Falls back to a fixed set on old data.js builds that lack compositeScore.
+function parlayQuality(par) {
+  const legs = par.playerIds.map(id => players.find(p => p.id === id)).filter(Boolean);
+  if (!legs.length) return 0;
+  const hasScores = legs.some(p => p.compositeScore !== undefined);
+  if (!hasScores) return 0;
+  return legs.reduce((s, p) => s + (p.compositeScore || 0), 0) / legs.length;
+}
+const FALLBACK_TOP5 = new Set(["4A", "5A", "6B", "8A", "9A"]);
+const scoredParlays = [...parlays].map(p => ({ id: p.id, q: parlayQuality(p) }));
+const hasAnyScore   = scoredParlays.some(p => p.q > 0);
+const top5Ids = hasAnyScore
+  ? new Set(scoredParlays.sort((a, b) => b.q - a.q).slice(0, 5).map(p => p.id))
+  : FALLBACK_TOP5;
 const PARLAYS = parlays.map(p => ({
   id: p.id,
   legs: p.legs,
