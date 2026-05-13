@@ -240,8 +240,11 @@ for team_abbr, batters in players_by_team.items():
             tags.append("📈 Breakout")
         if composite < 40:
             tags.append("🎰 Longshot")
-        if len(tags) < 2:
+        # Guarantee at least 2 tags — "if" only fires once, so use explicit fills
+        if not tags:
             tags.append("💰 Value")
+        if len(tags) < 2:
+            tags.append("🔜 Due")
         tags = tags[:4]
 
         scored.append({
@@ -314,22 +317,35 @@ while len(b_players) < 16 and c_players:
     promoted["tier"] = "B"
     b_players.append(promoted)
 
-# Only force C-tier minimum if we actually have enough total players (50+)
-# On thin slates, B-tier players should stay B rather than be demoted to inflate C count
-total_available = len(s_players) + len(a_players) + len(b_players) + len(c_players)
-if total_available >= 50:
-    while len(c_players) < 6 and b_players:
-        demoted = b_players.pop()
-        demoted["tier"] = "C"
-        c_players.insert(0, demoted)
+# Enforce C-tier minimum (demote from bottom of B if needed)
+while len(c_players) < 6 and b_players:
+    demoted = b_players.pop()
+    demoted["tier"] = "C"
+    c_players.insert(0, demoted)
 
-# Cap at 50 total (take top performers in each tier)
+# Build the 50-player final list from tier buckets
 final_players = (
     s_players[:8] +
     a_players[:16] +
     b_players[:20] +
     c_players[:10]
 )[:50]
+
+# Guarantee exactly 50 — pull from the remaining scored pool if short
+if len(final_players) < 50:
+    used_pids = {p["playerId"] for p in final_players}
+    for p in scored:  # scored is sorted desc by compositeScore
+        if len(final_players) >= 50:
+            break
+        if p["playerId"] not in used_pids:
+            if p["compositeScore"] >= 55:
+                p["tier"] = "A"
+            elif p["compositeScore"] >= 40:
+                p["tier"] = "B"
+            else:
+                p["tier"] = "C"
+            final_players.append(p)
+            used_pids.add(p["playerId"])
 
 # Assign IDs 1-50
 for i, p in enumerate(final_players):

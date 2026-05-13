@@ -30,10 +30,18 @@ git push https://remyasantos:${PAT_FROM_PROMPT}@github.com/remyasantos/Homeruns.
 
 ---
 
-## Project Overview
+## Daily Schedule & Flow
 
-Daily MLB HR Parlay Board. The pipeline runs automatically every morning at
-9:00 AM ET and commits an updated `public/data.js` to the repo.
+Two automated processes run each morning in sequence:
+
+| Time (ET)  | Process | What it does |
+|------------|---------|-------------|
+| ~7:00 AM*  | GitHub Actions pipeline | Fetches MLB Stats API + weather, scores 50 players, builds 15 parlays, commits `data.js` |
+| 9:30 AM    | Daily quality-check agent | Validates pipeline output, fixes any schema warnings, enhances copy, pushes clean version |
+
+\* Scheduled at 7:00 AM ET (11:00 UTC). GitHub Actions runner queue typically
+adds 1–2 hours of delay, so it usually completes by 8:30–9:00 AM ET — before
+the agent runs.
 
 **The pipeline costs $0 — no Claude API, no secrets required.**
 
@@ -43,7 +51,7 @@ scripts/tier_engine.py       Score/tier 50 players  → scripts/scored_players.j
 scripts/parlay_builder.py    Build 15 parlays        → scripts/parlays.json
 scripts/generate_data_js.py  Deterministic notes     → public/data.js
 validate-data.js             Schema validation
-.github/workflows/daily-slate.yml  Orchestration (cron 9 AM ET)
+.github/workflows/daily-slate.yml  Orchestration (cron 7 AM ET / 11:00 UTC)
 ```
 
 Intermediate JSON files (`scripts/*.json`) are generated at runtime and are

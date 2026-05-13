@@ -376,12 +376,13 @@ parlays.append(make_parlay(
 ))
 
 # ── 10A: THE LOTTERY TICKET ──────────────────────────────────────────────────
-# Must include at least 2 C-tier players
+# Must include at least 2 C-tier players and always produce exactly 10 legs.
 c_picks = one_per_game(sorted(C, key=lambda x: -x["compositeScore"]))[:2]
 elite_picks = build_legs(SA_pool, 8)
-# Combine and enforce uniqueness + one-per-game
+# Start with elite + C picks, one-per-game filtered
 all_10 = one_per_game(elite_picks + c_picks)[:10]
-# Ensure 2 C-tier made it
+
+# Ensure 2 C-tier are present — replace non-C tail entries if needed
 c_in_10 = [p for p in all_10 if p["tier"] == "C"]
 while len(c_in_10) < 2 and C:
     candidate = None
@@ -396,16 +397,29 @@ while len(c_in_10) < 2 and C:
     else:
         break
 
+# Pad to exactly 10 legs from B/C pool if one-per-game filtering trimmed us short
+if len(all_10) < 10:
+    used_ids   = {p["id"]        for p in all_10}
+    used_games = {p["gameLabel"] for p in all_10}
+    for p in (B_pool + C_pool + A_pool):
+        if len(all_10) >= 10:
+            break
+        if p["id"] not in used_ids and p["gameLabel"] not in used_games:
+            all_10.append(p)
+            used_ids.add(p["id"])
+            used_games.add(p["gameLabel"])
+
 parlays.append(make_parlay(
     "10A", all_10,
-    "THE LOTTERY TICKET", "Max Risk", "#9c27b0", "+15000",
+    "THE LOTTERY TICKET", "Max Risk", "#9c27b0", "+25000",
     "Elite disaster-pitcher core plus 2 C-tier moon shots for maximum payout construction.",
-    f"Eight elite legs from the S and A-tier disaster-pitcher pool establish a premium foundation. "
+    f"Ten legs spanning the slate's top disaster-pitcher matchups form the foundation. "
     f"Two C-tier moon shots — {c_in_10[0]['playerName'] if c_in_10 else 'TBD'} "
-    f"({'odds: ' + c_in_10[0]['estOdds'] if c_in_10 else ''}) and "
-    f"{c_in_10[1]['playerName'] if len(c_in_10) > 1 else 'TBD'} — "
-    f"turn a quality nine-leg parlay into a potential five-figure payout if the longshots hit. "
-    f"Pure lottery construction: high-conviction core, maximum payout ceiling.",
+    f"({c_in_10[0]['estOdds'] if c_in_10 else ''}) and "
+    f"{c_in_10[1]['playerName'] if len(c_in_10) > 1 else 'TBD'} "
+    f"({c_in_10[1]['estOdds'] if len(c_in_10) > 1 else ''}) — "
+    f"extend this into pure lottery territory. "
+    f"Pure construction: high-conviction S/A core + maximum payout ceiling.",
 ))
 
 # ── Validate + clean output ───────────────────────────────────────────────────

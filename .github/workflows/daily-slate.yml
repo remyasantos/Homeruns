@@ -4,8 +4,10 @@ permissions:
 
 on:
   schedule:
-    # 9:00 AM ET daily (13:00 UTC) — after probable pitchers post
-    - cron: '0 13 * * *'
+    # Scheduled 7:00 AM ET (11:00 UTC). GitHub Actions runner queue typically
+    # adds 1–2 hours of delay, so this completes by ~9:00 AM ET — before the
+    # daily quality-check agent runs at 9:30 AM ET.
+    - cron: '0 11 * * *'
   workflow_dispatch:
     # Allow manual trigger from GitHub Actions UI
     inputs:

@@ -2,11 +2,23 @@
   File updated by pipeline: public/data.js
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  AUTOMATED PIPELINE (PRIMARY — runs via GitHub Actions daily at 9:00 AM ET)
+  DAILY SCHEDULE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ~7:00–9:00 AM ET  GitHub Actions pipeline  (PRIMARY data generation)
+  9:30 AM ET        Daily quality-check agent (validation + copy enhancement)
+
+The pipeline is scheduled at 7:00 AM ET (11:00 UTC). GitHub Actions runner
+queue typically adds 1–2 hours of delay, so it normally completes by ~9:00 AM
+— before the daily agent runs at 9:30 AM. The agent's job is to validate the
+pipeline's output, fix any schema warnings, and push a clean version.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  AUTOMATED PIPELINE (PRIMARY — runs via GitHub Actions daily ~7:00 AM ET)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 The site is fully automated. No Claude API tokens are consumed. The pipeline
-runs every day at 9:00 AM ET (13:00 UTC) via GitHub Actions:
+runs every day at 7:00 AM ET (11:00 UTC) via GitHub Actions:
 
   scripts/fetch_slate.py       → pulls live data from statsapi.mlb.com + wttr.in
   scripts/tier_engine.py       → scores and tiers 50 players (S/A/B/C)
