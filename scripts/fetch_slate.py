@@ -64,6 +64,10 @@ PARK_HR_RANKS = {
     "Nationals Park":                29,
     "Tropicana Field":               30,
     "Sahlen Field":                  31,
+    # Renamed/sponsored stadiums — keep in sync with MLB API responses
+    "Rate Field":                    15,   # Guaranteed Rate Field renamed 2025
+    "UNIQLO Field at Dodger Stadium": 13,  # Dodger Stadium renamed 2025
+    "Daikin Park":                   25,   # Minute Maid Park renamed (already listed above)
 }
 
 RETRACTABLE_ROOF_PARKS = {
@@ -111,6 +115,8 @@ PARK_CITY = {
     "Sutter Health Park":            "West Sacramento,CA",
     "Nationals Park":                "Washington,DC",
     "Tropicana Field":               "St. Petersburg,FL",
+    "Rate Field":                    "Chicago,IL",
+    "UNIQLO Field at Dodger Stadium": "Los Angeles,CA",
 }
 
 
@@ -223,7 +229,7 @@ def fetch_team_hr_leaders(team_id, limit=12):
             team   = sp.get("team", {})
             hr  = int(stat.get("homeRuns", 0) or 0)
             ab  = int(stat.get("atBats", 0) or 0)
-            if ab < 30:
+            if ab < 20:
                 continue  # skip bench/emergency guys
             avg  = float(stat.get("avg", 0) or 0)
             slg  = float(stat.get("slg", 0) or 0)
@@ -334,7 +340,7 @@ def main():
                            (g["homeTeamId"], g["homeTeam"])]:
             if tid not in seen_team_ids:
                 seen_team_ids.add(tid)
-                batters = fetch_team_hr_leaders(tid, limit=12)
+                batters = fetch_team_hr_leaders(tid, limit=15)
                 players_by_team[tabbr] = batters
                 top = batters[0]["playerName"] if batters else "none"
                 top_hr = batters[0]["hr"] if batters else 0
