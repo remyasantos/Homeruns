@@ -314,11 +314,14 @@ while len(b_players) < 16 and c_players:
     promoted["tier"] = "B"
     b_players.append(promoted)
 
-# Ensure enough C-tier
-while len(c_players) < 6 and b_players:
-    demoted = b_players.pop()
-    demoted["tier"] = "C"
-    c_players.insert(0, demoted)
+# Only force C-tier minimum if we actually have enough total players (50+)
+# On thin slates, B-tier players should stay B rather than be demoted to inflate C count
+total_available = len(s_players) + len(a_players) + len(b_players) + len(c_players)
+if total_available >= 50:
+    while len(c_players) < 6 and b_players:
+        demoted = b_players.pop()
+        demoted["tier"] = "C"
+        c_players.insert(0, demoted)
 
 # Cap at 50 total (take top performers in each tier)
 final_players = (

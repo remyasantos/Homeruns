@@ -463,17 +463,23 @@ for p in players:
     note        = make_player_note(p, w)
     pitcher_note = make_pitcher_note(ps, p["oppPitcherName"])
     final_players.append({
-        "id":           p["id"],
-        "name":         p["playerName"],
-        "team":         p["team"],
-        "tier":         p["tier"],
-        "park":         p["venue"],
-        "pitcher":      p["oppPitcherName"],
-        "pitcherNote":  pitcher_note,
-        "matchupGrade": p["matchupGrade"],
-        "estOdds":      p["estOdds"],
-        "note":         note,
-        "tags":         p["tags"],
+        "id":             p["id"],
+        "name":           p["playerName"],
+        "team":           p["team"],
+        "tier":           p["tier"],
+        "park":           p["venue"],
+        "pitcher":        p["oppPitcherName"],
+        "pitcherNote":    pitcher_note,
+        "matchupGrade":   p["matchupGrade"],
+        "estOdds":        p["estOdds"],
+        "note":           note,
+        "tags":           p["tags"],
+        # Raw stats — used by the player leaderboard in the UI
+        "hr":             p.get("hr", 0),
+        "ops":            p.get("ops", 0),
+        "iso":            round(p.get("iso", 0), 3),
+        "avg":            p.get("avg", 0),
+        "compositeScore": p.get("compositeScore", 0),
     })
 
 print(f"  ✓ {len(final_players)} player notes")
@@ -505,7 +511,8 @@ lines = []
 # TEAM_TO_GAME
 lines.append("const TEAM_TO_GAME = {")
 for k, v in team_to_game.items():
-    lines.append(f"  {k}:  {js_str(v)},")
+    pad = " " if len(k) < 3 else ""
+    lines.append(f"  {k}:{pad}  {js_str(v)},")
 lines.append("};")
 lines.append("")
 
@@ -542,17 +549,22 @@ for i, p in enumerate(final_players):
     comma = "," if i < len(final_players) - 1 else ""
     tags_js = json.dumps(p["tags"])
     lines.append("  {")
-    lines.append(f'    id:            {p["id"]},')
-    lines.append(f'    name:          {js_str(p["name"])},')
-    lines.append(f'    team:          {js_str(p["team"])},')
-    lines.append(f'    tier:          {js_str(p["tier"])},')
-    lines.append(f'    park:          {js_str(p["park"])},')
-    lines.append(f'    pitcher:       {js_str(p["pitcher"])},')
-    lines.append(f'    pitcherNote:   {js_str(p["pitcherNote"])},')
-    lines.append(f'    matchupGrade:  {js_str(p["matchupGrade"])},')
-    lines.append(f'    estOdds:       {js_str(p["estOdds"])},')
-    lines.append(f'    note:          {js_str(p["note"])},')
-    lines.append(f'    tags:          {tags_js},')
+    lines.append(f'    id:             {p["id"]},')
+    lines.append(f'    name:           {js_str(p["name"])},')
+    lines.append(f'    team:           {js_str(p["team"])},')
+    lines.append(f'    tier:           {js_str(p["tier"])},')
+    lines.append(f'    park:           {js_str(p["park"])},')
+    lines.append(f'    pitcher:        {js_str(p["pitcher"])},')
+    lines.append(f'    pitcherNote:    {js_str(p["pitcherNote"])},')
+    lines.append(f'    matchupGrade:   {js_str(p["matchupGrade"])},')
+    lines.append(f'    estOdds:        {js_str(p["estOdds"])},')
+    lines.append(f'    note:           {js_str(p["note"])},')
+    lines.append(f'    tags:           {tags_js},')
+    lines.append(f'    hr:             {p["hr"]},')
+    lines.append(f'    ops:            {p["ops"]},')
+    lines.append(f'    iso:            {p["iso"]},')
+    lines.append(f'    avg:            {p["avg"]},')
+    lines.append(f'    compositeScore: {p["compositeScore"]},')
     lines.append(f"  }}{comma}")
 lines.append("];")
 lines.append("")

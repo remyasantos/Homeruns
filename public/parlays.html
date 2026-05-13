@@ -61,11 +61,271 @@
   }
   .header-rule span { color: #ff3b3b; font-weight: 500; }
 
+  /* ── SECTION HEADER ── */
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 20px 20px 10px;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+  .section-title {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 20px;
+    letter-spacing: 3px;
+    color: #fff;
+  }
+  .section-meta {
+    font-size: 9px;
+    color: #444;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  /* ── BEST HR BETS TODAY ── */
+  .bets-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 10px;
+    padding: 0 20px 4px;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+  .bet-card {
+    background: #111118;
+    border: 1px solid #222;
+    border-left: 3px solid #333;
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .bet-card.tier-s { border-left-color: #ffd700; }
+  .bet-card.tier-a { border-left-color: #4caf50; }
+  .bet-card.tier-b { border-left-color: #64b5f6; }
+  .bet-card.tier-c { border-left-color: #ce93d8; }
+  .bet-card.hidden  { display: none; }
+
+  .bet-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .bet-rank {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 20px;
+    color: #2a2a38;
+    line-height: 1;
+    flex-shrink: 0;
+    width: 26px;
+    text-align: right;
+  }
+  .bet-name-col { flex: 1; min-width: 0; }
+  .bet-name {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 16px;
+    letter-spacing: 1.5px;
+    color: #fff;
+    line-height: 1.1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bet-sub {
+    display: flex;
+    gap: 5px;
+    margin-top: 3px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .bet-team-chip {
+    font-size: 9px;
+    color: #555;
+    letter-spacing: 0.5px;
+    padding: 1px 5px;
+    background: #1a1a24;
+    border: 1px solid #2a2a38;
+    border-radius: 3px;
+  }
+  .bet-odds {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 22px;
+    color: #4caf50;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  .bet-matchup {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .grade-badge {
+    font-size: 10px;
+    font-weight: 500;
+    padding: 1px 6px;
+    border-radius: 3px;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+  }
+  .grade-Aplus  { background: #142800; color: #8bc34a; border: 1px solid #8bc34a33; }
+  .grade-A      { background: #0a2a0a; color: #4caf50; border: 1px solid #4caf5033; }
+  .grade-Aminus { background: #0a2a0a; color: #66bb6a; border: 1px solid #66bb6a33; }
+  .grade-Bplus  { background: #0a1a2a; color: #64b5f6; border: 1px solid #64b5f633; }
+  .grade-B      { background: #0a1a2a; color: #42a5f5; border: 1px solid #42a5f533; }
+  .grade-Bminus { background: #0a1a2a; color: #90caf9; border: 1px solid #90caf933; }
+  .grade-Cplus  { background: #1a1a24; color: #aaa;    border: 1px solid #aaa3; }
+  .grade-C      { background: #1a1a24; color: #888;    border: 1px solid #8883; }
+
+  .bet-pitcher {
+    font-size: 10px;
+    color: #555;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .bet-stats {
+    display: flex;
+    gap: 14px;
+  }
+  .bet-stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .bet-stat-val {
+    font-size: 14px;
+    font-weight: 500;
+    color: #e0e0e0;
+    line-height: 1;
+  }
+  .bet-stat-val.dim { color: #555; }
+  .bet-stat-lbl {
+    font-size: 8px;
+    color: #444;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .bet-tags {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .bet-tag {
+    font-size: 9px;
+    padding: 1px 5px;
+    background: #1a1a2a;
+    border: 1px solid #2a2a3a;
+    border-radius: 3px;
+    color: #555;
+  }
+
+  .bet-pitcher-note {
+    font-size: 9px;
+    color: #3a3a50;
+    line-height: 1.5;
+    padding-top: 6px;
+    border-top: 1px solid #1a1a24;
+  }
+
+  .bet-note-btn {
+    background: none;
+    border: none;
+    color: #333;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 0;
+    text-align: left;
+    transition: color 0.15s;
+  }
+  .bet-note-btn:hover { color: #ff9800; }
+  .bet-note-text {
+    display: none;
+    font-size: 9px;
+    color: #666;
+    line-height: 1.6;
+    margin-top: 4px;
+  }
+  .bet-note-text.open { display: block; }
+
+  .show-more-row {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: center;
+    padding: 6px 0 14px;
+  }
+  .show-more-btn {
+    background: #111118;
+    border: 1px solid #2a2a38;
+    color: #444;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 9px 24px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .show-more-btn:hover { border-color: #ff9800; color: #ff9800; }
+
+  /* ── KEY CONTEXTS ── */
+  .context-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 10px;
+    padding: 0 20px 4px;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+  .ctx-card {
+    background: #111118;
+    border: 1px solid #222;
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .ctx-icon { font-size: 18px; flex-shrink: 0; line-height: 1.4; padding-top: 1px; }
+  .ctx-body { min-width: 0; flex: 1; }
+  .ctx-label {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 13px;
+    letter-spacing: 1.5px;
+    color: #fff;
+    line-height: 1.2;
+    word-break: break-word;
+  }
+  .ctx-note {
+    font-size: 10px;
+    color: #ff9800;
+    letter-spacing: 0.5px;
+    margin-top: 3px;
+    line-height: 1.3;
+  }
+  .ctx-sub {
+    font-size: 9px;
+    color: #555;
+    line-height: 1.5;
+    margin-top: 6px;
+  }
+
   /* ── FILTERS ── */
   .filters-bar {
-    background: #111118;
-    border-bottom: 1px solid #222;
-    padding: 14px 24px;
+    background: #0d0d14;
+    border-top: 1px solid #1a1a24;
+    border-bottom: 1px solid #1a1a24;
+    padding: 12px 20px;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -75,25 +335,25 @@
     z-index: 100;
   }
   .filter-label {
-    font-size: 10px;
-    color: #666;
+    font-size: 9px;
+    color: #444;
     letter-spacing: 2px;
     text-transform: uppercase;
     white-space: nowrap;
   }
   .filter-group {
     display: flex;
-    gap: 6px;
+    gap: 5px;
     flex-wrap: wrap;
     flex: 1;
   }
   .filter-btn {
-    background: #1a1a24;
-    border: 1px solid #333;
-    color: #aaa;
+    background: #111118;
+    border: 1px solid #222;
+    color: #555;
     font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    padding: 6px 14px;
+    font-size: 10px;
+    padding: 5px 12px;
     border-radius: 4px;
     cursor: pointer;
     letter-spacing: 1px;
@@ -113,37 +373,35 @@
     color: #fff;
   }
   .filter-btn.top5-btn:hover { border-color: #ff3b3b; color: #ff3b3b; }
-
   .count-badge {
     margin-left: auto;
-    font-size: 10px;
-    color: #555;
+    font-size: 9px;
+    color: #444;
     letter-spacing: 1px;
     white-space: nowrap;
   }
   .count-badge em { color: #ff9800; font-style: normal; }
 
-  /* ── GRID ── */
+  /* ── PARLAY GRID ── */
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-    gap: 16px;
-    padding: 20px 20px 40px;
+    gap: 14px;
+    padding: 0 20px 40px;
     max-width: 1600px;
     margin: 0 auto;
   }
 
-  /* ── CARD ── */
+  /* ── PARLAY CARD ── */
   .card {
     background: #111118;
-    border: 1px solid #222;
+    border: 1px solid #1e1e2e;
     border-radius: 10px;
     overflow: hidden;
     transition: transform 0.15s, box-shadow 0.15s;
-    position: relative;
   }
   .card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
-  .card.top5 { border-color: #ff3b3b; box-shadow: 0 0 0 1px #ff3b3b22, 0 4px 20px rgba(255,59,59,0.15); }
+  .card.top5 { border-color: #ff3b3b44; box-shadow: 0 0 0 1px #ff3b3b22, 0 4px 20px rgba(255,59,59,0.1); }
 
   .card-header {
     padding: 14px 16px 10px;
@@ -155,15 +413,22 @@
   .card-title-col { flex: 1; min-width: 0; }
   .card-name {
     font-family: 'Bebas Neue', cursive;
-    font-size: 20px;
+    font-size: 19px;
     letter-spacing: 2px;
     line-height: 1;
     color: #fff;
   }
+  .card-desc {
+    font-size: 9px;
+    color: #444;
+    letter-spacing: 0.3px;
+    margin-top: 4px;
+    line-height: 1.4;
+  }
   .card-meta {
     display: flex;
-    gap: 6px;
-    margin-top: 5px;
+    gap: 5px;
+    margin-top: 7px;
     align-items: center;
     flex-wrap: wrap;
   }
@@ -173,20 +438,24 @@
     letter-spacing: 1px;
     padding: 2px 8px;
     border-radius: 3px;
-    background: #1e1e2e;
-    color: #aaa;
-    border: 1px solid #333;
+    background: #1a1a2a;
+    color: #666;
+    border: 1px solid #2a2a38;
+  }
+  .risk-badge {
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    border: 1px solid transparent;
+    letter-spacing: 0.3px;
   }
   .top5-badge {
-    font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 1px;
-    padding: 2px 8px;
+    font-size: 9px;
+    padding: 2px 7px;
     border-radius: 3px;
     background: #ff3b3b;
     color: #fff;
     display: none;
-    border: none;
   }
   .card.top5 .top5-badge { display: inline-block; }
 
@@ -200,47 +469,46 @@
   }
   .payout-label {
     font-size: 9px;
-    color: #555;
+    color: #444;
     letter-spacing: 2px;
     text-transform: uppercase;
-    text-align: right;
   }
 
-  /* ── PLAYERS SECTION ── */
-  .card-body { padding: 12px 16px; }
+  /* ── PLAYER ROWS ── */
+  .card-body { padding: 10px 14px; }
+  .players-list { display: flex; flex-direction: column; gap: 5px; }
+  .player-row { display: flex; align-items: center; gap: 6px; }
 
-  .players-list { display: flex; flex-direction: column; gap: 6px; }
-  .player-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
   .game-tag {
     font-size: 9px;
-    color: #555;
-    letter-spacing: 1px;
-    width: 82px;
+    color: #444;
+    letter-spacing: 0.5px;
+    width: 80px;
     flex-shrink: 0;
     text-align: right;
-    padding-right: 4px;
-    border-right: 1px solid #2a2a38;
+    padding-right: 6px;
+    border-right: 1px solid #1e1e2e;
   }
   .player-pill {
     display: flex;
     align-items: center;
     gap: 5px;
-    background: #18181f;
-    border: 1px solid #2a2a38;
+    background: #0e0e18;
+    border: 1px solid #1e1e2e;
     border-radius: 20px;
     padding: 3px 10px 3px 8px;
     flex: 1;
     min-width: 0;
+    position: relative;
+    cursor: default;
   }
+  .player-pill:hover { border-color: #2e2e48; }
+  .player-pill:hover .pill-tooltip { display: block; }
+
   .pill-name {
     font-size: 12px;
     font-weight: 500;
-    color: #e0e0e0;
+    color: #ccc;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -254,10 +522,18 @@
     flex-shrink: 0;
     letter-spacing: 0.5px;
   }
-  .tier-S { background: #2a2000; color: #ffd700; border: 1px solid #ffd70033; }
-  .tier-A { background: #0a2a0a; color: #4caf50; border: 1px solid #4caf5033; }
-  .tier-B { background: #0a1a2a; color: #64b5f6; border: 1px solid #64b5f633; }
-  .tier-C { background: #1a0a2a; color: #ce93d8; border: 1px solid #ce93d833; }
+  .tier-S { background: #2a2000; color: #ffd700; border: 1px solid #ffd70044; }
+  .tier-A { background: #0a2000; color: #4caf50; border: 1px solid #4caf5044; }
+  .tier-B { background: #001a2a; color: #64b5f6; border: 1px solid #64b5f644; }
+  .tier-C { background: #1a0a2a; color: #ce93d8; border: 1px solid #ce93d844; }
+
+  .pill-grade {
+    font-size: 9px;
+    color: #3a3a50;
+    flex-shrink: 0;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
   .pill-odds {
     font-size: 11px;
     color: #ff9800;
@@ -265,18 +541,36 @@
     flex-shrink: 0;
     white-space: nowrap;
   }
+  .pill-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 5px);
+    left: 0;
+    right: 0;
+    background: #12121e;
+    border: 1px solid #2a2a3a;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 9px;
+    color: #777;
+    line-height: 1.5;
+    z-index: 50;
+    pointer-events: none;
+    white-space: normal;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.7);
+  }
 
   /* ── GAMES COVERED ── */
   .games-covered {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
-    padding: 10px 16px;
+    padding: 8px 14px;
     border-top: 1px solid #1a1a24;
   }
   .games-label {
-    font-size: 9px;
-    color: #555;
+    font-size: 8px;
+    color: #333;
     letter-spacing: 2px;
     text-transform: uppercase;
     width: 100%;
@@ -284,26 +578,26 @@
   }
   .game-chip {
     font-size: 9px;
-    padding: 2px 7px;
-    background: #1a1a2a;
-    border: 1px solid #2a2a3a;
+    padding: 2px 6px;
+    background: #0e0e18;
+    border: 1px solid #1e1e2e;
     border-radius: 3px;
-    color: #666;
+    color: #444;
     letter-spacing: 0.5px;
   }
 
-  /* ── STRATEGY SECTION ── */
+  /* ── STRATEGY TOGGLE ── */
   .strategy-toggle {
     width: 100%;
     background: none;
     border: none;
     border-top: 1px solid #1a1a24;
-    color: #555;
+    color: #333;
     font-family: 'DM Mono', monospace;
-    font-size: 10px;
+    font-size: 9px;
     letter-spacing: 2px;
     text-transform: uppercase;
-    padding: 10px 16px;
+    padding: 9px 14px;
     cursor: pointer;
     text-align: left;
     display: flex;
@@ -311,15 +605,15 @@
     justify-content: space-between;
     transition: color 0.15s;
   }
-  .strategy-toggle:hover { color: #aaa; }
+  .strategy-toggle:hover { color: #888; }
   .strategy-toggle .arrow { transition: transform 0.2s; }
   .strategy-toggle.open .arrow { transform: rotate(180deg); }
   .strategy-body {
     display: none;
-    padding: 12px 16px;
+    padding: 10px 14px;
     border-top: 1px solid #1a1a24;
-    font-size: 11px;
-    color: #888;
+    font-size: 10px;
+    color: #666;
     line-height: 1.7;
   }
   .strategy-body.open { display: block; }
@@ -329,63 +623,28 @@
     grid-column: 1 / -1;
     text-align: center;
     padding: 60px 20px;
-    color: #444;
-    font-size: 13px;
+    color: #333;
+    font-size: 12px;
     letter-spacing: 2px;
     text-transform: uppercase;
   }
 
-  /* ── CONTEXT CARDS ── */
-  .context-strip {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 12px;
-    padding: 16px 20px;
-    max-width: 1600px;
-    margin: 0 auto;
-    border-bottom: 1px solid #1a1a24;
-  }
-  .ctx-card {
-    background: #111118;
-    border: 1px solid #222;
-    border-radius: 8px;
-    padding: 12px 14px;
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-  }
-  .ctx-icon { font-size: 20px; flex-shrink: 0; line-height: 1.3; }
-  .ctx-body { min-width: 0; }
-  .ctx-label {
-    font-family: 'Bebas Neue', cursive;
-    font-size: 14px;
-    letter-spacing: 1.5px;
-    color: #fff;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .ctx-note {
-    font-size: 10px;
-    color: #ff9800;
-    letter-spacing: 1px;
-    margin-top: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .ctx-sub {
-    font-size: 10px;
-    color: #666;
-    line-height: 1.5;
-    margin-top: 5px;
+  /* ── DIVIDER ── */
+  .page-divider {
+    border: none;
+    border-top: 1px solid #1a1a24;
+    margin: 4px 20px;
+    max-width: 1560px;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   /* ── RESPONSIVE ── */
-  @media (max-width: 500px) {
-    .grid { padding: 12px 12px 40px; gap: 12px; }
+  @media (max-width: 600px) {
+    .grid { padding: 0 12px 40px; gap: 10px; }
     .filters-bar { padding: 10px 12px; }
-    .context-strip { padding: 12px; gap: 8px; }
+    .bets-grid, .context-strip { padding: 0 12px 4px; }
+    .section-header { padding: 14px 12px 8px; }
   }
 </style>
 </head>
@@ -400,34 +659,159 @@
   </div>
 </div>
 
-<div class="context-strip" id="contextStrip">
-  <!-- Injected by JS -->
+<div class="section-header">
+  <div class="section-title">⚡ BEST HR BETS TODAY</div>
+  <div class="section-meta" id="betsCount"></div>
+</div>
+<div class="bets-grid" id="betsGrid"></div>
+
+<hr class="page-divider" />
+
+<div class="section-header">
+  <div class="section-title">📋 KEY CONTEXTS</div>
+  <div class="section-meta">TODAY'S TOP HR ENVIRONMENTS</div>
+</div>
+<div class="context-strip" id="contextStrip"></div>
+
+<hr class="page-divider" style="margin-top:14px" />
+
+<div class="section-header">
+  <div class="section-title">🎯 PARLAY BOARD</div>
+  <div class="section-meta">ONE PLAYER PER GAME · NO SAME-GAME STACKING</div>
 </div>
 
 <div class="filters-bar">
   <div class="filter-label">LEGS</div>
   <div class="filter-group" id="legFilters">
     <button class="filter-btn active" data-legs="all">ALL</button>
-    <button class="filter-btn" data-legs="4">4-LEG</button>
-    <button class="filter-btn" data-legs="5">5-LEG</button>
-    <button class="filter-btn" data-legs="6">6-LEG</button>
-    <button class="filter-btn" data-legs="7">7-LEG</button>
-    <button class="filter-btn" data-legs="8">8-LEG</button>
-    <button class="filter-btn" data-legs="9">9-LEG</button>
-    <button class="filter-btn" data-legs="10">10-LEG</button>
+    <button class="filter-btn" data-legs="4">4</button>
+    <button class="filter-btn" data-legs="5">5</button>
+    <button class="filter-btn" data-legs="6">6</button>
+    <button class="filter-btn" data-legs="7">7</button>
+    <button class="filter-btn" data-legs="8">8</button>
+    <button class="filter-btn" data-legs="9">9</button>
+    <button class="filter-btn" data-legs="10">10</button>
   </div>
-  <button class="filter-btn top5-btn" id="top5Filter" data-top5="false">🔴 TOP 5 ONLY</button>
+  <button class="filter-btn top5-btn" id="top5Filter" data-top5="false">🔴 TOP 5</button>
   <div class="count-badge">SHOWING <em id="visibleCount">15</em> / <span id="totalCount">15</span></div>
 </div>
 
-<div class="grid" id="grid">
-  <!-- Cards injected by JS -->
-</div>
+<div class="grid" id="grid"></div>
 
 <script>
-// ─── PARLAY DEFINITIONS ──────────────────────────────────────────────────────
-// Sourced from parlays const in data.js — do not edit here, edit data.js instead
+// ── Helpers
+function gradeClass(g) {
+  return 'grade-' + (g || 'B').replace('+', 'plus').replace('-', 'minus');
+}
 
+function getPlayerById(id) {
+  return players.find(p => p.id === id);
+}
+
+function getGame(p) {
+  return TEAM_TO_GAME[p.team] || p.team;
+}
+
+// ── Best HR Bets Today
+function renderBets() {
+  const grid = document.getElementById('betsGrid');
+  const tier_order = { S: 0, A: 1, B: 2, C: 3 };
+  const sorted = [...players].sort((a, b) => {
+    if (tier_order[a.tier] !== tier_order[b.tier]) return tier_order[a.tier] - tier_order[b.tier];
+    return (b.compositeScore || 0) - (a.compositeScore || 0);
+  });
+
+  const primary   = sorted.filter(p => p.tier === 'S' || p.tier === 'A');
+  const secondary = sorted.filter(p => p.tier === 'B' || p.tier === 'C');
+  document.getElementById('betsCount').textContent =
+    `${primary.length} S+A TIER · ${secondary.length} B+C TIER`;
+
+  function makeCard(p, rank) {
+    const game    = getGame(p);
+    const tierCls = 'tier-' + p.tier.toLowerCase();
+    const hidden  = (p.tier === 'B' || p.tier === 'C') ? ' hidden' : '';
+    const gCls    = gradeClass(p.matchupGrade);
+    const hr      = p.hr  !== undefined ? p.hr  : '—';
+    const ops     = p.ops !== undefined ? p.ops.toFixed(3) : '—';
+    const iso     = p.iso !== undefined ? p.iso.toFixed(3) : '—';
+    const hrDim   = hr === 0 || hr === '—';
+    return `
+<div class="bet-card ${tierCls}${hidden}" data-tier="${p.tier}">
+  <div class="bet-top">
+    <div class="bet-rank">${rank}</div>
+    <div class="bet-name-col">
+      <div class="bet-name" title="${p.name}">${p.name}</div>
+      <div class="bet-sub">
+        <span class="pill-tier tier-${p.tier}">${p.tier}</span>
+        <span class="bet-team-chip">${p.team} · ${game}</span>
+      </div>
+    </div>
+    <div class="bet-odds">${p.estOdds}</div>
+  </div>
+  <div class="bet-matchup">
+    <span class="grade-badge ${gCls}">${p.matchupGrade}</span>
+    <span class="bet-pitcher" title="${p.pitcher}">vs ${p.pitcher}</span>
+  </div>
+  <div class="bet-stats">
+    <div class="bet-stat-item">
+      <div class="bet-stat-val${hrDim ? ' dim' : ''}">${hr}</div>
+      <div class="bet-stat-lbl">HR</div>
+    </div>
+    <div class="bet-stat-item">
+      <div class="bet-stat-val">${ops}</div>
+      <div class="bet-stat-lbl">OPS</div>
+    </div>
+    <div class="bet-stat-item">
+      <div class="bet-stat-val">${iso}</div>
+      <div class="bet-stat-lbl">ISO</div>
+    </div>
+  </div>
+  <div class="bet-tags">${(p.tags || []).map(t => `<span class="bet-tag">${t}</span>`).join('')}</div>
+  <div class="bet-pitcher-note">${p.pitcherNote}</div>
+  <button class="bet-note-btn" onclick="toggleBetNote(this)">+ ANALYSIS</button>
+  <div class="bet-note-text">${p.note}</div>
+</div>`;
+  }
+
+  grid.innerHTML = sorted.map((p, i) => makeCard(p, i + 1)).join('') + `
+<div class="show-more-row">
+  <button class="show-more-btn" id="showMoreBtn" onclick="toggleMoreBets(this)">
+    SHOW B + C TIER (${secondary.length} MORE) ▼
+  </button>
+</div>`;
+}
+
+function toggleBetNote(btn) {
+  const txt = btn.nextElementSibling;
+  txt.classList.toggle('open');
+  btn.textContent = txt.classList.contains('open') ? '− ANALYSIS' : '+ ANALYSIS';
+}
+
+function toggleMoreBets(btn) {
+  const bcCards = [...document.querySelectorAll('#betsGrid [data-tier="B"], #betsGrid [data-tier="C"]')];
+  const showing = btn.textContent.trim().startsWith('SHOW');
+  bcCards.forEach(c => c.classList.toggle('hidden', !showing));
+  btn.textContent = showing
+    ? 'HIDE B + C TIER ▲'
+    : `SHOW B + C TIER (${bcCards.length} MORE) ▼`;
+}
+
+// ── Key Contexts
+function renderContextCards() {
+  const strip = document.getElementById('contextStrip');
+  if (!strip || typeof CONTEXT_CARDS === 'undefined') return;
+  strip.innerHTML = CONTEXT_CARDS.map(c => `
+<div class="ctx-card">
+  <div class="ctx-icon">${c.icon}</div>
+  <div class="ctx-body">
+    <div class="ctx-label">${c.label}</div>
+    <div class="ctx-note">${c.note}</div>
+    <div class="ctx-sub">${c.sub}</div>
+  </div>
+</div>`).join('');
+}
+
+// ── Parlay board
 const top5Ids = new Set(["4A", "5A", "6B", "8A", "9A"]);
 const PARLAYS = parlays.map(p => ({
   id: p.id,
@@ -435,19 +819,12 @@ const PARLAYS = parlays.map(p => ({
   name: p.label,
   top5: top5Ids.has(p.id),
   estPayout: p.estPayout,
+  risk: p.risk,
+  riskColor: p.riskColor,
+  description: p.description,
   playerIds: p.playerIds,
   strategy: p.strategy,
 }));
-
-// ─── BUILD UI ───────────────────────────────────────────────────────────────
-
-function getPlayerById(id) {
-  return players.find(p => p.id === id);
-}
-
-function getGame(player) {
-  return TEAM_TO_GAME[player.team] || player.team;
-}
 
 function buildCard(parlay) {
   const card = document.createElement('div');
@@ -455,57 +832,58 @@ function buildCard(parlay) {
   card.dataset.legs = parlay.legs;
   card.dataset.top5 = parlay.top5 ? '1' : '0';
 
-  // Look up players
   const playerObjects = parlay.playerIds.map(id => {
     const p = getPlayerById(id);
+    if (!p) return null;
     return { ...p, game: getGame(p) };
-  });
+  }).filter(Boolean);
 
   const gamesSet = [...new Set(playerObjects.map(p => p.game))];
+  const riskStyle = `color:${parlay.riskColor};border-color:${parlay.riskColor}33;background:${parlay.riskColor}11`;
 
   card.innerHTML = `
-    <div class="card-header">
-      <div class="card-title-col">
-        <div class="card-name">${parlay.name}</div>
-        <div class="card-meta">
-          <span class="leg-badge">${parlay.legs}-LEG</span>
-          <span class="top5-badge">🔴 TOP 5</span>
-        </div>
-      </div>
-      <div class="payout-col">
-        <div class="payout-value">${parlay.estPayout}</div>
-        <div class="payout-label">Est. Payout</div>
-      </div>
+<div class="card-header">
+  <div class="card-title-col">
+    <div class="card-name">${parlay.name}</div>
+    <div class="card-desc">${parlay.description || ''}</div>
+    <div class="card-meta">
+      <span class="leg-badge">${parlay.legs}-LEG</span>
+      <span class="risk-badge" style="${riskStyle}">${parlay.risk}</span>
+      <span class="top5-badge">🔴 TOP 5</span>
     </div>
+  </div>
+  <div class="payout-col">
+    <div class="payout-value">${parlay.estPayout}</div>
+    <div class="payout-label">Est. Payout</div>
+  </div>
+</div>
 
-    <div class="card-body">
-      <div class="players-list">
-        ${playerObjects.map(p => `
-          <div class="player-row">
-            <div class="game-tag">${p.game}</div>
-            <div class="player-pill">
-              <span class="pill-name">${p.name}</span>
-              <span class="pill-tier tier-${p.tier}">${p.tier}</span>
-              <span class="pill-odds">${p.estOdds}</span>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
+<div class="card-body">
+  <div class="players-list">
+    ${playerObjects.map(p => `
+<div class="player-row">
+  <div class="game-tag">${p.game}</div>
+  <div class="player-pill">
+    <span class="pill-name">${p.name}</span>
+    <span class="pill-tier tier-${p.tier}">${p.tier}</span>
+    <span class="pill-grade">${p.matchupGrade}</span>
+    <span class="pill-odds">${p.estOdds}</span>
+    <div class="pill-tooltip">${p.pitcherNote}</div>
+  </div>
+</div>`).join('')}
+  </div>
+</div>
 
-    <div class="games-covered">
-      <div class="games-label">Games Covered</div>
-      ${gamesSet.map(g => `<span class="game-chip">${g}</span>`).join('')}
-    </div>
+<div class="games-covered">
+  <div class="games-label">Games Covered</div>
+  ${gamesSet.map(g => `<span class="game-chip">${g}</span>`).join('')}
+</div>
 
-    <button class="strategy-toggle" onclick="toggleStrategy(this)">
-      <span>SHOW STRATEGY</span>
-      <span class="arrow">▼</span>
-    </button>
-    <div class="strategy-body">
-      ${parlay.strategy}
-    </div>
-  `;
+<button class="strategy-toggle" onclick="toggleStrategy(this)">
+  <span>SHOW STRATEGY</span>
+  <span class="arrow">▼</span>
+</button>
+<div class="strategy-body">${parlay.strategy}</div>`;
 
   return card;
 }
@@ -514,7 +892,8 @@ function toggleStrategy(btn) {
   btn.classList.toggle('open');
   const body = btn.nextElementSibling;
   body.classList.toggle('open');
-  btn.querySelector('span:first-child').textContent = body.classList.contains('open') ? 'HIDE STRATEGY' : 'SHOW STRATEGY';
+  btn.querySelector('span:first-child').textContent =
+    body.classList.contains('open') ? 'HIDE STRATEGY' : 'SHOW STRATEGY';
 }
 
 function renderAll() {
@@ -525,22 +904,21 @@ function renderAll() {
 }
 
 function updateCount() {
-  const visible = document.querySelectorAll('#grid .card:not([style*="display: none"])').length;
+  const visible = [...document.querySelectorAll('#grid .card')].filter(c => c.style.display !== 'none').length;
   document.getElementById('visibleCount').textContent = visible;
   document.getElementById('totalCount').textContent = PARLAYS.length;
 }
 
 function applyFilters() {
   const activeLeg = document.querySelector('[data-legs].active')?.dataset.legs || 'all';
-  const top5Only = document.getElementById('top5Filter').dataset.top5 === 'true';
+  const top5Only  = document.getElementById('top5Filter').dataset.top5 === 'true';
 
   document.querySelectorAll('#grid .card').forEach(card => {
-    const legMatch = activeLeg === 'all' || card.dataset.legs === activeLeg;
+    const legMatch  = activeLeg === 'all' || card.dataset.legs === activeLeg;
     const top5Match = !top5Only || card.dataset.top5 === '1';
     card.style.display = legMatch && top5Match ? '' : 'none';
   });
 
-  // Empty state
   const grid = document.getElementById('grid');
   const existing = grid.querySelector('.empty-state');
   if (existing) existing.remove();
@@ -552,11 +930,10 @@ function applyFilters() {
     em.textContent = 'NO PARLAYS MATCH FILTERS';
     grid.appendChild(em);
   }
-
   document.getElementById('visibleCount').textContent = visible;
 }
 
-// ── Leg filter buttons
+// ── Leg filter
 document.getElementById('legFilters').addEventListener('click', e => {
   if (!e.target.matches('[data-legs]')) return;
   document.querySelectorAll('[data-legs]').forEach(b => b.classList.remove('active'));
@@ -572,24 +949,9 @@ document.getElementById('top5Filter').addEventListener('click', function() {
   applyFilters();
 });
 
-// ── Context cards
-function renderContextCards() {
-  const strip = document.getElementById('contextStrip');
-  if (!strip || typeof CONTEXT_CARDS === 'undefined') return;
-  strip.innerHTML = CONTEXT_CARDS.map(c => `
-    <div class="ctx-card">
-      <div class="ctx-icon">${c.icon}</div>
-      <div class="ctx-body">
-        <div class="ctx-label" title="${c.label}">${c.label}</div>
-        <div class="ctx-note">${c.note}</div>
-        <div class="ctx-sub">${c.sub}</div>
-      </div>
-    </div>
-  `).join('');
-}
-
 // ── Init
 document.getElementById('headerDate').textContent = SLATE_DATE + ' · ' + SLATE_LABEL;
+renderBets();
 renderContextCards();
 renderAll();
 </script>
