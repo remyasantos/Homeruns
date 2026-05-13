@@ -91,6 +91,24 @@ def build_legs(pool, n):
     return one_per_game(pool)[:n]
 
 
+def pad_to(legs_list, n, *fallback_pools):
+    """Pad legs_list up to n using fallback_pools in order, preserving one-per-game."""
+    result = list(legs_list)
+    used_ids   = {p["id"]        for p in result}
+    used_games = {p["gameLabel"] for p in result}
+    for pool in fallback_pools:
+        if len(result) >= n:
+            break
+        for p in pool:
+            if len(result) >= n:
+                break
+            if p["id"] not in used_ids and p["gameLabel"] not in used_games:
+                result.append(p)
+                used_ids.add(p["id"])
+                used_games.add(p["gameLabel"])
+    return result
+
+
 def make_parlay(parlay_id, legs_list, label, risk, risk_color, payout_str, description, strategy):
     """Create a validated parlay dict."""
     # Enforce one-per-game
@@ -126,7 +144,7 @@ def has_wind(p):
 hot_players = one_per_game(sorted(S + A, key=lambda x: -x["compositeScore"]))
 
 # ── 4A: THE CORE FOUR ─────────────────────────────────────────────────────────
-core_4 = build_legs(S_pool, 4)
+core_4 = pad_to(build_legs(S_pool, 4), 4, A_pool)
 parlays.append(make_parlay(
     "4A", core_4,
     "THE CORE FOUR", "Lower Risk", "#4caf50", "+800",
@@ -166,7 +184,7 @@ parlays.append(make_parlay(
 ))
 
 # ── 5A: THE HIGH FIVE ─────────────────────────────────────────────────────────
-hi5 = build_legs(SA_pool, 5)
+hi5 = pad_to(build_legs(SA_pool, 5), 5, B_pool)
 parlays.append(make_parlay(
     "5A", hi5,
     "THE HIGH FIVE", "Lower Risk", "#4caf50", "+1800",
@@ -253,7 +271,7 @@ parlays.append(make_parlay(
 ))
 
 # ── 7A: THE ELITE SEVEN ──────────────────────────────────────────────────────
-elite_7 = build_legs(SA_pool, 7)
+elite_7 = pad_to(build_legs(SA_pool, 7), 7, B_pool)
 parlays.append(make_parlay(
     "7A", elite_7,
     "THE ELITE SEVEN", "Medium Risk", "#ff9800", "+4000",
@@ -266,11 +284,14 @@ parlays.append(make_parlay(
 # ── 7B: WIND CHASERS / PARK TOUR ─────────────────────────────────────────────
 wind_players = [p for p in players if has_wind(p)]
 if len(wind_players) >= 4:
-    wind_7 = one_per_game(sorted(wind_players, key=lambda x: -x["compositeScore"]))[:7]
+    wind_7 = pad_to(
+        one_per_game(sorted(wind_players, key=lambda x: -x["compositeScore"]))[:7],
+        7, SA_pool, B_pool
+    )
     label_7b = "THE WIND CHASERS"
     desc_7b  = "Stack every wind-boosted park with 10+ mph favorable wind on today's slate."
 else:
-    wind_7 = build_legs(SAB_pool, 7)
+    wind_7 = pad_to(build_legs(SAB_pool, 7), 7, C_pool)
     label_7b = "THE OUTDOOR POWER PARKS"
     desc_7b  = "Best outdoor park HR contexts across today's full slate in seven legs."
 
@@ -284,7 +305,10 @@ parlays.append(make_parlay(
 ))
 
 # ── 7C: THE HOT HAND ─────────────────────────────────────────────────────────
-hot_7 = build_legs(one_per_game(sorted(S + A, key=lambda x: -x["compositeScore"])), 7)
+hot_7 = pad_to(
+    build_legs(one_per_game(sorted(S + A, key=lambda x: -x["compositeScore"])), 7),
+    7, B_pool
+)
 parlays.append(make_parlay(
     "7C", hot_7,
     "THE HOT HAND", "Medium Risk", "#ff9800", "+5000",
@@ -295,7 +319,7 @@ parlays.append(make_parlay(
 ))
 
 # ── 8A: THE SLUGGER SUMMIT ───────────────────────────────────────────────────
-summit_8 = build_legs(SA_pool, 8)
+summit_8 = pad_to(build_legs(SA_pool, 8), 8, B_pool)
 parlays.append(make_parlay(
     "8A", summit_8,
     "THE SLUGGER SUMMIT", "Medium-High Risk", "#ff5722", "+6500",
@@ -306,11 +330,14 @@ parlays.append(make_parlay(
 ))
 
 # ── 8B: THE VALUE MATRIX ─────────────────────────────────────────────────────
-value_8 = one_per_game(
-    S_pool[:3] +
-    sorted(B, key=lambda x: -x["compositeScore"])[:3] +
-    A_pool[:2]
-)[:8]
+value_8 = pad_to(
+    one_per_game(
+        S_pool[:3] +
+        sorted(B, key=lambda x: -x["compositeScore"])[:3] +
+        A_pool[:2]
+    )[:8],
+    8, SA_pool, B_pool
+)
 parlays.append(make_parlay(
     "8B", value_8,
     "THE VALUE MATRIX", "Medium-High Risk", "#ff5722", "+7000",
@@ -321,7 +348,7 @@ parlays.append(make_parlay(
 ))
 
 # ── 9A: THE GRAND SALAMI ─────────────────────────────────────────────────────
-salami_9 = build_legs(SAB_pool, 9)
+salami_9 = pad_to(build_legs(SAB_pool, 9), 9, C_pool)
 parlays.append(make_parlay(
     "9A", salami_9,
     "THE GRAND SALAMI", "High Risk", "#e91e63", "+10000",
@@ -332,10 +359,13 @@ parlays.append(make_parlay(
 ))
 
 # ── 9B: THE SLEEPER STACK ────────────────────────────────────────────────────
-sleeper_9 = one_per_game(
-    S_pool[:4] +
-    sorted(A + B, key=lambda x: (-x["compositeScore"], -x["iso"]))[:5]
-)[:9]
+sleeper_9 = pad_to(
+    one_per_game(
+        S_pool[:4] +
+        sorted(A + B, key=lambda x: (-x["compositeScore"], -x["iso"]))[:5]
+    )[:9],
+    9, SA_pool, C_pool
+)
 parlays.append(make_parlay(
     "9B", sleeper_9,
     "THE SLEEPER STACK", "High Risk", "#e91e63", "+11000",

@@ -93,12 +93,19 @@ park_factors = {}
 for venue in venues_in_slate:
     rank  = park_hr_ranks.get(venue, 25)
     w     = weather.get(venue, {})
-    label, color = park_label_and_color(venue, rank, w)
-    park_factors[venue] = {"rank": rank, "label": label, "color": color}
+    _, color = park_label_and_color(venue, rank, w)
+    park_factors[venue] = {"rank": rank, "color": color}
 
 # Sequential ranks within today's slate
 for i, venue in enumerate(sorted(venues_in_slate, key=lambda v: park_hr_ranks.get(v, 99))):
     park_factors[venue]["rank"] = i + 1
+
+# Generate labels using the finalized slate rank (not global rank)
+for venue, pf in park_factors.items():
+    w = weather.get(venue, {})
+    label, color = park_label_and_color(venue, pf["rank"], w)
+    pf["label"] = label
+    pf["color"] = color
 
 # ── Pitcher note (one technical flaw, no fluff) ───────────────────────────────
 
@@ -491,7 +498,7 @@ print(f"  ✓ {len(final_parlays)} parlay strategies")
 # ── Serialize to JS ───────────────────────────────────────────────────────────
 
 def js_str(s):
-    return json.dumps(s)
+    return json.dumps(s, ensure_ascii=False)
 
 lines = []
 
