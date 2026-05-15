@@ -1,12 +1,10 @@
 {
   "status": "success",
-  "date": "MAY 14, 2026",
-  "label": "THURSDAY MLB SLATE",
-  "games": 11,
+  "date": "MAY 15, 2026",
+  "label": "FRIDAY MLB SLATE",
+  "games": 15,
   "players": 50,
   "parlays": 15,
-  "tiers": { "S": 4, "A": 16, "B": 20, "C": 10 },
-  "notes": "Quality-check pass: fixed S-tier (3→4), B-tier (25→20). Updated CONTEXT_CARDS weather. Enhanced S/A-tier copy.",
-  "timestamp": "2026-05-14T13:55:00Z",
-  "source": "mlb-stats-api+quality-check"
+  "timestamp": "2026-05-15T12:53:20Z",
+  "source": "mlb-stats-api"
 }
