@@ -3,7 +3,7 @@
 ## Authentication Setup (run this first every session)
 
 ```bash
-PAT_FROM_PROMPT="${PAT:-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}"
+PAT_FROM_PROMPT="${PAT:-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}"
 
 printf 'https://remyasantos:%s@github.com\n' "$PAT_FROM_PROMPT" > /root/.git-credentials
 chmod 600 /root/.git-credentials
@@ -18,12 +18,12 @@ HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
 If the PAT fails, generate a new classic token (no expiration, `repo` scope) at
 https://github.com/settings/tokens and update the default above.
 
-After cloning, reset the remote URL:
+After cloning, set the remote URL with the PAT embedded (most reliable):
 ```bash
-git remote set-url origin https://github.com/remyasantos/Homeruns.git
+git remote set-url origin https://remyasantos:${PAT_FROM_PROMPT}@github.com/remyasantos/Homeruns.git
 ```
 
-Push fallback (if credential store doesn't work):
+Push fallback (explicit URL):
 ```bash
 git push https://remyasantos:${PAT_FROM_PROMPT}@github.com/remyasantos/Homeruns.git main
 ```
