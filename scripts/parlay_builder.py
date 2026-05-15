@@ -79,11 +79,11 @@ for lst in [S, A, B, C]:
 
 # ── Build one-per-game clean pools ────────────────────────────────────────────
 
-S_pool  = one_per_game(S)
-A_pool  = one_per_game(A)
-B_pool  = one_per_game(B)
-C_pool  = one_per_game(C)
-SA_pool = one_per_game(S + A)
+S_pool   = one_per_game(S)
+A_pool   = one_per_game(A)
+B_pool   = one_per_game(B)
+C_pool   = one_per_game(C)
+SA_pool  = one_per_game(S + A)
 SAB_pool = one_per_game(S + A + B)
 
 def build_legs(pool, n):
@@ -109,11 +109,23 @@ def pad_to(legs_list, n, *fallback_pools):
     return result
 
 
+def exclude(pool, exclude_ids):
+    """Return pool with given player ids removed."""
+    s = set(exclude_ids)
+    return [p for p in pool if p["id"] not in s]
+
+
+# ── Cross-parlay deduplication tracker ───────────────────────────────────────
+_used_combos = {}  # frozenset(playerIds) -> parlay_id
+
 def make_parlay(parlay_id, legs_list, label, risk, risk_color, payout_str, description, strategy):
-    """Create a validated parlay dict."""
-    # Enforce one-per-game
-    clean = one_per_game(legs_list)
+    """Create a validated parlay dict. Warns if playerIds duplicate an earlier parlay."""
+    clean    = one_per_game(legs_list)
     pid_list = ids(clean)
+    combo    = frozenset(pid_list)
+    if combo in _used_combos:
+        print(f"⚠ DUPLICATE: Parlay {parlay_id} has identical playerIds to {_used_combos[combo]}", flush=True)
+    _used_combos[combo] = parlay_id
     return {
         "id":          parlay_id,
         "legs":        len(pid_list),
@@ -166,13 +178,23 @@ for p in players:
 best_park = min(park_scores, key=lambda v: park_scores[v]["rank"])
 park_4 = one_per_game(sorted(park_scores[best_park]["players"], key=lambda x: -x["compositeScore"]))[:4]
 if len(park_4) < 4:
-    # Pad from top SA pool
     existing = set(p["id"] for p in park_4)
     for p in SA_pool:
         if p["id"] not in existing and p["gameLabel"] not in {x["gameLabel"] for x in park_4}:
             park_4.append(p)
         if len(park_4) == 4:
             break
+
+# If 4B would be identical to 4A, diversify: replace 2 legs with the best
+# A-tier players from outside the top park, preserving one-per-game.
+if frozenset(ids(park_4)) == frozenset(ids(core_4)):
+    core_ids  = {p["id"] for p in core_4}
+    alt_legs  = [p for p in SA_pool if p["id"] not in core_ids][:2]
+    keep_legs = one_per_game(park_4)[:2]
+    park_4    = one_per_game(keep_legs + alt_legs)[:4]
+    # Ensure we still have 4 legs
+    if len(park_4) < 4:
+        park_4 = pad_to(park_4, 4, exclude(SAB_pool, ids(park_4)))
 
 parlays.append(make_parlay(
     "4B", park_4,
@@ -305,17 +327,19 @@ parlays.append(make_parlay(
 ))
 
 # ── 7C: THE HOT HAND ─────────────────────────────────────────────────────────
+# Uses HR count (then OPS) as the ranking — deliberately different from 7A's
+# composite-score sort, so the two 7-leg parlays don't collapse to the same list.
 hot_7 = pad_to(
-    build_legs(one_per_game(sorted(S + A, key=lambda x: -x["compositeScore"])), 7),
-    7, B_pool
+    build_legs(one_per_game(sorted(players, key=lambda x: (-x["hr"], -x["ops"]))), 7),
+    7, exclude(SAB_pool, ids(build_legs(SA_pool, 4)))
 )
 parlays.append(make_parlay(
     "7C", hot_7,
     "THE HOT HAND", "Medium Risk", "#ff9800", "+5000",
-    "Seven players confirmed on recent hot streaks with elite composite scores.",
-    f"Top seven S and A-tier players by composite score — these are the bats the model is most confident in. "
-    f"{hot_7[0]['playerName']} ({hot_7[0]['hr']} HR, {hot_7[0]['ops']} OPS) leads the hot-hand stack. "
-    f"Every leg has demonstrated production quality in the current season, not just career averages.",
+    "Seven players leading the slate in HR count — pure production, regardless of tier.",
+    f"Ranked by HR count on the season: {hot_7[0]['playerName']} ({hot_7[0]['hr']} HR) leads the hot-hand stack. "
+    f"This list cuts across tiers to surface whoever is actually hitting home runs in 2026, "
+    f"not just who the model scores highest — the two metrics diverge on slates with park-factor noise.",
 ))
 
 # ── 8A: THE SLUGGER SUMMIT ───────────────────────────────────────────────────
@@ -425,11 +449,15 @@ parlays.append(make_parlay(
 # ── Validate + clean output ───────────────────────────────────────────────────
 
 output_parlays = []
+seen_final = {}  # frozenset -> parlay_id, for final duplicate report
 for par in parlays:
-    # Remove temp _players key
     clean = {k: v for k, v in par.items() if k != "_players"}
-    # Ensure legs matches playerIds length
     clean["legs"] = len(clean["playerIds"])
+    combo = frozenset(clean["playerIds"])
+    if combo in seen_final:
+        print(f"❌ DUPLICATE PARLAY: {clean['id']} == {seen_final[combo]} — fix parlay_builder.py", flush=True)
+    else:
+        seen_final[combo] = clean["id"]
     output_parlays.append(clean)
 
 # Verify 10A has 2 C-tier
