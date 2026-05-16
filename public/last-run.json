@@ -5,6 +5,7 @@
   "games": 15,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-05-16T11:50:54Z",
-  "source": "mlb-stats-api"
+  "timestamp": "2026-05-16T13:38:00Z",
+  "source": "quality-check-agent",
+  "notes": "Fixed B-tier count (24→20, promoted ids 17,18,21,22 to A-tier). Enhanced S/A-tier notes, pitcherNotes, and top-5 parlay strategies."
 }
