@@ -1,11 +1,10 @@
 {
   "status": "success",
-  "date": "MAY 16, 2026",
-  "label": "SATURDAY MLB SLATE",
+  "date": "MAY 17, 2026",
+  "label": "SUNDAY MLB SLATE",
   "games": 15,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-05-16T13:38:00Z",
-  "source": "quality-check-agent",
-  "notes": "Fixed B-tier count (24→20, promoted ids 17,18,21,22 to A-tier). Enhanced S/A-tier notes, pitcherNotes, and top-5 parlay strategies."
+  "timestamp": "2026-05-17T11:59:35Z",
+  "source": "mlb-stats-api"
 }
