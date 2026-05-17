@@ -1,10 +1,9 @@
 {
   "status": "success",
-  "date": "MAY 17, 2026",
-  "label": "SUNDAY MLB SLATE",
+  "date": "2026-05-17",
+  "timestamp": "2026-05-17T13:50:00Z",
   "games": 15,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-05-17T11:59:35Z",
-  "source": "mlb-stats-api"
+  "notes": "Quality-check agent run: fixed B-tier count (21->20), Coors temp in context card, broken template text, duplicate 7B playerIds, 9B legs 8->9"
 }
