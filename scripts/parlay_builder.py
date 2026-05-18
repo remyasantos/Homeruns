@@ -10,11 +10,10 @@ Rules enforced:
   - 10A must include at least 2 C-tier players
   - legs == len(playerIds)
   - 14–16 parlays total
+  - No two parlays may have identical playerIds sets
 """
 
 import json
-import random
-from itertools import combinations
 
 with open("scripts/scored_players.json") as f:
     data = json.load(f)
@@ -30,7 +29,7 @@ def by_tiers(*tiers):
     return [p for p in players if p["tier"] in tiers]
 
 def one_per_game(player_list):
-    """Filter a list to have max one player per game label."""
+    """Filter to at most one player per gameLabel, preserving input order."""
     seen_games = set()
     result = []
     for p in player_list:
@@ -43,28 +42,27 @@ def one_per_game(player_list):
 def ids(player_list):
     return [p["id"] for p in player_list]
 
-def valid_combo(player_ids, player_map):
-    """Check no same-game duplicates and no duplicate IDs."""
-    seen_games = set()
-    seen_ids   = set()
-    for pid in player_ids:
-        p = player_map.get(pid)
-        if not p:
-            return False
-        g = p["gameLabel"]
-        if g in seen_games or pid in seen_ids:
-            return False
-        seen_games.add(g)
-        seen_ids.add(pid)
-    return True
+def exclude(pool, exclude_ids):
+    """Return pool with given player ids removed."""
+    s = set(exclude_ids)
+    return [p for p in pool if p["id"] not in s]
 
-def payout(legs):
-    """Rough payout estimate based on leg count."""
-    payouts = {
-        4: "+800",   5: "+1800",  6: "+2500",
-        7: "+4000",  8: "+6500",  9: "+10000", 10: "+15000"
-    }
-    return payouts.get(legs, "+999")
+def pad_to(legs_list, n, *fallback_pools):
+    """Pad legs_list up to n using fallback_pools in order, preserving one-per-game."""
+    result = list(legs_list)
+    used_ids   = {p["id"]        for p in result}
+    used_games = {p["gameLabel"] for p in result}
+    for pool in fallback_pools:
+        if len(result) >= n:
+            break
+        for p in pool:
+            if len(result) >= n:
+                break
+            if p["id"] not in used_ids and p["gameLabel"] not in used_games:
+                result.append(p)
+                used_ids.add(p["id"])
+                used_games.add(p["gameLabel"])
+    return result
 
 player_map = {p["id"]: p for p in players}
 
@@ -86,45 +84,26 @@ C_pool   = one_per_game(C)
 SA_pool  = one_per_game(S + A)
 SAB_pool = one_per_game(S + A + B)
 
-def build_legs(pool, n):
-    """Take up to n unique-game players from pool."""
-    return one_per_game(pool)[:n]
+
+def is_disaster(p):
+    return p.get("pitcherStats", {}).get("era", 0) >= 5.50
+
+def has_wind(p):
+    return "💨 Wind Boost" in p.get("tags", [])
 
 
-def pad_to(legs_list, n, *fallback_pools):
-    """Pad legs_list up to n using fallback_pools in order, preserving one-per-game."""
-    result = list(legs_list)
-    used_ids   = {p["id"]        for p in result}
-    used_games = {p["gameLabel"] for p in result}
-    for pool in fallback_pools:
-        if len(result) >= n:
-            break
-        for p in pool:
-            if len(result) >= n:
-                break
-            if p["id"] not in used_ids and p["gameLabel"] not in used_games:
-                result.append(p)
-                used_ids.add(p["id"])
-                used_games.add(p["gameLabel"])
-    return result
+# ── Make-parlay helper ────────────────────────────────────────────────────────
 
-
-def exclude(pool, exclude_ids):
-    """Return pool with given player ids removed."""
-    s = set(exclude_ids)
-    return [p for p in pool if p["id"] not in s]
-
-
-# ── Cross-parlay deduplication tracker ───────────────────────────────────────
 _used_combos = {}  # frozenset(playerIds) -> parlay_id
 
 def make_parlay(parlay_id, legs_list, label, risk, risk_color, payout_str, description, strategy):
-    """Create a validated parlay dict. Warns if playerIds duplicate an earlier parlay."""
-    clean    = one_per_game(legs_list)
+    """Create a validated parlay dict."""
+    clean    = one_per_game(legs_list)  # safety net against caller mistakes
     pid_list = ids(clean)
     combo    = frozenset(pid_list)
     if combo in _used_combos:
-        print(f"⚠ DUPLICATE: Parlay {parlay_id} has identical playerIds to {_used_combos[combo]}", flush=True)
+        print(f"⚠ DUPLICATE: Parlay {parlay_id} has identical playerIds to "
+              f"{_used_combos[combo]}", flush=True)
     _used_combos[combo] = parlay_id
     return {
         "id":          parlay_id,
@@ -136,38 +115,12 @@ def make_parlay(parlay_id, legs_list, label, risk, risk_color, payout_str, descr
         "description": description,
         "playerIds":   pid_list,
         "strategy":    strategy,
-        "_players":    clean,  # temp, removed before output
+        "_players":    clean,
     }
 
 
-# ── Construct the 15 required parlays ─────────────────────────────────────────
+# ── Park scoring ──────────────────────────────────────────────────────────────
 
-parlays = []
-
-# Pitcher disaster detection
-def is_disaster(p):
-    return p.get("pitcherStats", {}).get("era", 0) >= 5.50
-
-# Wind-boosted players
-def has_wind(p):
-    return "💨 Wind Boost" in p.get("tags", [])
-
-# Hot = top composite in S/A
-hot_players = one_per_game(sorted(S + A, key=lambda x: -x["compositeScore"]))
-
-# ── 4A: THE CORE FOUR ─────────────────────────────────────────────────────────
-core_4 = pad_to(build_legs(S_pool, 4), 4, A_pool)
-parlays.append(make_parlay(
-    "4A", core_4,
-    "THE CORE FOUR", "Lower Risk", "#4caf50", "+800",
-    "The 4 highest-probability S-tier legs — disaster pitchers + elite park contexts.",
-    f"Each leg represents an S-tier batter facing a confirmed SP disaster with elite park and Statcast credentials. "
-    f"{core_4[0]['playerName']} ({core_4[0]['hr']} HR) leads the four-pack with a composite score of {core_4[0]['compositeScore']}. "
-    f"All four legs face pitchers with ERA at or above league-worst thresholds.",
-))
-
-# ── 4B: PARK STACK ────────────────────────────────────────────────────────────
-# Best single park: lowest HR rank (rank 1 = best)
 park_scores = {}
 for p in players:
     v = p["venue"]
@@ -176,25 +129,36 @@ for p in players:
     park_scores[v]["players"].append(p)
 
 best_park = min(park_scores, key=lambda v: park_scores[v]["rank"])
-park_4 = one_per_game(sorted(park_scores[best_park]["players"], key=lambda x: -x["compositeScore"]))[:4]
-if len(park_4) < 4:
-    existing = set(p["id"] for p in park_4)
-    for p in SA_pool:
-        if p["id"] not in existing and p["gameLabel"] not in {x["gameLabel"] for x in park_4}:
-            park_4.append(p)
-        if len(park_4) == 4:
-            break
 
-# If 4B would be identical to 4A, diversify: replace 2 legs with the best
-# A-tier players from outside the top park, preserving one-per-game.
+
+# ── Construct the 15 required parlays ─────────────────────────────────────────
+
+parlays = []
+
+# ── 4A: THE CORE FOUR ─────────────────────────────────────────────────────────
+core_4 = pad_to(one_per_game(S_pool)[:4], 4, A_pool)
+parlays.append(make_parlay(
+    "4A", core_4,
+    "THE CORE FOUR", "Lower Risk", "#4caf50", "+800",
+    "The 4 highest-probability S-tier legs — disaster pitchers + elite park contexts.",
+    f"Each leg represents an S-tier batter facing a confirmed SP disaster with elite park and "
+    f"Statcast credentials. {core_4[0]['playerName']} ({core_4[0]['hr']} HR) leads the four-pack "
+    f"with a composite score of {core_4[0]['compositeScore']}. "
+    f"All four legs face pitchers with ERA at or above league-worst thresholds.",
+))
+
+# ── 4B: PARK STACK ────────────────────────────────────────────────────────────
+park_4 = pad_to(
+    one_per_game(sorted(park_scores[best_park]["players"],
+                        key=lambda x: -x["compositeScore"]))[:4],
+    4, SA_pool, B_pool
+)
+# If 4B would be identical to 4A, force 2 replacement legs from outside 4A's games
 if frozenset(ids(park_4)) == frozenset(ids(core_4)):
-    core_ids  = {p["id"] for p in core_4}
-    alt_legs  = [p for p in SA_pool if p["id"] not in core_ids][:2]
-    keep_legs = one_per_game(park_4)[:2]
-    park_4    = one_per_game(keep_legs + alt_legs)[:4]
-    # Ensure we still have 4 legs
-    if len(park_4) < 4:
-        park_4 = pad_to(park_4, 4, exclude(SAB_pool, ids(park_4)))
+    core_4_games = {p["gameLabel"] for p in core_4}
+    alt = one_per_game([p for p in SA_pool if p["gameLabel"] not in core_4_games])[:2]
+    keep = one_per_game(park_4)[:2]
+    park_4 = pad_to(one_per_game(keep + alt)[:4], 4, exclude(SAB_pool, ids(keep + alt)))
 
 parlays.append(make_parlay(
     "4B", park_4,
@@ -206,7 +170,7 @@ parlays.append(make_parlay(
 ))
 
 # ── 5A: THE HIGH FIVE ─────────────────────────────────────────────────────────
-hi5 = pad_to(build_legs(SA_pool, 5), 5, B_pool)
+hi5 = pad_to(one_per_game(SA_pool)[:5], 5, B_pool)
 parlays.append(make_parlay(
     "5A", hi5,
     "THE HIGH FIVE", "Lower Risk", "#4caf50", "+1800",
@@ -217,88 +181,85 @@ parlays.append(make_parlay(
 ))
 
 # ── 5B: THE EV SPECIAL ────────────────────────────────────────────────────────
-# Highest composite (proxy for best Statcast power since we use OPS/ISO/HR)
-ev5 = one_per_game(sorted(players, key=lambda x: (-x["batterScore"], -x["iso"])))[:5]
+# Deliberately different from 5A: exclude 5A's players so we surface the NEXT
+# best Statcast credentials rather than collapsing to the same list.
+hi5_ids = frozenset(ids(hi5))
+ev5 = pad_to(
+    one_per_game(sorted([p for p in players if p["id"] not in hi5_ids],
+                        key=lambda x: (-x["batterScore"], -x["iso"])))[:5],
+    5, exclude(SAB_pool, hi5_ids), B_pool
+)
+top_ev = ev5[0] if ev5 else {"playerName": "?", "batterScore": 0, "hr": 0}
 parlays.append(make_parlay(
     "5B", ev5,
     "THE EV SPECIAL", "Medium Risk", "#ff9800", "+1800",
-    "5 players with the highest exit velocity and barrel % credentials facing disaster pitchers.",
-    f"These five batters represent the strongest power-contact profiles on the slate by ISO and composite batter score. "
-    f"{ev5[0]['playerName']} leads with a batter score of {ev5[0]['batterScore']} and {ev5[0]['hr']} HR. "
-    f"High exit velo and barrel rate reduce the variance of any individual HR prop, making this the most Statcast-grounded five-leg build.",
+    "5 players with the highest exit velocity and barrel % credentials not in the High Five.",
+    f"These five batters represent the strongest power-contact profiles on the slate by ISO and "
+    f"batter score — specifically the tier below the High Five, where the odds carry more value. "
+    f"{top_ev['playerName']} leads with a batter score of {top_ev['batterScore']} and "
+    f"{top_ev['hr']} HR. High exit velo reduces individual prop variance.",
 ))
 
 # ── 5C: THE REGRESSION BOMB ───────────────────────────────────────────────────
-disaster_5 = one_per_game(sorted(
-    [p for p in players if is_disaster(p)],
-    key=lambda x: -x["pitcherStats"].get("era", 0)
-))[:5]
-if len(disaster_5) < 5:
-    for p in SA_pool:
-        if p["id"] not in {x["id"] for x in disaster_5} and \
-           p["gameLabel"] not in {x["gameLabel"] for x in disaster_5}:
-            disaster_5.append(p)
-        if len(disaster_5) == 5:
-            break
-
+disaster_5 = pad_to(
+    one_per_game(sorted(
+        [p for p in players if is_disaster(p)],
+        key=lambda x: -x["pitcherStats"].get("era", 0)
+    ))[:5],
+    5, SA_pool, B_pool
+)
 parlays.append(make_parlay(
     "5C", disaster_5,
     "THE REGRESSION BOMB", "Medium Risk", "#ff9800", "+2200",
     "Target 5 pitchers with the biggest ERA collapse stories on today's slate.",
-    f"Each of the five legs faces a pitcher with a documented ERA disaster — no leg is against a starter with an ERA under 5.00. "
+    f"Each of the five legs faces a pitcher with a documented ERA disaster — no leg is against a "
+    f"starter with a functional approach. "
     f"The regression bomb philosophy: when five different pitchers are simultaneously melting down, "
     f"the compounded HR probability across five independent at-bats is significantly underpriced.",
 ))
 
 # ── 6A: PARK BLOWOUT ─────────────────────────────────────────────────────────
-top_park_6 = one_per_game(sorted(park_scores[best_park]["players"], key=lambda x: -x["compositeScore"]))[:6]
-if len(top_park_6) < 6:
-    for p in SA_pool:
-        if p["id"] not in {x["id"] for x in top_park_6} and \
-           p["gameLabel"] not in {x["gameLabel"] for x in top_park_6}:
-            top_park_6.append(p)
-        if len(top_park_6) == 6:
-            break
-
+top_park_6 = pad_to(
+    one_per_game(sorted(park_scores[best_park]["players"],
+                        key=lambda x: -x["compositeScore"]))[:6],
+    6, SA_pool, B_pool
+)
 parlays.append(make_parlay(
     "6A", top_park_6,
     "THE PARK BLOWOUT", "Lower Risk", "#4caf50", "+2500",
     f"Full {best_park} stack plus supplementary S/A-tier disaster plays.",
     f"The best HR park context on today's slate anchors this six-leg construction. "
-    f"Additional S and A-tier players from different games extend the disaster-pitcher theme across six independent outcomes. "
-    f"Six legs covering multiple park contexts with the top HR environment as the centrepiece.",
+    f"Additional S and A-tier players from different games extend the disaster-pitcher theme across "
+    f"six independent outcomes. Six legs covering multiple park contexts with the top HR environment "
+    f"as the centrepiece.",
 ))
 
 # ── 6B: SP DISASTER SWEEP ────────────────────────────────────────────────────
-disaster_6 = one_per_game(sorted(
-    [p for p in players if is_disaster(p)],
-    key=lambda x: -x["pitcherStats"].get("era", 0)
-))[:6]
-if len(disaster_6) < 6:
-    for p in SA_pool:
-        if p["id"] not in {x["id"] for x in disaster_6} and \
-           p["gameLabel"] not in {x["gameLabel"] for x in disaster_6}:
-            disaster_6.append(p)
-        if len(disaster_6) == 6:
-            break
-
+disaster_6 = pad_to(
+    one_per_game(sorted(
+        [p for p in players if is_disaster(p)],
+        key=lambda x: -x["pitcherStats"].get("era", 0)
+    ))[:6],
+    6, SA_pool, B_pool
+)
+top_d = disaster_6[0] if disaster_6 else {"playerName":"?","oppPitcherName":"?","pitcherStats":{}}
 parlays.append(make_parlay(
     "6B", disaster_6,
     "SP DISASTER SWEEP", "Lower Risk", "#4caf50", "+2800",
     "Six players each facing one of today's worst SP disasters across the full slate.",
     f"Each leg targets the worst qualified starter in a different game — a pure disaster-pitcher sweep. "
-    f"Top leg: {disaster_6[0]['playerName']} vs {disaster_6[0]['oppPitcherName']} "
-    f"(ERA {disaster_6[0]['pitcherStats'].get('era', '?')}). "
+    f"Top leg: {top_d['playerName']} vs {top_d['oppPitcherName']} "
+    f"(ERA {top_d['pitcherStats'].get('era', '?')}). "
     f"No player in this six-pack is facing a pitcher with a functional ERA.",
 ))
 
 # ── 7A: THE ELITE SEVEN ──────────────────────────────────────────────────────
-elite_7 = pad_to(build_legs(SA_pool, 7), 7, B_pool)
+elite_7 = pad_to(one_per_game(SA_pool)[:7], 7, B_pool)
 parlays.append(make_parlay(
     "7A", elite_7,
     "THE ELITE SEVEN", "Medium Risk", "#ff9800", "+4000",
     "All S-tier players plus top A-tier anchor in today's best matchup.",
-    f"S-tier ({len(S_pool)} players) form the foundation, topped off with the highest-rated A-tier plays. "
+    f"S-tier players form the foundation, topped off with the highest-rated A-tier plays. "
     f"Every leg represents a player with an elite composite score and a confirmed soft matchup. "
     f"This is the highest-conviction 7-leg structure on the board.",
 ))
@@ -313,7 +274,7 @@ if len(wind_players) >= 4:
     label_7b = "THE WIND CHASERS"
     desc_7b  = "Stack every wind-boosted park with 10+ mph favorable wind on today's slate."
 else:
-    wind_7 = pad_to(build_legs(SAB_pool, 7), 7, C_pool)
+    wind_7 = pad_to(one_per_game(SAB_pool)[:7], 7, C_pool)
     label_7b = "THE OUTDOOR POWER PARKS"
     desc_7b  = "Best outdoor park HR contexts across today's full slate in seven legs."
 
@@ -321,34 +282,38 @@ parlays.append(make_parlay(
     "7B", wind_7,
     label_7b, "Medium Risk", "#ff9800", "+4500",
     desc_7b,
-    f"{'Wind-boosted' if len(wind_players) >= 4 else 'Top outdoor HR'} parks anchor this seven-leg combination. "
-    f"Every leg exploits a favorable physical environment — park dimensions, wind direction, or temperature — "
-    f"layered on top of the pitcher-matchup quality. Seven legs, seven independent outcomes, maximum park-factor exposure.",
+    f"{'Wind-boosted' if len(wind_players) >= 4 else 'Top outdoor HR'} parks anchor this "
+    f"seven-leg combination. Every leg exploits a favorable physical environment — park dimensions, "
+    f"wind direction, or temperature — layered on top of the pitcher-matchup quality. "
+    f"Seven legs, seven independent outcomes, maximum park-factor exposure.",
 ))
 
 # ── 7C: THE HOT HAND ─────────────────────────────────────────────────────────
-# Uses HR count (then OPS) as the ranking — deliberately different from 7A's
-# composite-score sort, so the two 7-leg parlays don't collapse to the same list.
+# Deliberately different from 7A: exclude 7A's players and rank by HR count (not composite).
+elite_7_ids = frozenset(ids(elite_7))
 hot_7 = pad_to(
-    build_legs(one_per_game(sorted(players, key=lambda x: (-x["hr"], -x["ops"]))), 7),
-    7, exclude(SAB_pool, ids(build_legs(SA_pool, 4)))
+    one_per_game(sorted([p for p in players if p["id"] not in elite_7_ids],
+                        key=lambda x: (-x["hr"], -x["ops"])))[:7],
+    7, exclude(SAB_pool, elite_7_ids)
 )
+top_hot = hot_7[0] if hot_7 else {"playerName": "?", "hr": 0}
 parlays.append(make_parlay(
     "7C", hot_7,
     "THE HOT HAND", "Medium Risk", "#ff9800", "+5000",
-    "Seven players leading the slate in HR count — pure production, regardless of tier.",
-    f"Ranked by HR count on the season: {hot_7[0]['playerName']} ({hot_7[0]['hr']} HR) leads the hot-hand stack. "
-    f"This list cuts across tiers to surface whoever is actually hitting home runs in 2026, "
-    f"not just who the model scores highest — the two metrics diverge on slates with park-factor noise.",
+    "Seven players leading the slate in HR count, excluding the Elite Seven.",
+    f"Ranked by HR count on the season among players not already in the Elite Seven: "
+    f"{top_hot['playerName']} ({top_hot['hr']} HR) leads the hot-hand stack. "
+    f"This surfaces the next tier of real HR producers in 2026 — batters delivering actual results "
+    f"that the composite score may underweight due to park or pitcher noise.",
 ))
 
 # ── 8A: THE SLUGGER SUMMIT ───────────────────────────────────────────────────
-summit_8 = pad_to(build_legs(SA_pool, 8), 8, B_pool)
+summit_8 = pad_to(one_per_game(SA_pool)[:8], 8, B_pool)
 parlays.append(make_parlay(
     "8A", summit_8,
     "THE SLUGGER SUMMIT", "Medium-High Risk", "#ff5722", "+6500",
     "All S-tier players plus top 2 A-tier anchors covering the full disaster-pitcher landscape.",
-    f"All {min(len(S_pool), 6)} S-tier players form the foundation of the eight-leg summit. "
+    f"All S-tier players form the foundation of the eight-leg summit. "
     f"Top A-tier players round out the eight with the best remaining matchup quality. "
     f"This is the most balanced 8-leg construction on the board.",
 ))
@@ -367,65 +332,70 @@ parlays.append(make_parlay(
     "THE VALUE MATRIX", "Medium-High Risk", "#ff5722", "+7000",
     "S-tier anchors combined with the highest-value B-tier plays for maximum payout potential.",
     f"S-tier anchors provide the disaster-pitcher foundation. "
-    f"Top B-tier plays with strong Statcast profiles but longer odds amplify the payout ceiling significantly. "
-    f"B-tier legs are selected specifically for ISO and OPS-to-odds ratio — underpriced power bats in solid matchups.",
+    f"Top B-tier plays with strong Statcast profiles but longer odds amplify the payout ceiling "
+    f"significantly. B-tier legs are selected for ISO and OPS-to-odds ratio — underpriced power "
+    f"bats in solid matchups.",
 ))
 
 # ── 9A: THE GRAND SALAMI ─────────────────────────────────────────────────────
-salami_9 = pad_to(build_legs(SAB_pool, 9), 9, C_pool)
+salami_9 = pad_to(one_per_game(SAB_pool)[:9], 9, C_pool)
 parlays.append(make_parlay(
     "9A", salami_9,
     "THE GRAND SALAMI", "High Risk", "#e91e63", "+10000",
     "9-leg monster covering every premium HR context on today's full slate.",
-    f"The Grand Salami: six S/A-tier anchors across the board's best disaster-pitcher matchups, "
-    f"extended to nine legs with three quality B-tier adds. "
+    f"S/A-tier anchors across the board's best disaster-pitcher matchups, extended to nine legs "
+    f"with quality B-tier adds. "
     f"Nine independent outcomes, maximum slate coverage, maximum payout structure.",
 ))
 
 # ── 9B: THE SLEEPER STACK ────────────────────────────────────────────────────
+# Deliberately different from 9A: exclude 9A's players so we get second-best per game.
+# This surfaces the underrated batters that 9A's top-score picks displaced.
+salami_ids = frozenset(ids(salami_9))
 sleeper_9 = pad_to(
-    one_per_game(
-        S_pool[:4] +
-        sorted(A + B, key=lambda x: (-x["compositeScore"], -x["iso"]))[:5]
-    )[:9],
-    9, SA_pool, C_pool
+    one_per_game(sorted([p for p in S + A + B if p["id"] not in salami_ids],
+                        key=lambda x: (-x["compositeScore"], -x["iso"])))[:9],
+    9, exclude(SAB_pool, salami_ids), C_pool
 )
 parlays.append(make_parlay(
     "9B", sleeper_9,
     "THE SLEEPER STACK", "High Risk", "#e91e63", "+11000",
     "S-tier anchors plus breakout candidates producing real Statcast value.",
-    f"Four S-tier anchors set the disaster-pitcher foundation. "
-    f"Five A/B-tier sleepers — selected for ISO and park-score combination — complete the nine-leg slate. "
-    f"The sleepers are specifically chosen where the model sees value vs market odds.",
+    f"Players not selected for the Grand Salami form this nine-leg sleeper build — the second-best "
+    f"bat from each game slot. These are batters where ISO and matchup grade exceed what their "
+    f"composite score implies, specifically chosen where the model sees value vs market odds.",
 ))
 
 # ── 10A: THE LOTTERY TICKET ──────────────────────────────────────────────────
 # Must include at least 2 C-tier players and always produce exactly 10 legs.
 c_picks = one_per_game(sorted(C, key=lambda x: -x["compositeScore"]))[:2]
-elite_picks = build_legs(SA_pool, 8)
-# Start with elite + C picks, one-per-game filtered
+elite_picks = pad_to(one_per_game(SA_pool)[:8], 8, B_pool)
 all_10 = one_per_game(elite_picks + c_picks)[:10]
 
-# Ensure 2 C-tier are present — replace non-C tail entries if needed
+# Ensure 2 C-tier are present.
+# BUG FIX: when replacing all_10[9], check games against first 9 elements only
+# (not all 10), so we don't exclude C candidates that share a game with the
+# element we're about to discard.
 c_in_10 = [p for p in all_10 if p["tier"] == "C"]
 while len(c_in_10) < 2 and C:
     candidate = None
+    first9_ids   = {x["id"]        for x in all_10[:9]}
+    first9_games = {x["gameLabel"] for x in all_10[:9]}
     for p in sorted(C, key=lambda x: -x["compositeScore"]):
-        if p["id"] not in {x["id"] for x in all_10} and \
-           p["gameLabel"] not in {x["gameLabel"] for x in all_10}:
+        if p["id"] not in first9_ids and p["gameLabel"] not in first9_games:
             candidate = p
             break
     if candidate:
         all_10 = all_10[:9] + [candidate]
         c_in_10 = [p for p in all_10 if p["tier"] == "C"]
     else:
-        break
+        break  # no valid C candidate exists
 
-# Pad to exactly 10 legs from B/C pool if one-per-game filtering trimmed us short
+# Pad to exactly 10 legs if one-per-game filtering shortened us
 if len(all_10) < 10:
     used_ids   = {p["id"]        for p in all_10}
     used_games = {p["gameLabel"] for p in all_10}
-    for p in (B_pool + C_pool + A_pool):
+    for p in B_pool + C_pool + A_pool:
         if len(all_10) >= 10:
             break
         if p["id"] not in used_ids and p["gameLabel"] not in used_games:
@@ -433,6 +403,7 @@ if len(all_10) < 10:
             used_ids.add(p["id"])
             used_games.add(p["gameLabel"])
 
+c_in_10 = [p for p in all_10 if p["tier"] == "C"]
 parlays.append(make_parlay(
     "10A", all_10,
     "THE LOTTERY TICKET", "Max Risk", "#9c27b0", "+25000",
@@ -448,32 +419,56 @@ parlays.append(make_parlay(
 
 # ── Validate + clean output ───────────────────────────────────────────────────
 
+EXPECTED_LEGS = {
+    "4A": 4, "4B": 4,
+    "5A": 5, "5B": 5, "5C": 5,
+    "6A": 6, "6B": 6,
+    "7A": 7, "7B": 7, "7C": 7,
+    "8A": 8, "8B": 8,
+    "9A": 9, "9B": 9,
+    "10A": 10,
+}
+
 output_parlays = []
-seen_final = {}  # frozenset -> parlay_id, for final duplicate report
+seen_final = {}  # frozenset -> parlay_id
+c_tier_ids = {p["id"] for p in C}
+
 for par in parlays:
     clean = {k: v for k, v in par.items() if k != "_players"}
     clean["legs"] = len(clean["playerIds"])
     combo = frozenset(clean["playerIds"])
+
     if combo in seen_final:
-        print(f"❌ DUPLICATE PARLAY: {clean['id']} == {seen_final[combo]} — fix parlay_builder.py", flush=True)
-    else:
-        seen_final[combo] = clean["id"]
+        print(f"❌ DUPLICATE PARLAY: {clean['id']} == {seen_final[combo]} — skipping duplicate",
+              flush=True)
+        continue  # skip the duplicate; don't output it
+
+    seen_final[combo] = clean["id"]
     output_parlays.append(clean)
 
-# Verify 10A has 2 C-tier
-c_tier_ids = {p["id"] for p in C}
-lottery = next((p for p in output_parlays if p["id"] == "10A"), None)
-if lottery:
-    c_count = sum(1 for pid in lottery["playerIds"] if pid in c_tier_ids)
-    if c_count < 2:
-        print(f"⚠ WARNING: 10A only has {c_count} C-tier players", flush=True)
-
-# Verify all playerIds exist
 all_ids = {p["id"] for p in players}
 for par in output_parlays:
+    # Expected leg count
+    expected = EXPECTED_LEGS.get(par["id"])
+    if expected and par["legs"] != expected:
+        print(f"⚠ WARNING: Parlay {par['id']} has {par['legs']} legs, expected {expected}",
+              flush=True)
+    # Valid playerIds
     bad = [pid for pid in par["playerIds"] if pid not in all_ids]
     if bad:
-        print(f"⚠ WARNING: Parlay {par['id']} has invalid playerIds: {bad}")
+        print(f"⚠ WARNING: Parlay {par['id']} has invalid playerIds: {bad}", flush=True)
+    # 10A C-tier
+    if par["id"] == "10A":
+        c_count = sum(1 for pid in par["playerIds"] if pid in c_tier_ids)
+        if c_count < 2:
+            print(f"⚠ WARNING: 10A only has {c_count} C-tier players", flush=True)
+    # One-per-game final check
+    game_labels = [player_map[pid]["gameLabel"] for pid in par["playerIds"]
+                   if pid in player_map]
+    dupes = [g for i, g in enumerate(game_labels) if g in game_labels[:i]]
+    if dupes:
+        print(f"❌ GAME VIOLATION: {par['id']} has duplicate game labels: "
+              f"{list(set(dupes))}", flush=True)
 
 with open("scripts/parlays.json", "w") as f:
     json.dump(output_parlays, f, indent=2)
@@ -481,4 +476,7 @@ with open("scripts/parlays.json", "w") as f:
 print(f"\n✅ {len(output_parlays)} parlays written to scripts/parlays.json")
 for par in output_parlays:
     c_in = sum(1 for pid in par["playerIds"] if pid in c_tier_ids)
-    print(f"   {par['id']:4s}  {par['legs']} legs  {par['estPayout']:8s}  {par['label']}")
+    games = sorted({player_map[pid]["gameLabel"] for pid in par["playerIds"]
+                    if pid in player_map})
+    print(f"   {par['id']:4s}  {par['legs']} legs  {par['estPayout']:8s}  "
+          f"{par['label']}  ({len(games)} games)")
