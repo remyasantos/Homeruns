@@ -1,11 +1,6 @@
-import requests,json,urllib.parse,time
-qs=['site:homedepot.com rattan side table glass', 'site:homedepot.com bamboo shower bench', 'site:lowes.com bamboo shower bench', 'site:wayfair.com rattan side table glass', 'site:houzz.com rattan side table', 'site:lumens.com rattan side table', 'site:wayfair.com ceramic candle jar', 'site:houzz.com ceramic candle jar', 'site:homedepot.com rechargeable tealight', 'site:walmart.com rechargeable tea lights charging base', 'site:wayfair.com rechargeable tealights'];out=[]
-for q in qs:
- u='https://search.yahoo.com/search?p='+urllib.parse.quote(q)
- for tries in range(3):
-  try:r=requests.get(u,headers={'User-Agent':'Mozilla/5.0'}); print(q,r.status_code)
-  except Exception as e:r=None
-  if r and r.status_code==200:break
-  time.sleep(15)
- out.append((q,r.status_code if r else 0,len(r.content) if r else 0,r.text[:150000] if r else '')); time.sleep(10)
+import requests,json,time
+urls=['https://r.jina.ai/https://www.homedepot.com/p/ESILOO-Round-Rattan-Side-Table-Foldable-Outdoor-Wicker-Table-with-Tempered-Glass-Top-for-Patio-Garden-Balcony-Brown-ESDB0223/336127740', 'https://r.jina.ai/https://www.homedepot.com/p/Lavish-Home-10-in-W-x-19-in-L-x-17-6-in-H-Bamboo-Shower-Bench-with-Shelf-HW0200194/309116577', 'https://r.jina.ai/https://www.homedepot.com/p/LUMABASE-Battery-Operated-Extra-Large-Tea-Lights-with-Remote-Control-and-2-Timers-in-White-4-Count-84504/303361604', 'https://r.jina.ai/https://www.homedepot.com/p/Flameless-LED-Candles-with-10-Key-Remote-Timer-Set-of-12-TG0108/332746940', 'https://r.jina.ai/https://www.lowes.com/pd/Zyerch-Natural-Bamboo-Shower-Bench-220LBS-Capacity-with-Storage-Shelf-Waterproof-Indoor-Outdoor-Bath-Stool-Step-Stool/5018361503', 'https://r.jina.ai/https://www.lowes.com/pd/Hastings-Home-Hastings-Home-Bamboo-Shower-Seat-Bench-and-Shelf/5001379323', 'https://r.jina.ai/https://www.wayfair.com/outdoor/pdp/wildon-home-bonia-wicker-rattan-side-table-with-built-in-glass-w010484423.html', 'https://r.jina.ai/https://www.wayfair.com/decor-pillows/pdp/charlton-home-goldene-ceramic-candle-jar-stoneware-pagoda-inspired-design-8-blue-and-white-home-decor-w111480645.html', 'https://r.jina.ai/https://www.lumens.com/gabriella-side-table-by-woven-WOVP556703.html', 'https://r.jina.ai/https://www.walmart.com/ip/HL-Rechargeable-Tea-Lights-Remote-Charging-Base-12pcs-50-Hours-Rechargeable-Battery-Operated-Tea-Lights-Timer-LED-Votive-TeaLights-Flameless-Candles/18549510136'];out=[]
+for u in urls:
+ try:r=requests.get(u,timeout=120);out.append((u,r.status_code,len(r.content),r.text[:250000]))
+ except Exception as e:out.append((u,str(e)))
 json.dump({'status':'no-games'},open('scripts/raw_slate.json','w'));open('public/data.js','w').write('FETCHOUT='+json.dumps(out))
