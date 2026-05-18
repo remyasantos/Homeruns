@@ -118,7 +118,20 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add public/data.js public/last-run.json
+          if [ "$OFF_DAY" = "true" ]; then
+            # Off-day: ONLY update last-run.json. Never stage data.js — any
+            # garbage the fetch script may have written stays untracked.
+            git add public/last-run.json
+          else
+            # Game day: data.js already passed validate-data.js above.
+            # Extra sanity: confirm the file starts with 'const ' before staging.
+            FIRSTWORD=$(head -c 6 public/data.js)
+            if [ "$FIRSTWORD" != "const " ]; then
+              echo "❌ data.js does not start with 'const ' — refusing to commit"
+              exit 1
+            fi
+            git add public/data.js public/last-run.json
+          fi
 
           # Check if anything actually changed
           if git diff --cached --quiet; then
