@@ -2,7 +2,11 @@
 
 ## Authentication Setup (run this first every session)
 
+The task prompt passes a `PAT=` value. That PAT may be expired — **always
+fall back to the one hardcoded below** if the prompt PAT returns 401.
+
 ```bash
+# Prefer PAT passed in task prompt; fall back to the long-lived token below.
 PAT_FROM_PROMPT="${PAT:-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}"
 
 printf 'https://remyasantos:%s@github.com\n' "$PAT_FROM_PROMPT" > /root/.git-credentials
@@ -12,21 +16,61 @@ git config --global credential.helper store
 HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
   -H "Authorization: Bearer $PAT_FROM_PROMPT" \
   https://api.github.com/repos/remyasantos/Homeruns)
-[ "$HTTP" = "200" ] && echo "✅ PAT ok" || echo "❌ PAT invalid — regenerate at github.com/settings/tokens"
+[ "$HTTP" = "200" ] && echo "✅ PAT ok" || echo "❌ PAT invalid — try fallback below"
 ```
 
-If the PAT fails, generate a new classic token (no expiration, `repo` scope) at
-https://github.com/settings/tokens and update the default above.
+**If both PATs fail (401):**
+1. The owner must generate a new classic token at https://github.com/settings/tokens
+   → No expiration · repo scope only
+2. Update the fallback default in this file (`ghp_Dt...`) with the new token
+3. Commit and push CLAUDE.md so future sessions pick it up automatically
 
-After cloning, set the remote URL with the PAT embedded (most reliable):
+After cloning, embed the PAT in the remote URL (most reliable, avoids credential-helper issues):
 ```bash
 git remote set-url origin https://remyasantos:${PAT_FROM_PROMPT}@github.com/remyasantos/Homeruns.git
 ```
 
-Push fallback (explicit URL):
+One-shot push fallback (use if remote URL still fails):
 ```bash
 git push https://remyasantos:${PAT_FROM_PROMPT}@github.com/remyasantos/Homeruns.git main
 ```
+
+### Verifying after push
+```bash
+git fetch origin main
+git log --oneline origin/main -3
+```
+If your commit appears, the push succeeded. If `origin/main` still shows the
+old commit, the remote URL doesn't have the PAT embedded — re-run `git remote set-url` above.
+
+---
+
+## Pipeline Integrity
+
+`scripts/fetch_slate.py` must ONLY write to `scripts/raw_slate.json`.
+If the site ever shows "FAILED TO LOAD DATA" or `SLATE_DATE is not defined`,
+check whether `fetch_slate.py` has been corrupted:
+
+```bash
+head -5 scripts/fetch_slate.py
+# First line must be: #!/usr/bin/env python3
+# Must import statsapi, not fetch random URLs
+```
+
+If the file has been replaced with garbage (e.g., fetches Walmart/Jina URLs,
+writes directly to `public/data.js`), restore it:
+
+```bash
+git log --oneline scripts/fetch_slate.py     # find the last good commit
+git show <good-commit>:scripts/fetch_slate.py > scripts/fetch_slate.py
+```
+
+The workflow (`daily-slate.yml`) has two defences against pipeline corruption:
+1. **Off-day guard**: on off-days, `data.js` is NEVER staged — only `last-run.json`
+2. **Sanity check**: on game days, the workflow confirms `data.js` starts with
+   `const ` before staging; validation (`node validate-data.js`) must also pass
+
+These two guards mean a corrupted fetch script cannot silently overwrite a good `data.js`.
 
 ---
 
