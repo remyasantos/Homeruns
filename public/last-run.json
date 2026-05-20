@@ -1,5 +1,9 @@
 {
-  "status": "no-games",
+  "status": "success",
   "date": "MAY 20, 2026",
-  "timestamp": "2026-05-20T13:37:56Z"
+  "label": "WEDNESDAY MLB SLATE",
+  "games": 15,
+  "players": 50,
+  "parlays": 15,
+  "timestamp": "2026-05-20T13:48:00Z"
 }
