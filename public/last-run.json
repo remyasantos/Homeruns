@@ -1,15 +1,5 @@
 {
-  "status": "success",
-  "date": "2026-05-21",
-  "timestamp": "2026-05-21T13:45:00Z",
-  "games": 7,
-  "players": 50,
-  "parlays": 15,
-  "topPlays": [
-    "Carlos Rodon SP Disaster (5.63 ERA) — TOR@NYY at Yankee Stadium",
-    "David Peterson SP Disaster (5.40 ERA) — NYM@WSH Nationals Park 10.3mph wind",
-    "Dustin May SP Disaster (4.96 ERA) — PIT@STL Busch Stadium",
-    "Oneil Cruz 97.5mph avg EV vs May, James Wood 27.5% barrel vs Peterson"
-  ],
-  "note": "Thursday 7-game slate. Rain risk 51% at Nationals Park — monitor weather before locking WSH stack. loanDepot and Chase Field confirmed dome/roof closed."
+  "status": "no-games",
+  "date": "MAY 21, 2026",
+  "timestamp": "2026-05-21T14:15:01Z"
 }
