@@ -1,8 +1,5 @@
 {
-  "status": "success",
-  "date": "MAY 22, 2026",
-  "timestamp": "2026-05-22T13:55:00Z",
-  "games": 15,
-  "players": 50,
-  "parlays": 15
+  "status": "no-games",
+  "date": "MAY 23, 2026",
+  "timestamp": "2026-05-23T11:59:28Z"
 }
