@@ -1,5 +1,11 @@
 {
-  "status": "no-games",
-  "date": "MAY 23, 2026",
-  "timestamp": "2026-05-23T11:59:28Z"
+  "status": "success",
+  "date": "2026-05-23",
+  "label": "SATURDAY MLB SLATE",
+  "games": 14,
+  "players": 50,
+  "parlays": 15,
+  "topDisasters": ["Chris Paddack 7.07 ERA", "Michael Lorenzen 7.03 ERA", "Miles Mikolas 6.91 ERA"],
+  "note": "TB@NYY postponed (rain). STL@CIN split doubleheader. 14 active games.",
+  "generatedAt": "2026-05-23T13:45:00Z"
 }
