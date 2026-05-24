@@ -520,8 +520,7 @@ lines = []
 # TEAM_TO_GAME
 lines.append("const TEAM_TO_GAME = {")
 for k, v in team_to_game.items():
-    pad = " " if len(k) < 3 else ""
-    lines.append(f"  {k}:{pad}  {js_str(v)},")
+    lines.append(f"  {js_str(k)}:  {js_str(v)},")
 lines.append("};")
 lines.append("")
 
