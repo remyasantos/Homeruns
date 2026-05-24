@@ -65,18 +65,19 @@ jobs:
         if: env.OFF_DAY == 'false'
         run: python scripts/generate_data_js.py
 
-        - name: Find bad token in data.js
-  if: env.OFF_DAY == 'false'
-  run: |
-    node -e "
-      const fs = require('fs');
-      const lines = fs.readFileSync('public/data.js','utf8').split('\n');
-      lines.forEach((line, i) => {
-        if (/[^\"']\.$/.test(line) || /:\s*\.$/.test(line) || /,\s*\.$/.test(line)) {
-          console.log('LINE ' + (i+1) + ': ' + line);
-        }
-      });
-    "
+      - name: Find bad token in data.js
+        if: env.OFF_DAY == 'false'
+        run: |
+          node -e "
+            const fs = require('fs');
+            const lines = fs.readFileSync('public/data.js','utf8').split('\n');
+            lines.forEach((line, i) => {
+              if (/[^\"']\.\s*,/.test(line) || /[^\"']\.,$/.test(line) || /:\s+[0-9]+\.[^0-9]/.test(line)) {
+                console.log('LINE ' + (i+1) + ': ' + line);
+              }
+            });
+            console.log('scan complete');
+          "
 
       - name: Validate data.js
         if: env.OFF_DAY == 'false'
