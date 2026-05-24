@@ -12,8 +12,59 @@ import statsapi
 import requests
 import json
 import datetime
-import re
 import sys
+
+# ── Static team name → abbreviation map ──────────────────────────────────────
+# Keys match the full team names returned by statsapi.schedule()
+TEAM_NAME_TO_ABBR = {
+    "Arizona Diamondbacks":      "ARI",
+    "Atlanta Braves":            "ATL",
+    "Baltimore Orioles":         "BAL",
+    "Boston Red Sox":            "BOS",
+    "Chicago Cubs":              "CHC",
+    "Chicago White Sox":         "CWS",
+    "Cincinnati Reds":           "CIN",
+    "Cleveland Guardians":       "CLE",
+    "Colorado Rockies":          "COL",
+    "Detroit Tigers":            "DET",
+    "Houston Astros":            "HOU",
+    "Kansas City Royals":        "KC",
+    "Los Angeles Angels":        "LAA",
+    "Los Angeles Dodgers":       "LAD",
+    "Miami Marlins":             "MIA",
+    "Milwaukee Brewers":         "MIL",
+    "Minnesota Twins":           "MIN",
+    "New York Mets":             "NYM",
+    "New York Yankees":          "NYY",
+    "Oakland Athletics":         "OAK",
+    "Athletics":                 "ATH",
+    "Philadelphia Phillies":     "PHI",
+    "Pittsburgh Pirates":        "PIT",
+    "San Diego Padres":          "SD",
+    "San Francisco Giants":      "SF",
+    "Seattle Mariners":          "SEA",
+    "St. Louis Cardinals":       "STL",
+    "Tampa Bay Rays":            "TB",
+    "Texas Rangers":             "TEX",
+    "Toronto Blue Jays":         "TOR",
+    "Washington Nationals":      "WSH",
+}
+
+def team_abbr(name: str) -> str:
+    """Return the correct MLB abbreviation for a team name."""
+    if not name:
+        return "UNK"
+    # Direct lookup first
+    if name in TEAM_NAME_TO_ABBR:
+        return TEAM_NAME_TO_ABBR[name]
+    # Partial match fallback
+    for full_name, abbr in TEAM_NAME_TO_ABBR.items():
+        if full_name in name or name in full_name:
+            return abbr
+    # Last resort: strip non-alpha and take first 3 chars (better than crashing)
+    safe = "".join(c for c in name.upper() if c.isalpha())[:3]
+    print(f"  ⚠ Unknown team name '{name}' — using '{safe}'")
+    return safe or "UNK"
 
 # ── Static config ─────────────────────────────────────────────────────────────
 
@@ -49,6 +100,7 @@ PARK_HR_RANKS = {
     "Busch Stadium":                13,
     "PNC Park":                     14,
     "Camden Yards":                 15,
+    "Oriole Park at Camden Yards":  15,
     "Progressive Field":            16,
     "Nationals Park":               17,
     "Angel Stadium":                18,
@@ -92,6 +144,7 @@ CITY_WEATHER_MAP = {
     "Globe Life Field":             "Arlington TX",
     "Rogers Centre":                "Toronto ON",
     "Camden Yards":                 "Baltimore MD",
+    "Oriole Park at Camden Yards":  "Baltimore MD",
     "Progressive Field":            "Cleveland OH",
     "PNC Park":                     "Pittsburgh PA",
     "Busch Stadium":                "St. Louis MO",
@@ -305,8 +358,9 @@ def main():
     team_ids     = {}   # team_abbr -> team_id
 
     for g in live_games:
-        away_abbr = re.sub(r'[^A-Z0-9]', '', g.get("away_abbr", g.get("away_name", "UNK"))[:4].upper())[:3] or "UNK"
-        home_abbr = re.sub(r'[^A-Z0-9]', '', g.get("home_abbr", g.get("home_name", "UNK"))[:4].upper())[:3] or "UNK"
+        # Use full team name → static abbreviation lookup for correctness
+        away_abbr = team_abbr(g.get("away_name", ""))
+        home_abbr = team_abbr(g.get("home_name", ""))
         venue     = g.get("venue_name", "Unknown Park")
 
         # schedule() returns probable pitcher as a plain string (name), not a dict
