@@ -70,13 +70,28 @@ jobs:
         run: |
           node -e "
             const fs = require('fs');
-            const lines = fs.readFileSync('public/data.js','utf8').split('\n');
-            lines.forEach((line, i) => {
-              if (/[^\"']\.\s*,/.test(line) || /[^\"']\.,$/.test(line) || /:\s+[0-9]+\.[^0-9]/.test(line)) {
-                console.log('LINE ' + (i+1) + ': ' + line);
+            const src = fs.readFileSync('public/data.js','utf8');
+            const runnable = src.replace(/^(?:const|let)\s+/gm, 'var ');
+            const vm = require('vm');
+            const sandbox = {};
+            vm.createContext(sandbox);
+            try {
+              vm.runInContext(runnable, sandbox);
+              console.log('OK — no syntax error found');
+            } catch(e) {
+              console.log('ERROR:', e.message);
+              // Find the line number from the stack
+              const m = e.stack.match(/evalmachine[^:]*:(\d+)/);
+              if (m) {
+                const lineNum = parseInt(m[1]);
+                const lines = src.split('\n');
+                const start = Math.max(0, lineNum - 4);
+                const end = Math.min(lines.length, lineNum + 3);
+                for (let i = start; i < end; i++) {
+                  console.log('LINE ' + (i+1) + (i+1 === lineNum ? ' >>>' : '    ') + ': ' + lines[i]);
+                }
               }
-            });
-            console.log('scan complete');
+            }
           "
 
       - name: Validate data.js
