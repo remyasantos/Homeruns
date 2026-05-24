@@ -447,6 +447,15 @@ def make_parlay_strategy(par: dict, player_lookup: dict) -> tuple[str, str]:
     return existing_desc, strategy
 
 
+# ── Safe numeric serializer ───────────────────────────────────────────────────
+
+def js_num(v):
+    """Serialize a numeric value safely to JS. None → 0, floats stay floats."""
+    if v is None:
+        return "0"
+    return json.dumps(float(v) if isinstance(v, float) else v)
+
+
 # ── Build final arrays ────────────────────────────────────────────────────────
 
 print("Generating content from MLB Stats API data...")
@@ -475,11 +484,11 @@ for p in players:
         "note":           note,
         "tags":           p["tags"],
         # Raw stats — used by the player leaderboard in the UI
-        "hr":             p.get("hr", 0),
-        "ops":            p.get("ops", 0),
-        "iso":            round(p.get("iso", 0), 3),
-        "avg":            p.get("avg", 0),
-        "compositeScore": p.get("compositeScore", 0),
+        "hr":             int(p.get("hr", 0) or 0),
+        "ops":            float(p.get("ops", 0) or 0),
+        "iso":            float(round(p.get("iso", 0) or 0, 3)),
+        "avg":            float(p.get("avg", 0) or 0),
+        "compositeScore": float(p.get("compositeScore", 0) or 0),
     })
 
 print(f"  ✓ {len(final_players)} player notes")
@@ -539,7 +548,7 @@ sorted_venues = sorted(park_factors.items(), key=lambda x: x[1]["rank"])
 for i, (venue, pf) in enumerate(sorted_venues):
     comma = "," if i < len(sorted_venues) - 1 else ""
     lines.append(f'  {js_str(venue)}: '
-                 f'{{ rank: {pf["rank"]},  label: {js_str(pf["label"])}, color: {js_str(pf["color"])} }}{comma}')
+                 f'{{ rank: {js_num(pf["rank"])},  label: {js_str(pf["label"])}, color: {js_str(pf["color"])} }}{comma}')
 lines.append("};")
 lines.append("")
 
@@ -549,7 +558,7 @@ for i, p in enumerate(final_players):
     comma = "," if i < len(final_players) - 1 else ""
     tags_js = json.dumps(p["tags"])
     lines.append("  {")
-    lines.append(f'    id:             {p["id"]},')
+    lines.append(f'    id:             {js_num(p["id"])},')
     lines.append(f'    name:           {js_str(p["name"])},')
     lines.append(f'    team:           {js_str(p["team"])},')
     lines.append(f'    tier:           {js_str(p["tier"])},')
@@ -560,11 +569,11 @@ for i, p in enumerate(final_players):
     lines.append(f'    estOdds:        {js_str(p["estOdds"])},')
     lines.append(f'    note:           {js_str(p["note"])},')
     lines.append(f'    tags:           {tags_js},')
-    lines.append(f'    hr:             {p["hr"]},')
-    lines.append(f'    ops:            {p["ops"]},')
-    lines.append(f'    iso:            {p["iso"]},')
-    lines.append(f'    avg:            {p["avg"]},')
-    lines.append(f'    compositeScore: {p["compositeScore"]},')
+    lines.append(f'    hr:             {js_num(p["hr"])},')
+    lines.append(f'    ops:            {js_num(p["ops"])},')
+    lines.append(f'    iso:            {js_num(p["iso"])},')
+    lines.append(f'    avg:            {js_num(p["avg"])},')
+    lines.append(f'    compositeScore: {js_num(p["compositeScore"])},')
     lines.append(f"  }}{comma}")
 lines.append("];")
 lines.append("")
@@ -576,7 +585,7 @@ for i, par in enumerate(final_parlays):
     pids_js = json.dumps(par["playerIds"])
     lines.append("  {")
     lines.append(f'    id:          {js_str(par["id"])},')
-    lines.append(f'    legs:        {par["legs"]},')
+    lines.append(f'    legs:        {js_num(par["legs"])},')
     lines.append(f'    label:       {js_str(par["label"])},')
     lines.append(f'    risk:        {js_str(par["risk"])},')
     lines.append(f'    riskColor:   {js_str(par["riskColor"])},')
