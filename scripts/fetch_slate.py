@@ -12,6 +12,7 @@ import statsapi
 import requests
 import json
 import datetime
+import re
 import sys
 
 # ── Static config ─────────────────────────────────────────────────────────────
@@ -304,8 +305,8 @@ def main():
     team_ids     = {}   # team_abbr -> team_id
 
     for g in live_games:
-        away_abbr = g.get("away_abbr", g.get("away_name", "UNK"))[:3].upper()
-        home_abbr = g.get("home_abbr", g.get("home_name", "UNK"))[:3].upper()
+        away_abbr = re.sub(r'[^A-Z0-9]', '', g.get("away_abbr", g.get("away_name", "UNK"))[:4].upper())[:3] or "UNK"
+        home_abbr = re.sub(r'[^A-Z0-9]', '', g.get("home_abbr", g.get("home_name", "UNK"))[:4].upper())[:3] or "UNK"
         venue     = g.get("venue_name", "Unknown Park")
 
         # schedule() returns probable pitcher as a plain string (name), not a dict
