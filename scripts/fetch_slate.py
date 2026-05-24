@@ -137,6 +137,20 @@ def get_weather(venue_name):
         print(f"  ⚠ weather error for {venue_name}: {e}")
         return {"temp_f": 72, "wind_mph": 5, "wind_dir": "E", "roof": False}
 
+# ── Pitcher ID lookup ─────────────────────────────────────────────────────────
+
+def get_pitcher_id(name):
+    """Look up a player ID by full name. Returns None if not found."""
+    if not name or name == "TBD":
+        return None
+    try:
+        results = statsapi.lookup_player(name)
+        if results:
+            return results[0]["id"]
+    except Exception as e:
+        print(f"  ⚠ pitcher lookup error for {name}: {e}")
+    return None
+
 # ── Pitcher stats ─────────────────────────────────────────────────────────────
 
 def get_pitcher_stats(player_id, season=2026):
@@ -294,10 +308,12 @@ def main():
         home_abbr = g.get("home_abbr", g.get("home_name", "UNK"))[:3].upper()
         venue     = g.get("venue_name", "Unknown Park")
 
-        away_pid   = g.get("away_probable_pitcher", {}).get("id")
-        away_pname = g.get("away_probable_pitcher", {}).get("fullName", "TBD")
-        home_pid   = g.get("home_probable_pitcher", {}).get("id")
-        home_pname = g.get("home_probable_pitcher", {}).get("fullName", "TBD")
+        # schedule() returns probable pitcher as a plain string (name), not a dict
+        away_pname = g.get("away_probable_pitcher") or "TBD"
+        home_pname = g.get("home_probable_pitcher") or "TBD"
+
+        away_pid = get_pitcher_id(away_pname)
+        home_pid = get_pitcher_id(home_pname)
 
         away_team_id = g.get("away_id")
         home_team_id = g.get("home_id")
@@ -312,12 +328,12 @@ def main():
             team_ids[home_abbr] = home_team_id
 
         games.append({
-            "awayTeam":       away_abbr,
-            "homeTeam":       home_abbr,
-            "venueName":      venue,
-            "awayPitcherId":  away_pid,
+            "awayTeam":        away_abbr,
+            "homeTeam":        home_abbr,
+            "venueName":       venue,
+            "awayPitcherId":   away_pid,
             "awayPitcherName": away_pname,
-            "homePitcherId":  home_pid,
+            "homePitcherId":   home_pid,
             "homePitcherName": home_pname,
         })
 
