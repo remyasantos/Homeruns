@@ -264,10 +264,7 @@ def main():
 
     # 1. Schedule
     try:
-        sched = statsapi.schedule(
-            date=date_str,
-            hydrate="probablePitcher,team,venue"
-        )
+        sched = statsapi.schedule(date=date_str)
     except Exception as e:
         print(f"❌ Schedule fetch failed: {e}")
         json.dump({"status": "no-games", "date": date_label, "label": day_label},
