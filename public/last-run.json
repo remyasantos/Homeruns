@@ -1,10 +1,5 @@
 {
-  "status": "success",
+  "status": "validation-failed",
   "date": "MAY 25, 2026",
-  "label": "MONDAY MLB SLATE",
-  "games": 13,
-  "players": 50,
-  "parlays": 15,
-  "timestamp": "2026-05-25T13:45:00Z",
-  "source": "claude-agent"
+  "timestamp": "2026-05-25T13:59:28Z"
 }
