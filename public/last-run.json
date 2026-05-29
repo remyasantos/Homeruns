@@ -1,5 +1,11 @@
 {
-  "status": "validation-failed",
-  "date": "MAY 29, 2026",
-  "timestamp": "2026-05-29T13:59:47Z"
+  "status": "success",
+  "date": "2026-05-29",
+  "label": "FRIDAY MLB SLATE",
+  "games": 15,
+  "players": 50,
+  "parlays": 15,
+  "topStory": "Rogers (6.96 ERA) + Camden 16.1mph wind; Paddack (0-6) vs ATL; Judge leads 25.8% HR prob",
+  "avoidNote": "Coors Field: 29F snow forecast - severe HR suppressor, omitted from board",
+  "timestamp": "2026-05-29T13:50:00Z"
 }
