@@ -334,16 +334,21 @@ final_players = (
 # Guarantee exactly 50 — pull from the remaining scored pool if short
 if len(final_players) < 50:
     used_pids = {p["playerId"] for p in final_players}
+    # Track current tier counts so we don't exceed the validated maximums
+    _b_count = sum(1 for fp in final_players if fp["tier"] == "B")
+    _c_count = sum(1 for fp in final_players if fp["tier"] == "C")
     for p in scored:  # scored is sorted desc by compositeScore
         if len(final_players) >= 50:
             break
         if p["playerId"] not in used_pids:
             if p["compositeScore"] >= 55:
                 p["tier"] = "A"
-            elif p["compositeScore"] >= 40:
+            elif p["compositeScore"] >= 40 and _b_count < 20:
                 p["tier"] = "B"
+                _b_count += 1
             else:
                 p["tier"] = "C"
+                _c_count += 1
             final_players.append(p)
             used_pids.add(p["playerId"])
 

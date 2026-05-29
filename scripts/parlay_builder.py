@@ -265,16 +265,28 @@ parlays.append(make_parlay(
 ))
 
 # ── 7B: WIND CHASERS / PARK TOUR ─────────────────────────────────────────────
+# Explicitly exclude 7A's players so this can never collapse to the same set.
+_7a_ids = frozenset(ids(elite_7))
 wind_players = [p for p in players if has_wind(p)]
 if len(wind_players) >= 4:
     wind_7 = pad_to(
         one_per_game(sorted(wind_players, key=lambda x: -x["compositeScore"]))[:7],
-        7, SA_pool, B_pool
+        7, exclude(SA_pool, _7a_ids), exclude(B_pool, _7a_ids)
     )
+    # If the result is still identical to 7A (rare edge case), force different legs
+    if frozenset(ids(wind_7)) == _7a_ids:
+        wind_7 = pad_to(
+            one_per_game(sorted([p for p in players if p["id"] not in _7a_ids],
+                                key=lambda x: -x["compositeScore"]))[:7],
+            7, exclude(B_pool, _7a_ids), C_pool
+        )
     label_7b = "THE WIND CHASERS"
     desc_7b  = "Stack every wind-boosted park with 10+ mph favorable wind on today's slate."
 else:
-    wind_7 = pad_to(one_per_game(SAB_pool)[:7], 7, C_pool)
+    wind_7 = pad_to(
+        one_per_game([p for p in SAB_pool if p["id"] not in _7a_ids])[:7],
+        7, C_pool
+    )
     label_7b = "THE OUTDOOR POWER PARKS"
     desc_7b  = "Best outdoor park HR contexts across today's full slate in seven legs."
 
@@ -433,15 +445,54 @@ output_parlays = []
 seen_final = {}  # frozenset -> parlay_id
 c_tier_ids = {p["id"] for p in C}
 
+
+def _recover_unique(par, target_legs, seen_combos):
+    """Replace one leg at a time until the parlay combo is unique. Returns a
+    new playerIds list, or None if no unique alternative can be built."""
+    current_ids = list(par["playerIds"])
+    used_combos = seen_combos
+
+    # Walk through replacement candidates: SAB then C, excluding current legs
+    candidates = [
+        p for p in (SAB_pool + C_pool)
+        if p["id"] not in set(current_ids)
+    ]
+    for swap_idx in range(len(current_ids) - 1, -1, -1):  # replace from the tail
+        for candidate in candidates:
+            # Check one-per-game: candidate's game must not appear elsewhere in the parlay
+            other_ids = current_ids[:swap_idx] + current_ids[swap_idx + 1:]
+            other_games = {player_map[oid]["gameLabel"] for oid in other_ids
+                          if oid in player_map}
+            if candidate["gameLabel"] in other_games:
+                continue
+            new_ids = other_ids + [candidate["id"]]
+            # Preserve leg count
+            if len(new_ids) != target_legs:
+                continue
+            new_combo = frozenset(new_ids)
+            if new_combo not in used_combos:
+                return new_ids
+    return None
+
+
 for par in parlays:
     clean = {k: v for k, v in par.items() if k != "_players"}
     clean["legs"] = len(clean["playerIds"])
     combo = frozenset(clean["playerIds"])
 
     if combo in seen_final:
-        print(f"❌ DUPLICATE PARLAY: {clean['id']} == {seen_final[combo]} — skipping duplicate",
+        print(f"⚠ DUPLICATE PARLAY: {clean['id']} == {seen_final[combo]} — attempting recovery",
               flush=True)
-        continue  # skip the duplicate; don't output it
+        recovered = _recover_unique(clean, clean["legs"], seen_final)
+        if recovered:
+            clean["playerIds"] = recovered
+            clean["legs"] = len(recovered)
+            combo = frozenset(recovered)
+            print(f"  ✅ Recovered {clean['id']} with new playerIds", flush=True)
+        else:
+            print(f"  ❌ Could not recover unique combo for {clean['id']} — skipping",
+                  flush=True)
+            continue
 
     seen_final[combo] = clean["id"]
     output_parlays.append(clean)
