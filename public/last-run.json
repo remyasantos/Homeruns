@@ -1,22 +1,5 @@
 {
-  "status": "success",
-  "date": "MAY 28, 2026",
-  "day": "Thursday",
-  "games": 15,
-  "players": 50,
-  "parlays": 15,
-  "timestamp": "2026-05-28T15:45:00Z",
-  "agent": "daily-quality-check",
-  "ev_audit": {
-    "corrections": [
-      "James Wood note updated — 25.9% brl #1 on slate",
-      "Munetaka Murakami note updated — 21% brl highlighted",
-      "Oneil Cruz note updated — 119mph max EV, 16.2% brl",
-      "Aaron Judge note updated — 22.4% brl #3 on slate",
-      "Nick Kurtz note updated — 16.4% brl EV validation",
-      "Ozzie Albies note updated — 3.7% brl floor flagged (park/pitcher play)",
-      "Dalton Rushing note updated — anomalous composite 58.1 flagged",
-      "Parlay strategies 4A/4B/5A/5B/5C enhanced with EV data"
-    ]
-  }
+  "status": "validation-failed",
+  "date": "MAY 29, 2026",
+  "timestamp": "2026-05-29T13:59:47Z"
 }
