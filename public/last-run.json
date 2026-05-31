@@ -1,10 +1,10 @@
 {
   "status": "success",
-  "date": "MAY 30, 2026",
-  "label": "SATURDAY MLB SLATE",
+  "date": "MAY 31, 2026",
+  "label": "SUNDAY MLB SLATE",
   "games": 15,
   "players": 50,
   "parlays": 15,
-  "updatedAt": "2026-05-30T13:48:07.657Z",
-  "notes": "Quality-check agent: S/A-tier note enhancement + LAD pitcher corrected to Andrew Painter (5.40 ERA)"
+  "timestamp": "2026-05-31T12:11:35Z",
+  "source": "mlb-stats-api"
 }
