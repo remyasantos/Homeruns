@@ -2,9 +2,9 @@
   "status": "success",
   "date": "JUNE 1, 2026",
   "label": "MONDAY MLB SLATE",
-  "games": 7,
+  "games": 9,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-06-01T13:51:00Z",
-  "source": "web-research+manual-generation"
+  "timestamp": "2026-06-01T16:36:38Z",
+  "source": "mlb-stats-api"
 }
