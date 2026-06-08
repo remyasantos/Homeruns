@@ -7,7 +7,7 @@ fall back to the one hardcoded below** if the prompt PAT returns 401.
 
 ```bash
 # Prefer PAT passed in task prompt; fall back to the long-lived token below.
-PAT_FROM_PROMPT="${PAT:-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}"
+PAT_FROM_PROMPT="${PAT:-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}"
 
 printf 'https://remyasantos:%s@github.com\n' "$PAT_FROM_PROMPT" > /root/.git-credentials
 chmod 600 /root/.git-credentials
