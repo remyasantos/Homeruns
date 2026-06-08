@@ -1,11 +1,10 @@
 {
   "status": "success",
-  "date": "JUNE 7, 2026",
-  "label": "SUNDAY MLB SLATE",
-  "games": 15,
+  "date": "JUNE 8, 2026",
+  "label": "MONDAY MLB SLATE",
+  "games": 8,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-06-07T13:45:00Z",
-  "source": "quality-check-agent",
-  "notes": "Pipeline ran at 12:19Z (success). Agent validated, enhanced S/A-tier copy and first 5 parlay strategies, pushed clean version."
+  "timestamp": "2026-06-08T05:53:56Z",
+  "source": "mlb-stats-api"
 }
