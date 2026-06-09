@@ -1,10 +1,10 @@
 {
   "status": "success",
-  "date": "JUNE 8, 2026",
-  "label": "MONDAY MLB SLATE",
-  "games": 8,
+  "date": "2026-06-09",
+  "slate": "TUESDAY MLB SLATE",
+  "games": 15,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-06-08T16:22:26Z",
-  "source": "mlb-stats-api"
+  "timestamp": "2026-06-09T13:55:00Z",
+  "notes": "Agent run: full 15-game slate, clean validation (0 warnings). Fixed pipeline version which had wrong park key and C-tier count warning."
 }
