@@ -5,6 +5,6 @@
   "games": 8,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-06-11T13:35:00Z",
-  "source": "daily-agent"
+  "timestamp": "2026-06-11T14:34:57Z",
+  "source": "mlb-stats-api"
 }
