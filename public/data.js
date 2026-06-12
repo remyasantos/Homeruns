@@ -1047,7 +1047,7 @@ const parlays = [
     estPayout:   "+2500",
     description: "Full Great American Ball Park stack plus supplementary S/A-tier disaster plays.",
     playerIds:   [1, 2, 10, 11, 12, 19],
-    strategy:    "The best HR park context on today's slate anchors this six-leg construction. Additional S and A-tier players from different games extend the disaster-pitcher theme across six independent outcomes. Six legs covering multiple park contexts with the top HR environment as the centrepiece. 3 of 6 legs target ERA ≥ 5.50 disaster starts. 2 S-tier anchors provide the probability floor.",
+    strategy:    "Carroll (0.268 ISO at GABP) and Bauers (12 HR vs Painter's 6.21 ERA) anchor the S-tier foundation before Alonso's 15 HRs pound Canning (6.34 ERA, 5.16 FIP) at Camden Yards. Raley (14 HR, 0.276 ISO vs Littell's 2.1 HR/9), Contreras (0.897 OPS at Fenway vs Leiter's 4.69 ERA), and Dingler's 16 HRs with 14mph wind at Progressive Field round out six independent legs across six parks — each underpriced on its own. Three confirmed ERA ≥ 5.50 disaster starters, two outdoor park boosts, one dome: the most complete six-leg structure on the board.",
   },
   {
     id:          "6B",
@@ -1058,7 +1058,7 @@ const parlays = [
     estPayout:   "+2800",
     description: "Six players each facing one of today's worst SP disasters across the full slate.",
     playerIds:   [12, 2, 1, 10, 11, 22],
-    strategy:    "Each leg targets the worst qualified starter in a different game — a pure disaster-pitcher sweep. Top leg: Pete Alonso vs Griffin Canning (ERA 6.34). No player in this six-pack is facing a pitcher with a functional ERA. 3 of 6 legs target ERA ≥ 5.50 disaster starts. 2 S-tier anchors provide the probability floor.",
+    strategy:    "A sweep of today's worst starters: Canning (6.34 ERA, 5.16 FIP) vs Alonso's 15 HRs, Painter (6.21 ERA, 5.03 FIP) vs Bauers (12 HR), and Lodolo (5.51 ERA, 2.2 HR/9) vs Carroll's 0.268 ISO — three collapses confirmed by FIP, not just ERA. Raley (14 HR vs Littell's 2.1 HR/9), Contreras (0.897 OPS at Fenway vs Leiter 4.69 ERA), and Buxton (20 HR vs Leahy 4.42 ERA) extend the disaster sweep to six independent games. No pitcher in this card has a functional ERA — maximum disaster-pitcher concentration on one ticket.",
   },
   {
     id:          "7A",
@@ -1069,7 +1069,7 @@ const parlays = [
     estPayout:   "+4000",
     description: "All S-tier players plus top A-tier anchor in today's best matchup.",
     playerIds:   [1, 2, 10, 11, 12, 19, 22],
-    strategy:    "S-tier players form the foundation, topped off with the highest-rated A-tier plays. Every leg represents a player with an elite composite score and a confirmed soft matchup. This is the highest-conviction 7-leg structure on the board. 3 of 7 legs target ERA ≥ 5.50 disaster starts. 2 S-tier anchors provide the probability floor.",
+    strategy:    "S-tier core — Carroll (GABP, 0.268 ISO vs Lodolo 5.51 ERA), Bauers (dome, 12 HR vs Painter 6.21 ERA), Raley (0.276 ISO vs Littell's 2.1 HR/9), and Contreras (0.897 OPS at Fenway) — provides the probability floor. Alonso (15 HR vs Canning 6.34 ERA at Camden Yards) and Dingler (16 HR with 14mph wind at Progressive Field) deliver park-factor upside, while Buxton's 20-HR pace and 0.303 ISO vs Leahy closes seven non-overlapping games. Three confirmed ERA ≥ 5.50 disaster starts, maximum S-tier density — the highest-conviction 7-leg build on the board.",
   },
   {
     id:          "7B",
@@ -1080,7 +1080,7 @@ const parlays = [
     estPayout:   "+4500",
     description: "Stack every wind-boosted park with 10+ mph favorable wind on today's slate.",
     playerIds:   [19, 31, 21, 23, 25, 26, 27],
-    strategy:    "Wind-boosted parks anchor this seven-leg combination. Every leg exploits a favorable physical environment — park dimensions, wind direction, or temperature — layered on top of the pitcher-matchup quality. Seven legs, seven independent outcomes, maximum park-factor exposure. 1 of 7 legs target ERA ≥ 5.50 disaster starts. Anchored by Dillon Dingler (16 HR, 0.858 OPS) leading today's power board.",
+    strategy:    "Dingler (16 HR at Progressive Field with 14mph out) and Rushing (0.898 OPS at Rate Field with 11mph out) lead the wind-boosted stack — physical conditions that push solid contact into extra-base territory. Bleday's 0.298 ISO at GABP (#1 HR park on the slate), Soto's 14 HRs and 0.906 OPS at Citi Field, and J. Rodríguez's 13 HRs at Nationals Park (82°F) add outdoor power profiles in favorable environments. Lowe (16 HR at PNC Park) and Mayo (9 HR vs Canning's 6.34 ERA) complete seven legs where park and weather context is the dominant structural edge.",
   },
   {
     id:          "7C",
@@ -1091,7 +1091,7 @@ const parlays = [
     estPayout:   "+5000",
     description: "Seven players leading the slate in HR count, excluding the Elite Seven.",
     playerIds:   [39, 30, 37, 25, 38, 27, 23],
-    strategy:    "Ranked by HR count on the season among players not already in the Elite Seven: Kyle Schwarber (24 HR) leads the hot-hand stack. This surfaces the next tier of real HR producers in 2026 — batters delivering actual results that the composite score may underweight due to park or pitcher noise. Anchored by Kyle Schwarber (24 HR, 0.933 OPS) leading today's power board.",
+    strategy:    "Schwarber (24 HR, 0.336 ISO) and Alvarez (22 HR, 1.066 OPS, 0.320 ISO) are the volume leaders — the two highest HR totals among non-Elite-Seven bats on today's board at genuine power odds. Rice (18 HR, 1.006 OPS in the dome) and Lowe (16 HR, 0.274 ISO at PNC Park) extend the hot-hand stack to four legit bomb machines, while Pages (15 HR with 11mph wind at Rate Field), Soto (14 HR, 0.906 OPS), and J. Rodríguez (13 HR) complete seven pure HR-volume plays. All seven batters producing above-average HR paces — the model underweights raw volume, making this card systematically underpriced at these odds.",
   },
   {
     id:          "8A",
@@ -1102,7 +1102,7 @@ const parlays = [
     estPayout:   "+6500",
     description: "All S-tier players plus top 2 A-tier anchors covering the full disaster-pitcher landscape.",
     playerIds:   [1, 2, 10, 11, 12, 19, 22, 25],
-    strategy:    "All S-tier players form the foundation of the eight-leg summit. Top A-tier players round out the eight with the best remaining matchup quality. This is the most balanced 8-leg construction on the board. 3 of 8 legs target ERA ≥ 5.50 disaster starts. 2 S-tier anchors provide the probability floor.",
+    strategy:    "S-tier anchors — Carroll (0.268 ISO vs Lodolo's 5.51 ERA), Bauers (12 HR vs Painter 6.21 ERA), Raley (0.276 ISO vs Littell's 2.1 HR/9), and Contreras (0.897 OPS at Fenway) — carry maximum probability floor across four independent games. Alonso (15 HR vs Canning 6.34 ERA at Camden Yards), Dingler (16 HR with 14mph wind at Progressive Field), and Buxton (20 HR, 0.303 ISO vs Leahy) add three more confirmed soft matchups before Lowe (16 HR, 0.274 ISO at PNC Park) locks out eight different games. Three ERA ≥ 5.50 disaster starters, four legitimate bomb machines — the most balanced 8-leg construction on the board.",
   },
   {
     id:          "8B",
@@ -1113,7 +1113,7 @@ const parlays = [
     estPayout:   "+7000",
     description: "S-tier anchors combined with the highest-value B-tier plays for maximum payout potential.",
     playerIds:   [1, 2, 21, 22, 23, 11, 19, 25],
-    strategy:    "S-tier anchors provide the disaster-pitcher foundation. Top B-tier plays with strong Statcast profiles but longer odds amplify the payout ceiling significantly. B-tier legs are selected for ISO and OPS-to-odds ratio — underpriced power bats in solid matchups. 3 of 8 legs target ERA ≥ 5.50 disaster starts. 2 S-tier anchors provide the probability floor.",
+    strategy:    "Carroll (0.268 ISO) and Bauers (12 HR vs Painter 6.21 ERA) provide the S-tier disaster-pitcher foundation before the B-tier value plays extend the payout ceiling. Buxton (20 HR, 0.303 ISO), J. Rodríguez (13 HR vs Littell's 4.76 ERA), and Mayo (9 HR vs Canning's 6.34 ERA) post legitimate ISO at odds 10–20% longer than their hit probability warrants. Contreras (0.897 OPS at Fenway), Dingler (16 HR with 14mph wind), and Lowe (16 HR, 0.274 ISO) complete eight independent games — the best ISO-to-odds ratio construction on the board.",
   },
   {
     id:          "9A",
@@ -1124,7 +1124,7 @@ const parlays = [
     estPayout:   "+10000",
     description: "9-leg monster covering every premium HR context on today's full slate.",
     playerIds:   [1, 2, 10, 11, 12, 19, 22, 25, 27],
-    strategy:    "S/A-tier anchors across the board's best disaster-pitcher matchups, extended to nine legs with quality B-tier adds. Nine independent outcomes, maximum slate coverage, maximum payout structure. 3 of 9 legs target ERA ≥ 5.50 disaster starts. 2 S-tier anchors provide the probability floor.",
+    strategy:    "S-tier anchors Carroll (GABP, 0.268 ISO) and Bauers (dome, 12 HR vs Painter 6.21 ERA) open before Alonso (15 HR vs Canning 6.34 ERA), Raley (0.276 ISO vs Littell's 2.1 HR/9), Contreras (0.897 OPS at Fenway), and Dingler (16 HR with 14mph wind) pile up six elite-conviction legs. Buxton (20 HR vs Leahy 4.42 ERA), Lowe (16 HR at PNC Park), and Soto (14 HR, 0.906 OPS at Citi Field) complete nine independent games covering the full slate. Three confirmed ERA ≥ 5.50 disaster starts and five legitimate bomb machines — maximum nine-leg coverage construction.",
   },
   {
     id:          "9B",
@@ -1135,7 +1135,7 @@ const parlays = [
     estPayout:   "+11000",
     description: "S-tier anchors plus breakout candidates producing real Statcast value.",
     playerIds:   [3, 4, 13, 16, 28, 30, 29, 31, 37],
-    strategy:    "Players not selected for the Grand Salami form this nine-leg sleeper build — the second-best bat from each game slot. These are batters where ISO and matchup grade exceed what their composite score implies, specifically chosen where the model sees value vs market odds. 3 of 9 legs target ERA ≥ 5.50 disaster starts. 2 S-tier anchors provide the probability floor.",
+    strategy:    "The second-best bat from each prime matchup: Marte (11 HR at GABP vs Lodolo's 2.2 HR/9) and Sánchez (0.257 ISO vs Painter's 6.21 ERA) bring S-tier power from the same disaster matchups without the S-tier pricing. Rutschman (0.848 OPS vs Canning 6.34 ERA), Canzone (0.874 OPS, 0.257 ISO vs Littell's 2.1 HR/9), and Alvarez (22 HR, 1.066 OPS vs Avila) are the three clearest price mismatches on the board — A/B-tier odds on near-A-tier production. Duran (10 HR at Fenway), Carpenter (9 HR with 14mph wind), Rushing (0.898 OPS with 11mph wind), and Rice (18 HR, 1.006 OPS in the dome) complete nine legs built entirely on underpriced power production.",
   },
   {
     id:          "10A",
@@ -1146,6 +1146,6 @@ const parlays = [
     estPayout:   "+25000",
     description: "Elite disaster-pitcher core plus 2 C-tier moon shots for maximum payout construction.",
     playerIds:   [1, 2, 10, 11, 12, 19, 22, 25, 42, 43],
-    strategy:    "Ten legs spanning the slate's top disaster-pitcher matchups form the foundation. Two C-tier moon shots — Kyle Tucker (+632) and Carter Jensen (+633) — extend this into pure lottery territory. Pure construction: high-conviction S/A core + maximum payout ceiling. 3 of 10 legs target ERA ≥ 5.50 disaster starts. 2 S-tier anchors provide the probability floor.",
+    strategy:    "S-tier core — Carroll (0.268 ISO vs Lodolo 5.51 ERA), Bauers (12 HR vs Painter 6.21 ERA), Raley (0.276 ISO vs Littell's 2.1 HR/9), Contreras (0.897 OPS at Fenway), and Alonso (15 HR vs Canning 6.34 ERA) — provides the probability floor before the moon shots extend the ceiling. Dingler (16 HR, 14mph wind), Buxton (20 HR, 0.303 ISO), and Lowe (16 HR, 0.274 ISO) add three more confirmed power matchups, while Tucker (+632 with 11mph wind at Rate Field) and Jensen (+633 vs Imai's 5.24 ERA) drop two C-tier lottery extensions that push this into pure +25000 territory. Maximum construction: eight confirmed soft matchups, two moon shots, one lottery ticket.",
   }
 ];
