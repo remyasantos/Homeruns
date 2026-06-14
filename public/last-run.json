@@ -5,6 +5,7 @@
   "games": 15,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-06-14T12:59:57Z",
-  "source": "mlb-stats-api"
+  "timestamp": "2026-06-14T14:31:02Z",
+  "source": "quality-check-agent",
+  "notes": "Enhanced S/A-tier copy, fixed C-tier count warning (A=16 C=10), validation clean"
 }
