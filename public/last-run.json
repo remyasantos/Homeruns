@@ -5,7 +5,6 @@
   "games": 10,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-06-15T14:00:00Z",
-  "source": "quality-check-agent",
-  "notes": "Manual generation — statsapi.mlb.com blocked by network policy. SP disasters: Lorenzen 7.54 ERA, Lauer 5.74 ERA, Gusto 5.70 ERA. Wind boosts: Busch 15 MPH, Wrigley 9 MPH. Validation clean."
+  "timestamp": "2026-06-15T16:17:01Z",
+  "source": "mlb-stats-api"
 }
