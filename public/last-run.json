@@ -5,6 +5,7 @@
   "games": 10,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-06-15T16:17:01Z",
-  "source": "mlb-stats-api"
+  "timestamp": "2026-06-15T19:15:00Z",
+  "source": "quality-check-agent",
+  "notes": "Pipeline ran at 16:17 UTC with real MLB Stats API data. Quality-check pass: rewrote CONTEXT_CARDS (Spence 13.50 ERA lead, GABP #1 park, HOU dome stack, Lorenzen+wind), enhanced all S/A-tier notes and pitcherNotes (20 players), rewrote first 5 parlay strategies. Validation clean."
 }
