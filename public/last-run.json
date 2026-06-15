@@ -1,11 +1,11 @@
 {
   "status": "success",
-  "date": "JUNE 14, 2026",
-  "label": "SUNDAY MLB SLATE",
-  "games": 15,
+  "date": "JUNE 15, 2026",
+  "label": "MONDAY MLB SLATE",
+  "games": 10,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-06-14T14:31:02Z",
+  "timestamp": "2026-06-15T14:00:00Z",
   "source": "quality-check-agent",
-  "notes": "Enhanced S/A-tier copy, fixed C-tier count warning (A=16 C=10), validation clean"
+  "notes": "Manual generation — statsapi.mlb.com blocked by network policy. SP disasters: Lorenzen 7.54 ERA, Lauer 5.74 ERA, Gusto 5.70 ERA. Wind boosts: Busch 15 MPH, Wrigley 9 MPH. Validation clean."
 }
