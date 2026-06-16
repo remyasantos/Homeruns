@@ -2,10 +2,9 @@
   "status": "success",
   "date": "JUNE 16, 2026",
   "label": "TUESDAY MLB SLATE",
-  "games": 12,
+  "games": 15,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-06-16T14:31:00Z",
-  "source": "quality-check-agent",
-  "notes": "12-game Tuesday slate. Key disasters: Brady Singer 5.61 ERA (17 HR, NYM@CIN at GABP), Robert Gasser 6.38 ERA (CLE@MIL dome), Merrill Kelly 5.46 ERA (LAA@ARI dome), Zebby Matthews 5.20 ERA (MIN@TEX dome), Davis Martin 5.12 ERA (CWS@NYY). New series: CLE@MIL, CWS@NYY, BAL@SEA. Top plays: Soto/Alonso vs Singer at GABP, Judge/Stanton vs Martin at Yankee Stadium, Chourio 5HR-in-5G streak vs Cecconi 1.24 HR/9. Validation clean."
+  "timestamp": "2026-06-16T15:52:12Z",
+  "source": "mlb-stats-api"
 }
