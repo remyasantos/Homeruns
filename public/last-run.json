@@ -5,6 +5,8 @@
   "games": 15,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-06-21T13:04:48Z",
-  "source": "mlb-stats-api"
+  "timestamp": "2026-06-21T14:35:00Z",
+  "source": "mlb-stats-api",
+  "agent": "quality-check",
+  "note": "Pipeline output validated. S/A-tier notes enhanced with sharper betting-centric copy. First 5 parlay strategies rewritten with specific player stats."
 }
