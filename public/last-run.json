@@ -1,12 +1,12 @@
 {
   "status": "success",
-  "date": "JUNE 21, 2026",
-  "label": "SUNDAY MLB SLATE",
+  "date": "JUNE 22, 2026",
+  "label": "MONDAY MLB SLATE",
   "games": 15,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-06-21T14:35:00Z",
-  "source": "mlb-stats-api",
+  "timestamp": "2026-06-22T14:31:00Z",
+  "source": "manual-research",
   "agent": "quality-check",
-  "note": "Pipeline output validated. S/A-tier notes enhanced with sharper betting-centric copy. First 5 parlay strategies rewritten with specific player stats."
+  "note": "Full slate generated. 15 games confirmed. Key angles: Pallante (5.78 ERA) at Coors, Woodruff comeback start at GABP, wind out 17 mph at Nationals Park. S-tier: Judge, Schwarber, Goodman, De La Cruz, Alvarez, McMahon."
 }
