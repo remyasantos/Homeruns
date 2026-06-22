@@ -2,11 +2,9 @@
   "status": "success",
   "date": "JUNE 22, 2026",
   "label": "MONDAY MLB SLATE",
-  "games": 15,
+  "games": 13,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-06-22T14:31:00Z",
-  "source": "manual-research",
-  "agent": "quality-check",
-  "note": "Full slate generated. 15 games confirmed. Key angles: Pallante (5.78 ERA) at Coors, Woodruff comeback start at GABP, wind out 17 mph at Nationals Park. S-tier: Judge, Schwarber, Goodman, De La Cruz, Alvarez, McMahon."
+  "timestamp": "2026-06-22T15:51:07Z",
+  "source": "mlb-stats-api"
 }
