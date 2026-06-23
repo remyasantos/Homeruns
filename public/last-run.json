@@ -5,6 +5,8 @@
   "games": 15,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-06-23T13:43:00Z",
-  "source": "mlb-stats-api"
+  "timestamp": "2026-06-23T15:50:00Z",
+  "source": "mlb-stats-api",
+  "agent": "quality-check",
+  "fixes": "Parlay leg counts corrected (7B:5→7, 9B:7→9, 10A:9→10). Context cards enhanced. Alvarez pitcherNote updated for Bieber IL-return debut."
 }
