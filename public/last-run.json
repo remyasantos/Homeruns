@@ -5,6 +5,7 @@
   "games": 15,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-06-26T13:10:08Z",
-  "source": "mlb-stats-api"
+  "timestamp": "2026-06-26T14:36:00Z",
+  "source": "quality-check-agent",
+  "notes": "Tier rebalance: B→A ids 17-20, C→B ids 38-41. S=4 A=16 B=20 C=10. Validation clean."
 }
