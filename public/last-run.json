@@ -6,5 +6,6 @@
   "players": 50,
   "parlays": 15,
   "timestamp": "2026-06-27T16:18:51Z",
-  "source": "mlb-stats-api"
+  "source": "quality-check-agent",
+  "notes": "Pipeline ran successfully. Agent fixed C-tier count (14→10) by promoting ids 44,45,46,48 to A-tier."
 }
