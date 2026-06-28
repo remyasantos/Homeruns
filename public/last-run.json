@@ -1,11 +1,10 @@
 {
   "status": "success",
-  "date": "JUNE 27, 2026",
-  "label": "SATURDAY MLB SLATE",
+  "date": "JUNE 28, 2026",
+  "label": "SUNDAY MLB SLATE",
   "games": 15,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-06-27T16:18:51Z",
-  "source": "quality-check-agent",
-  "notes": "Pipeline ran successfully. Agent fixed C-tier count (14→10) by promoting ids 44,45,46,48 to A-tier."
+  "timestamp": "2026-06-28T12:15:18Z",
+  "source": "mlb-stats-api"
 }
