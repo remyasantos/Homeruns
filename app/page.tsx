@@ -1026,6 +1026,9 @@ export default function Home() {
           {["✅ Updated Daily","📊 Statcast Data","🔢 Edge Score /100"].map(s => (
             <span key={s} style={{ fontSize: 10, color: "#FFD700", background: "rgba(255,215,0,0.08)", padding: "3px 10px", borderRadius: 10, border: "1px solid rgba(255,215,0,0.2)" }}>{s}</span>
           ))}
+          <a href="/matchups.html" style={{ fontSize: 10, color: "#00E5FF", background: "rgba(0,229,255,0.08)", padding: "3px 10px", borderRadius: 10, border: "1px solid rgba(0,229,255,0.3)", textDecoration: "none", fontWeight: 700 }}>
+            ⚾ Statcast Matchups →
+          </a>
         </div>
         <div className="stat-row" style={{ display: "flex", gap: 20, justifyContent: "center", marginTop: 20, flexWrap: "wrap" }}>
           {([
