@@ -309,8 +309,8 @@ def compute_zone_fit(pitcher_sv: dict, batter_sv: dict,
     """
     Zone fit from pitcher/batter zone vectors, or pull_pct proxy.
     """
-    p_zones = pitcher_sv.get("pitcher_zones") if pitcher_sv else None
-    b_zones = batter_sv.get("batter_zones")   if batter_sv  else None
+    p_zones = pitcher_sv.get("zones") if pitcher_sv else None
+    b_zones = batter_sv.get("zones")  if batter_sv  else None
 
     if (p_zones and b_zones and
             len(p_zones) == 9 and len(b_zones) == 9 and

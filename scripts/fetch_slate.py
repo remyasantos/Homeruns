@@ -386,6 +386,7 @@ def main():
             "awayTeam":        away_abbr,
             "homeTeam":        home_abbr,
             "venueName":       venue,
+            "gameTime":        g.get("game_datetime", ""),
             "awayPitcherId":   away_pid,
             "awayPitcherName": away_pname,
             "homePitcherId":   home_pid,

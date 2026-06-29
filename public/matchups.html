@@ -289,9 +289,12 @@
   function fmtTime(t) {
     if (!t) return '';
     try {
-      var d = new Date(t), h = d.getHours(), m = d.getMinutes();
-      return (h%12||12) + ':' + (m<10?'0':'')+m + (h>=12?' PM':' AM');
-    } catch(e){ return t; }
+      var d = new Date(t);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleTimeString('en-US', {
+        timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit'
+      }) + ' ET';
+    } catch(e){ return ''; }
   }
 
   // ── Wind direction helpers ─────────────────────────────────────────────────
@@ -453,7 +456,7 @@
     statusEl.textContent = '⟳ weather...';
     var pending = 0, fetched = 0;
     MATCHUPS_GAMES.forEach(function(g) {
-      var location = g.venueName || TEAM_CITY[g.homeTeam] || g.homeTeam;
+      var location = TEAM_CITY[g.homeTeam] || g.venueName || g.homeTeam;
       if (!location) return;
       pending++;
       fetch('https://wttr.in/' + encodeURIComponent(location) + '?format=j1')
@@ -782,7 +785,7 @@
       if (b.hr_form_trend==='up'){trendIcon=' &#8679;';trendClass='trend-up';}
       else if (b.hr_form_trend==='down'){trendIcon=' &#8681;';trendClass='trend-down';}
       else {trendIcon=' &#8594;';}
-      var hrFormCell = (b.hr_form!=null?fmtPct(b.hr_form):'—') + '<span class="' + trendClass + '">' + trendIcon + '</span>';
+      var hrFormCell = (b.hr_form!=null?b.hr_form:'—') + '<span class="' + trendClass + '">' + trendIcon + '</span>';
 
       var mStyle  = percentileColor(b.matchup_score, mVals,  true);
       var cStyle  = percentileColor(b.ceiling,       cVals,  true);
@@ -1080,7 +1083,7 @@
       rows.push([
         csvEsc(b.name),csvEsc(b.team),csvEsc(b.stands),
         fmt3(b.matchup_score),fmt3(b.ceiling),fmt3(b.zone_fit),fmt3(b.khr),
-        (b.hr_form!=null?b.hr_form.toFixed(1)+'%':''),
+        (b.hr_form!=null?b.hr_form:''),
         fmt3(b.iso),fmt3(b.xwoba),fmt3(b.xwobac),
         fmtPctRaw(b.swstr_pct),fmtPctRaw(b.pull_brl_pct),fmtPctRaw(b.brl_bip_pct),
         fmtPctRaw(b.fb_pct),fmtPctRaw(b.hh_pct),

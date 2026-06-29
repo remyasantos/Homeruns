@@ -64,25 +64,36 @@ def parse_pct(v):
         return 0.0
 
 
-def get_csv(url, params, label="request"):
-    """Fetch a URL and return a list of dicts via csv.DictReader, or [] on error."""
-    try:
-        resp = SESSION.get(url, params=params, timeout=30)
-        resp.raise_for_status()
-        text = resp.text.strip()
-        if not text:
-            print(f"  [warn] Empty response for {label}", file=sys.stderr)
-            return []
-        reader = csv.DictReader(io.StringIO(text))
-        rows = list(reader)
-        print(f"  [ok] {label}: {len(rows)} rows", file=sys.stderr)
-        return rows
-    except requests.exceptions.HTTPError as exc:
-        print(f"  [warn] HTTP error for {label}: {exc}", file=sys.stderr)
-        return []
-    except Exception as exc:
-        print(f"  [warn] Error fetching {label}: {exc}", file=sys.stderr)
-        return []
+def get_csv(url, params, label="request", retries=3, backoff=3.0):
+    """Fetch a URL and return a list of dicts via csv.DictReader, or [] on error.
+    Retries on empty/error responses with exponential backoff — Savant
+    rate-limits/blocks bursts of requests, so a transient empty response
+    on attempt 1 is common and should not be treated as permanent failure.
+    """
+    for attempt in range(1, retries + 1):
+        try:
+            resp = SESSION.get(url, params=params, timeout=30)
+            resp.raise_for_status()
+            text = resp.text.strip()
+            if not text:
+                print(f"  [warn] Empty response for {label} (attempt {attempt}/{retries})", file=sys.stderr)
+            else:
+                reader = csv.DictReader(io.StringIO(text))
+                rows = list(reader)
+                if rows:
+                    print(f"  [ok] {label}: {len(rows)} rows", file=sys.stderr)
+                    return rows
+                print(f"  [warn] No rows parsed for {label} (attempt {attempt}/{retries})", file=sys.stderr)
+        except requests.exceptions.HTTPError as exc:
+            print(f"  [warn] HTTP error for {label} (attempt {attempt}/{retries}): {exc}", file=sys.stderr)
+        except Exception as exc:
+            print(f"  [warn] Error fetching {label} (attempt {attempt}/{retries}): {exc}", file=sys.stderr)
+
+        if attempt < retries:
+            time.sleep(backoff * attempt)
+
+    print(f"  [fail] Giving up on {label} after {retries} attempts", file=sys.stderr)
+    return []
 
 
 # ---------------------------------------------------------------------------
@@ -315,6 +326,7 @@ def fetch_batter_leaderboards():
         overall[pid] = d
 
     # vs RHP
+    time.sleep(2)
     rhp_rows = _fetch_batter_leaderboard(
         handedness="R", min_pa=25, label="batter leaderboard vs RHP"
     )
@@ -330,6 +342,7 @@ def fetch_batter_leaderboards():
         rhp[pid] = d
 
     # vs LHP
+    time.sleep(2)
     lhp_rows = _fetch_batter_leaderboard(
         handedness="L", min_pa=10, label="batter leaderboard vs LHP"
     )
@@ -584,9 +597,11 @@ def main():
     print("\n--- Fetching pitcher leaderboard ---", file=sys.stderr)
     pitcher_savant = fetch_pitcher_leaderboard()
 
+    time.sleep(2)
     print("\n--- Fetching batter leaderboards ---", file=sys.stderr)
     batter_overall, batter_rhp, batter_lhp = fetch_batter_leaderboards()
 
+    time.sleep(2)
     print("\n--- Fetching pitch arsenal ---", file=sys.stderr)
     arsenal_by_pitcher = fetch_pitch_arsenal()
 

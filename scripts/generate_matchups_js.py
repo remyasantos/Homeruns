@@ -45,7 +45,7 @@ batters_by_id: dict = {}
 for game in games:
     for matchup_list in (game.get("awayMatchups", []), game.get("homeMatchups", [])):
         for batter in matchup_list:
-            bid = str(batter.get("playerId", batter.get("id", "")))
+            bid = str(batter.get("batterId", batter.get("playerId", batter.get("id", ""))))
             if bid and bid not in batters_by_id:
                 batters_by_id[bid] = batter
 
