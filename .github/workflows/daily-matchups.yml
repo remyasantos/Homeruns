@@ -1,0 +1,88 @@
+name: Daily Statcast Matchups
+permissions:
+  contents: write
+
+on:
+  schedule:
+    # 1:00 PM UTC / 9:00 AM ET — runs after the slate pipeline (11:00 UTC)
+    # so today's starters are already known when Savant data is fetched.
+    - cron: '0 13 * * *'
+  workflow_dispatch:
+    inputs:
+      date_override:
+        description: 'Override date (MM/DD/YYYY) — leave blank for today'
+        required: false
+        default: ''
+
+jobs:
+  generate-matchups:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Fetch today's slate (needed for game/pitcher data)
+        run: python scripts/fetch_slate.py
+
+      - name: Check for games (off-day guard)
+        run: |
+          STATUS=$(python3 -c "import json; d=json.load(open('scripts/raw_slate.json')); print(d['status'])")
+          echo "Slate status: $STATUS"
+          if [ "$STATUS" = "no-games" ]; then
+            echo "OFF_DAY=true" >> $GITHUB_ENV
+            echo "⚠ Off day — skipping matchups generation"
+          else
+            echo "OFF_DAY=false" >> $GITHUB_ENV
+          fi
+
+      - name: Fetch Baseball Savant Statcast data
+        if: env.OFF_DAY == 'false'
+        run: python scripts/fetch_savant.py
+        continue-on-error: true
+
+      - name: Score matchups
+        if: env.OFF_DAY == 'false'
+        run: python scripts/score_matchups.py
+        continue-on-error: true
+
+      - name: Generate matchups_data.js
+        if: env.OFF_DAY == 'false'
+        run: python scripts/generate_matchups_js.py
+        continue-on-error: true
+
+      - name: Commit and push
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config commit.gpgsign false
+
+          if [ "$OFF_DAY" = "true" ]; then
+            echo "Off day — nothing to commit"
+            exit 0
+          fi
+
+          if [ ! -f public/matchups_data.js ]; then
+            echo "No matchups_data.js generated (Savant may be down) — nothing to commit"
+            exit 0
+          fi
+
+          git add public/matchups_data.js
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          DATE_LABEL=$(python3 -c "import json; d=json.load(open('scripts/raw_slate.json')); print(d.get('label', ''))" 2>/dev/null || date +'%b %-d')
+          git commit -m "data: Statcast matchups $DATE_LABEL"
+          git push origin main

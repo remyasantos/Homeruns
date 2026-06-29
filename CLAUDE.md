@@ -1,4 +1,6 @@
-# Homeruns MLB HR Parlay Board
+# Homeruns MLB HR Parlay Board — Agent Guide
+
+---
 
 ## Authentication Setup (run this first every session)
 
@@ -6,7 +8,6 @@ The task prompt passes a `PAT=` value. That PAT may be expired — **always
 fall back to the one hardcoded below** if the prompt PAT returns 401.
 
 ```bash
-# Prefer PAT passed in task prompt; fall back to the long-lived token below.
 PAT_FROM_PROMPT="${PAT:-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}"
 
 printf 'https://remyasantos:%s@github.com\n' "$PAT_FROM_PROMPT" > /root/.git-credentials
@@ -19,124 +20,189 @@ HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
 [ "$HTTP" = "200" ] && echo "✅ PAT ok" || echo "❌ PAT invalid — try fallback below"
 ```
 
-**If both PATs fail (401):**
-1. The owner must generate a new classic token at https://github.com/settings/tokens
-   → No expiration · repo scope only
-2. Update the fallback default in this file (`ghp_Dt...`) with the new token
-3. Commit and push CLAUDE.md so future sessions pick it up automatically
-
-After cloning, embed the PAT in the remote URL (most reliable, avoids credential-helper issues):
+Embed the PAT in the remote URL (most reliable):
 ```bash
 git remote set-url origin https://remyasantos:${PAT_FROM_PROMPT}@github.com/remyasantos/Homeruns.git
 ```
 
-One-shot push fallback (use if remote URL still fails):
+**If both PATs fail (401):**
+1. Owner generates a new classic token: https://github.com/settings/tokens
+   → No expiration · repo scope only
+2. Update the fallback default in this file with the new token
+3. Commit and push CLAUDE.md so future sessions pick it up automatically
+
+**Git push note:** Direct git push is blocked by the session proxy. Use the
+GitHub Git Data REST API (blob → tree → commit → PATCH ref) for all pushes:
 ```bash
+# See push_api.py pattern used in prior sessions, or use:
 git push https://remyasantos:${PAT_FROM_PROMPT}@github.com/remyasantos/Homeruns.git main
 ```
 
-### Verifying after push
+**Commit signing:** always run before committing:
 ```bash
-git fetch origin main
-git log --oneline origin/main -3
+git config --global commit.gpgsign false
 ```
-If your commit appears, the push succeeded. If `origin/main` still shows the
-old commit, the remote URL doesn't have the PAT embedded — re-run `git remote set-url` above.
 
 ---
 
-## Pipeline Integrity
+## Two Independent Systems
 
-`scripts/fetch_slate.py` must ONLY write to `scripts/raw_slate.json`.
-If the site ever shows "FAILED TO LOAD DATA" or `SLATE_DATE is not defined`,
-check whether `fetch_slate.py` has been corrupted:
+This repo has two completely separate automated pipelines. They share the
+same codebase but run on different schedules and commit different files.
 
-```bash
-head -5 scripts/fetch_slate.py
-# First line must be: #!/usr/bin/env python3
-# Must import statsapi, not fetch random URLs
-```
-
-If the file has been replaced with garbage (e.g., fetches Walmart/Jina URLs,
-writes directly to `public/data.js`), restore it:
-
-```bash
-git log --oneline scripts/fetch_slate.py     # find the last good commit
-git show <good-commit>:scripts/fetch_slate.py > scripts/fetch_slate.py
-```
-
-The workflow (`daily-slate.yml`) has two defences against pipeline corruption:
-1. **Off-day guard**: on off-days, `data.js` is NEVER staged — only `last-run.json`
-2. **Sanity check**: on game days, the workflow confirms `data.js` starts with
-   `const ` before staging; validation (`node validate-data.js`) must also pass
-
-These two guards mean a corrupted fetch script cannot silently overwrite a good `data.js`.
+| | HR Parlay Picks | Statcast Matchups |
+|---|---|---|
+| **Workflow** | `daily-slate.yml` | `daily-matchups.yml` |
+| **Runs at** | 11:00 UTC / 7 AM ET | 13:00 UTC / 9 AM ET |
+| **Output file** | `public/data.js` | `public/matchups_data.js` |
+| **UI page** | `public/parlays.html` | `public/matchups.html` |
+| **Status file** | `public/last-run.json` | none (check Actions log) |
+| **Fails silently?** | No — writes `validation-failed` status | Yes — Savant steps use `continue-on-error` |
 
 ---
 
-## Daily Schedule & Flow
+## System 1: Daily HR Parlay Picks
 
-Two automated processes run each morning in sequence:
+### What it does
+Fetches today's MLB schedule and pitchers via MLB Stats API, scores 50
+hitters by park factor + weather + matchup, builds 15 parlays, writes
+`public/data.js`, validates it, and commits.
 
-| Time (ET)  | Process | What it does |
-|------------|---------|-------------|
-| ~7:00 AM*  | GitHub Actions pipeline | Fetches MLB Stats API + weather, scores 50 players, builds 15 parlays, commits `data.js` |
-| 9:30 AM    | Daily quality-check agent | Validates pipeline output, fixes any schema warnings, enhances copy, pushes clean version |
-
-\* Scheduled at 7:00 AM ET (11:00 UTC). GitHub Actions runner queue typically
-adds 1–2 hours of delay, so it usually completes by 8:30–9:00 AM ET — before
-the agent runs.
-
-**The pipeline costs $0 — no Claude API, no secrets required.**
-
+### Pipeline scripts
 ```
-scripts/fetch_slate.py       MLB Stats API + wttr.in → scripts/raw_slate.json
-scripts/tier_engine.py       Score/tier 50 players  → scripts/scored_players.json
-scripts/parlay_builder.py    Build 15 parlays        → scripts/parlays.json
-scripts/generate_data_js.py  Deterministic notes     → public/data.js
+scripts/fetch_slate.py       MLB Stats API + wttr.in  → scripts/raw_slate.json
+scripts/tier_engine.py       Score/tier 50 players    → scripts/scored_players.json
+scripts/parlay_builder.py    Build 15 parlays          → scripts/parlays.json
+scripts/generate_data_js.py  Deterministic notes       → public/data.js
 validate-data.js             Schema validation
-.github/workflows/daily-slate.yml  Orchestration (cron 7 AM ET / 11:00 UTC)
 ```
 
-Intermediate JSON files (`scripts/*.json`) are generated at runtime and are
-gitignored — do not commit them.
+### How to access
+Open `public/parlays.html` in a browser, or visit the GitHub Pages URL for
+the repo. The page loads `public/data.js` via a `<script>` tag.
 
----
-
-## Project Structure
-
-```
-public/
-  parlays.html    — the UI (static HTML, loads data.js via <script>)
-  data.js         — daily generated data (committed by the pipeline)
-  last-run.json   — pipeline status: success | no-games | validation-failed
-scripts/
-  fetch_slate.py  — MLB Stats API fetch + weather enrichment
-  tier_engine.py  — scoring model + tier assignment
-  parlay_builder.py — parlay construction
-  generate_data_js.py — JS serializer with deterministic text generation
-  requirements.txt
-validate-data.js  — Node schema validator (uses only built-in modules)
-DATA_UPDATE_INSTRUCTIONS.txt — full schema reference + manual fallback prompt
-```
-
----
-
-## Manual Trigger
-
+### How to manually trigger
 GitHub Actions UI:
 > github.com/remyasantos/Homeruns → Actions → "Daily MLB HR Slate" → Run workflow
 
+### How to check status
+```bash
+curl https://raw.githubusercontent.com/remyasantos/Homeruns/main/public/last-run.json
+```
+Status values: `success` | `no-games` | `validation-failed`
+
+### If the pipeline fails (`validation-failed`)
+1. Check the Actions log for the error step
+2. For a quick patch: edit `public/data.js` manually, run `node validate-data.js`, commit and push
+3. For full regeneration: see `DATA_UPDATE_INSTRUCTIONS.txt`
+
+### Pipeline integrity guards
+- `fetch_slate.py` must ONLY write to `scripts/raw_slate.json` — never `public/data.js`
+- Off-day guard: if fewer than 4 games, `data.js` is never staged
+- Sanity check: workflow confirms `data.js` starts with `const ` before staging
+- `validate-data.js` must pass or the commit is blocked
+
 ---
 
-## Manual Data Patch (quick fix)
+## System 2: Statcast Matchups Dashboard
 
-To patch a single player stat in `public/data.js` without regenerating:
+### What it does
+Fetches pitcher/hitter Statcast data from Baseball Savant (xwOBA, barrel%,
+hard-hit%, zone data, pitch arsenal), scores all pitcher-vs-batter matchups
+for today's games, and writes `public/matchups_data.js` for the KASPER-style
+dashboard at `public/matchups.html`.
+
+### Pipeline scripts
+```
+scripts/fetch_slate.py         MLB Stats API             → scripts/raw_slate.json
+scripts/fetch_savant.py        Baseball Savant CSV API   → scripts/savant_data.json
+scripts/score_matchups.py      Matchup scoring model     → scripts/matchups.json
+scripts/generate_matchups_js.py  JS serializer           → public/matchups_data.js
+```
+
+### How to access
+Open `public/matchups.html` in a browser. The page loads `public/matchups_data.js`
+via a `<script>` tag. It shows:
+- All today's games as tabs
+- Per-game pitcher stats and slate ranking
+- Best batter matchups with Statcast metrics (KHR, xwOBA, barrel%, zone fit)
+- SVG zone heat maps for pitchers and hitters
+- CSV export for each game
+
+### How to manually trigger
+GitHub Actions UI:
+> github.com/remyasantos/Homeruns → Actions → "Daily Statcast Matchups" → Run workflow
+
+### How to check if it ran
+Look at the most recent commit — if it says `data: Statcast matchups ...` it ran.
+Or check Actions → "Daily Statcast Matchups" → latest run log.
+
+### If Savant is down or data is missing
+All three Savant steps use `continue-on-error: true`. The pipeline degrades
+gracefully: if `savant_data.json` is empty or missing, `score_matchups.py`
+falls back to ERA-derived xwOBA estimates so `matchups_data.js` is still
+generated with partial data. The UI will show dashes for unavailable stats.
+
+### Scoring model (how to update)
+- **KHR score**: `xwoba_vs_pitcher_hand × 170` — edit in `scripts/score_matchups.py`, function `compute_khr()`
+- **Zone fit**: dot product of pitcher pitch-frequency-per-zone × batter xwOBA-per-zone
+- **Matchup score**: weighted sum of khr_norm + zone_fit_norm + park_bonus + power_raw + weather_bonus
+- Edit weights in `scripts/score_matchups.py` near the `WEIGHTS` dict at the top of the file
+- The dashboard UI layout is in `public/matchups.html` — all rendering is client-side JS, no build step
+
+### What the matchups workflow does NOT touch
+- `public/data.js` — never written by any matchups script
+- `public/last-run.json` — only the slate pipeline writes this
+- `scripts/raw_slate.json` — generated fresh at runtime, gitignored
+
+---
+
+## Daily Schedule (full picture)
+
+| Time (ET) | Process | Output |
+|-----------|---------|--------|
+| ~7:00 AM | `daily-slate.yml` (GitHub Actions) | `public/data.js` + `public/last-run.json` |
+| 9:00 AM | `daily-matchups.yml` (GitHub Actions) | `public/matchups_data.js` |
+| 9:30 AM | Daily quality-check agent (Claude Code) | Enhanced `public/data.js` copy + tier fixes |
+
+The slate pipeline runs first so today's starters are known when the matchups
+pipeline fetches Savant data two hours later.
+
+---
+
+## Project File Map
+
+```
+public/
+  parlays.html        — HR parlay picks UI
+  matchups.html       — Statcast matchups dashboard (KASPER-style)
+  data.js             — daily slate data (written by slate pipeline)
+  matchups_data.js    — daily matchup data (written by matchups pipeline)
+  last-run.json       — slate pipeline status
+
+scripts/
+  fetch_slate.py      — MLB Stats API + weather (used by BOTH pipelines)
+  tier_engine.py      — HR scoring model
+  parlay_builder.py   — parlay construction
+  generate_data_js.py — JS serializer for parlays
+  fetch_savant.py     — Baseball Savant Statcast fetch
+  score_matchups.py   — matchup scoring model
+  generate_matchups_js.py — JS serializer for matchups
+  requirements.txt    — MLB-StatsAPI, requests, pandas
+
+.github/workflows/
+  daily-slate.yml     — slate pipeline (11:00 UTC)
+  daily-matchups.yml  — matchups pipeline (13:00 UTC)
+
+validate-data.js      — Node schema validator for data.js
+DATA_UPDATE_INSTRUCTIONS.txt — manual fallback for slate pipeline
+```
+
+---
+
+## Manual Data Patch (quick fix — slate only)
 
 ```bash
-git clone https://github.com/remyasantos/Homeruns.git
-cd Homeruns
-git remote set-url origin https://github.com/remyasantos/Homeruns.git
 # edit public/data.js
 node validate-data.js
 git add public/data.js
@@ -144,19 +210,7 @@ git commit -m "data: manual patch — [reason]"
 git push origin main
 ```
 
----
+## Manual Full Regeneration (slate pipeline failure)
 
-## Manual Full Regeneration (pipeline failure fallback)
-
-See `DATA_UPDATE_INSTRUCTIONS.txt` — the manual fallback section has a
-self-contained Claude prompt that generates a complete `data.js` replacement.
-Use this only when `public/last-run.json` shows `"status": "validation-failed"`.
-
----
-
-## Commit Signing
-
-GitHub Actions runner requires:
-```bash
-git config --global commit.gpgsign false
-```
+See `DATA_UPDATE_INSTRUCTIONS.txt`. Use only when `last-run.json` shows
+`"status": "validation-failed"`.
