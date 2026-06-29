@@ -28,36 +28,77 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Install dependencies
         run: pip install -r scripts/requirements.txt
 
       - name: Fetch today's slate (needed for game/pitcher data)
         run: python scripts/fetch_slate.py
+        continue-on-error: true
 
       - name: Check for games (off-day guard)
         run: |
-          STATUS=$(python3 -c "import json; d=json.load(open('scripts/raw_slate.json')); print(d['status'])")
-          echo "Slate status: $STATUS"
-          if [ "$STATUS" = "no-games" ]; then
-            echo "OFF_DAY=true" >> $GITHUB_ENV
-            echo "⚠ Off day — skipping matchups generation"
-          else
+          if [ ! -f scripts/raw_slate.json ]; then
+            echo "raw_slate.json missing (fetch failed) — will bootstrap from data.js"
             echo "OFF_DAY=false" >> $GITHUB_ENV
+            echo "FETCH_FAILED=true" >> $GITHUB_ENV
+          else
+            STATUS=$(python3 -c "import json; d=json.load(open('scripts/raw_slate.json')); print(d['status'])")
+            echo "Slate status: $STATUS"
+            if [ "$STATUS" = "no-games" ]; then
+              echo "OFF_DAY=true" >> $GITHUB_ENV
+            else
+              echo "OFF_DAY=false" >> $GITHUB_ENV
+            fi
+            echo "FETCH_FAILED=false" >> $GITHUB_ENV
           fi
 
       - name: Fetch Baseball Savant Statcast data
-        if: env.OFF_DAY == 'false'
+        if: env.OFF_DAY == 'false' && env.FETCH_FAILED == 'false'
         run: python scripts/fetch_savant.py
         continue-on-error: true
 
       - name: Score matchups
-        if: env.OFF_DAY == 'false'
+        if: env.OFF_DAY == 'false' && env.FETCH_FAILED == 'false'
         run: python scripts/score_matchups.py
         continue-on-error: true
 
       - name: Generate matchups_data.js
-        if: env.OFF_DAY == 'false'
+        if: env.OFF_DAY == 'false' && env.FETCH_FAILED == 'false'
         run: python scripts/generate_matchups_js.py
+        continue-on-error: true
+
+      - name: Bootstrap matchups_data.js from data.js (fallback)
+        if: env.OFF_DAY == 'false'
+        run: |
+          # Run bootstrap if: fetch failed, or matchups_data.js is missing/empty/has no games
+          NEED_BOOTSTRAP=false
+          if [ "$FETCH_FAILED" = "true" ]; then
+            NEED_BOOTSTRAP=true
+          elif [ ! -f public/matchups_data.js ]; then
+            NEED_BOOTSTRAP=true
+          else
+            GAME_COUNT=$(node -e "
+              const vm=require('vm'),fs=require('fs');
+              const s={};vm.createContext(s);
+              vm.runInContext(fs.readFileSync('public/matchups_data.js','utf8').replace(/^(?:const|let)\s+/gm,'var '),s);
+              console.log((s.MATCHUPS_GAMES||[]).length);
+            " 2>/dev/null || echo "0")
+            if [ "$GAME_COUNT" = "0" ]; then
+              NEED_BOOTSTRAP=true
+            fi
+          fi
+
+          if [ "$NEED_BOOTSTRAP" = "true" ]; then
+            echo "⚠ Running bootstrap from data.js"
+            node scripts/bootstrap_matchups_js.js
+          else
+            echo "✅ matchups_data.js already has game data — no bootstrap needed"
+          fi
         continue-on-error: true
 
       - name: Commit and push
@@ -72,7 +113,7 @@ jobs:
           fi
 
           if [ ! -f public/matchups_data.js ]; then
-            echo "No matchups_data.js generated (Savant may be down) — nothing to commit"
+            echo "No matchups_data.js generated — nothing to commit"
             exit 0
           fi
 
