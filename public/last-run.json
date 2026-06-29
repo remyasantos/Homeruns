@@ -1,11 +1,10 @@
 {
   "status": "success",
-  "date": "JUNE 28, 2026",
-  "label": "SUNDAY MLB SLATE",
-  "games": 15,
+  "date": "JUNE 29, 2026",
+  "label": "MONDAY MLB SLATE",
+  "games": 13,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-06-28T14:45:00Z",
-  "source": "quality-check-agent",
-  "note": "Pipeline ran at 12:15 UTC. Quality-check agent enhanced S/A-tier copy: 16 player notes, 16 pitcherNotes, 5 parlay strategies. Pushed via GitHub API (git proxy authorization issue)."
+  "timestamp": "2026-06-29T14:47:38Z",
+  "source": "mlb-stats-api"
 }
