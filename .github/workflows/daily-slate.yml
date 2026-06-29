@@ -65,6 +65,21 @@ jobs:
         if: env.OFF_DAY == 'false'
         run: python scripts/generate_data_js.py
 
+      - name: Fetch Baseball Savant Statcast data
+        if: env.OFF_DAY == 'false'
+        run: python scripts/fetch_savant.py
+        continue-on-error: true
+
+      - name: Score matchups
+        if: env.OFF_DAY == 'false'
+        run: python scripts/score_matchups.py
+        continue-on-error: true
+
+      - name: Generate matchups_data.js
+        if: env.OFF_DAY == 'false'
+        run: python scripts/generate_matchups_js.py
+        continue-on-error: true
+
       - name: Find bad token in data.js
         if: env.OFF_DAY == 'false'
         run: |
@@ -160,6 +175,7 @@ jobs:
               exit 1
             fi
             git add public/data.js public/last-run.json
+            [ -f public/matchups_data.js ] && git add public/matchups_data.js || true
           fi
 
           # Check if anything actually changed

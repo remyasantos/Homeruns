@@ -2,6 +2,8 @@
 scripts/raw_slate.json
 scripts/scored_players.json
 scripts/parlays.json
+scripts/savant_data.json
+scripts/matchups.json
 
 # Python
 __pycache__/
