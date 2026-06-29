@@ -517,6 +517,8 @@ def build_pitcher_entry(pid: int, name: str, team: str, opp_team: str,
         "fb_pct":             fb_pct_p,
         "hard_hit_pct":       hard_hit_p,
         "oppo_pct":           oppo_pct_p,
+        "arsenal":            sv.get("arsenal", []),
+        "zones":              sv.get("zones", [0.0] * 9),
     }
 
 
@@ -583,6 +585,7 @@ def build_batter_matchup(batter_raw: dict, team: str,
         "hh_pct":        hh_pct,
         "la":            la,
         "likely":        likely,
+        "zones":         bsv.get("zones", [0.0] * 9),
     }
 
 
