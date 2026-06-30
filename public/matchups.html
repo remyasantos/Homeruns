@@ -297,6 +297,17 @@
     } catch(e){ return ''; }
   }
 
+  // ── Live game check ────────────────────────────────────────────────────────
+  function isGameCurrentlyLive(g) {
+    if (!g.gameTime) return false;
+    try {
+      var start = new Date(g.gameTime);
+      var now   = new Date();
+      var minElapsed = (now - start) / 60000;
+      return minElapsed >= -15 && minElapsed <= 220; // -15min before first pitch to +3h40m
+    } catch(e) { return false; }
+  }
+
   // ── Wind direction helpers ─────────────────────────────────────────────────
   function windDirFromDeg(dir) {
     if (dir == null) return null;
@@ -471,7 +482,7 @@
               condition: c.weatherDesc && c.weatherDesc[0] && c.weatherDesc[0].value,
               humidity:  parseInt(c.humidity),
               roof:      (g.weather && g.weather.roof) || null,
-              live:      true
+              live:      isGameCurrentlyLive(g)
             };
             fetched++;
           }
@@ -486,7 +497,11 @@
 
   function finishWeatherFetch(count) {
     var statusEl = document.getElementById('weather-status');
-    statusEl.textContent = count > 0 ? ('&#x25CF; ' + count + ' live') : '';
+    var liveCount = 0;
+    if (typeof MATCHUPS_GAMES !== 'undefined') {
+      MATCHUPS_GAMES.forEach(function(g) { if (isGameCurrentlyLive(g)) liveCount++; });
+    }
+    statusEl.innerHTML = liveCount > 0 ? ('&#x25CF; ' + liveCount + ' live') : '';
     if (state.currentTab === 'weather') renderMain();
   }
 
