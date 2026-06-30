@@ -1,6 +1,6 @@
 const MATCHUPS_DATE = "JUNE 30, 2026";
 const MATCHUPS_LABEL = "TUESDAY MLB SLATE";
-const MATCHUPS_GENERATED_AT = "2026-06-30T15:40:11Z";
+const MATCHUPS_GENERATED_AT = "2026-06-30T19:08:50Z";
 const MATCHUPS_GAMES = [
   {
     "gamePk": 1,
@@ -15,9 +15,9 @@ const MATCHUPS_GAMES = [
     "homeThrows": "R",
     "park": "Oriole Park at Camden Yards",
     "weather": {
-      "temp_f": 83,
-      "wind_mph": 7,
-      "wind_dir": "S",
+      "temp_f": 90,
+      "wind_mph": 10,
+      "wind_dir": "SSE",
       "roof": false,
       "condition": "Unknown"
     },
@@ -460,8 +460,8 @@ const MATCHUPS_GAMES = [
     "homeThrows": "R",
     "park": "Progressive Field",
     "weather": {
-      "temp_f": 88,
-      "wind_mph": 9,
+      "temp_f": 93,
+      "wind_mph": 13,
       "wind_dir": "SW",
       "roof": false,
       "condition": "Unknown"
@@ -905,8 +905,8 @@ const MATCHUPS_GAMES = [
     "homeThrows": "R",
     "park": "Citizens Bank Park",
     "weather": {
-      "temp_f": 80,
-      "wind_mph": 6,
+      "temp_f": 88,
+      "wind_mph": 8,
       "wind_dir": "SW",
       "roof": false,
       "condition": "Unknown"
@@ -1350,9 +1350,9 @@ const MATCHUPS_GAMES = [
     "homeThrows": "R",
     "park": "Yankee Stadium",
     "weather": {
-      "temp_f": 80,
-      "wind_mph": 7,
-      "wind_dir": "SW",
+      "temp_f": 89,
+      "wind_mph": 11,
+      "wind_dir": "SSW",
       "roof": false,
       "condition": "Unknown"
     },
@@ -2240,9 +2240,9 @@ const MATCHUPS_GAMES = [
     "homeThrows": "R",
     "park": "Fenway Park",
     "weather": {
-      "temp_f": 76,
-      "wind_mph": 5,
-      "wind_dir": "SSW",
+      "temp_f": 85,
+      "wind_mph": 2,
+      "wind_dir": "S",
       "roof": false,
       "condition": "Unknown"
     },
@@ -2685,9 +2685,9 @@ const MATCHUPS_GAMES = [
     "homeThrows": "R",
     "park": "Truist Park",
     "weather": {
-      "temp_f": 87,
+      "temp_f": 92,
       "wind_mph": 5,
-      "wind_dir": "E",
+      "wind_dir": "ESE",
       "roof": false,
       "condition": "Unknown"
     },
@@ -3130,8 +3130,8 @@ const MATCHUPS_GAMES = [
     "homeThrows": "R",
     "park": "Kauffman Stadium",
     "weather": {
-      "temp_f": 84,
-      "wind_mph": 16,
+      "temp_f": 90,
+      "wind_mph": 17,
       "wind_dir": "SSW",
       "roof": false,
       "condition": "Unknown"
@@ -4020,7 +4020,7 @@ const MATCHUPS_GAMES = [
     "homeThrows": "R",
     "park": "Wrigley Field",
     "weather": {
-      "temp_f": 81,
+      "temp_f": 90,
       "wind_mph": 13,
       "wind_dir": "SW",
       "roof": false,
@@ -4910,9 +4910,9 @@ const MATCHUPS_GAMES = [
     "homeThrows": "R",
     "park": "Coors Field",
     "weather": {
-      "temp_f": 70,
-      "wind_mph": 7,
-      "wind_dir": "S",
+      "temp_f": 79,
+      "wind_mph": 12,
+      "wind_dir": "SE",
       "roof": false,
       "condition": "Unknown"
     },
@@ -5355,8 +5355,8 @@ const MATCHUPS_GAMES = [
     "homeThrows": "R",
     "park": "Sutter Health Park",
     "weather": {
-      "temp_f": 60,
-      "wind_mph": 5,
+      "temp_f": 74,
+      "wind_mph": 4,
       "wind_dir": "SSW",
       "roof": false,
       "condition": "Unknown"
