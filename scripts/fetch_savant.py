@@ -293,6 +293,27 @@ def _parse_batter_row_base(row):
     }
 
 
+def _extract_player_id(row):
+    """
+    Extract MLBAM player ID from a Savant CSV row.
+    Tries multiple column names used by different Savant endpoints/versions.
+    Logs column names on the first call to aid debugging in Actions logs.
+    """
+    if not getattr(_extract_player_id, "_logged", False):
+        _extract_player_id._logged = True
+        print(f"  [debug] batter row columns: {list(row.keys())}", file=sys.stderr)
+    for col in ("player_id", "mlb_id", "xMLBAMID", "key_mlbam", "batter_id", "id"):
+        v = row.get(col)
+        if v is not None and str(v).strip() not in ("", "0", "None"):
+            try:
+                pid = int(safe_float(v))
+                if pid > 0:
+                    return pid
+            except Exception:
+                pass
+    return 0
+
+
 def fetch_batter_leaderboards():
     """
     Returns (overall_dict, rhp_dict, lhp_dict)
@@ -304,10 +325,7 @@ def fetch_batter_leaderboards():
     )
     overall = {}
     for row in overall_rows:
-        try:
-            pid = int(safe_float(row.get("player_id", row.get("mlb_id", 0))))
-        except Exception:
-            continue
+        pid = _extract_player_id(row)
         if pid == 0:
             continue
         d = _parse_batter_row_base(row)
@@ -326,32 +344,26 @@ def fetch_batter_leaderboards():
         overall[pid] = d
 
     # vs RHP
-    time.sleep(2)
+    time.sleep(5)
     rhp_rows = _fetch_batter_leaderboard(
         handedness="R", min_pa=25, label="batter leaderboard vs RHP"
     )
     rhp = {}
     for row in rhp_rows:
-        try:
-            pid = int(safe_float(row.get("player_id", row.get("mlb_id", 0))))
-        except Exception:
-            continue
+        pid = _extract_player_id(row)
         if pid == 0:
             continue
         d = _parse_batter_row_base(row)
         rhp[pid] = d
 
     # vs LHP
-    time.sleep(2)
+    time.sleep(5)
     lhp_rows = _fetch_batter_leaderboard(
         handedness="L", min_pa=10, label="batter leaderboard vs LHP"
     )
     lhp = {}
     for row in lhp_rows:
-        try:
-            pid = int(safe_float(row.get("player_id", row.get("mlb_id", 0))))
-        except Exception:
-            continue
+        pid = _extract_player_id(row)
         if pid == 0:
             continue
         d = _parse_batter_row_base(row)
@@ -594,34 +606,31 @@ def main():
     )
 
     # ---- Fetch leaderboards (bulk) -----------------------------------------
+    # Longer gaps between bulk calls: Savant rate-limits rapid sequential
+    # requests. Pitcher leaderboard (first) succeeds; batter leaderboard
+    # was consistently returning zero usable rows when fired < 3s after.
+    # 15s gap gives Savant time to reset the rate-limit window.
     print("\n--- Fetching pitcher leaderboard ---", file=sys.stderr)
     pitcher_savant = fetch_pitcher_leaderboard()
 
-    time.sleep(2)
+    time.sleep(15)
     print("\n--- Fetching batter leaderboards ---", file=sys.stderr)
     batter_overall, batter_rhp, batter_lhp = fetch_batter_leaderboards()
+    print(
+        f"  batter_overall={len(batter_overall)} rhp={len(batter_rhp)} lhp={len(batter_lhp)}",
+        file=sys.stderr,
+    )
 
-    time.sleep(2)
+    time.sleep(5)
     print("\n--- Fetching pitch arsenal ---", file=sys.stderr)
     arsenal_by_pitcher = fetch_pitch_arsenal()
 
-    # ---- Per-pitcher zones (sleep 1s between) -------------------------------
-    print("\n--- Fetching per-pitcher zone data ---", file=sys.stderr)
-    pitcher_zones = {}
-    for i, pid in enumerate(sorted(pitcher_ids)):
-        if i > 0:
-            time.sleep(1)
-        print(f"  zones for pitcher {pid} ...", file=sys.stderr)
-        pitcher_zones[pid] = fetch_pitcher_zones(pid)
-
-    # ---- Per-batter zones (sleep 1s between) --------------------------------
-    print("\n--- Fetching per-batter zone data ---", file=sys.stderr)
-    batter_zones = {}
-    for i, bid in enumerate(sorted(batter_ids)):
-        if i > 0:
-            time.sleep(1)
-        print(f"  zones for batter {bid} ...", file=sys.stderr)
-        batter_zones[bid] = fetch_batter_zones(bid)
+    # Per-player zone fetches disabled: ~200 sequential statcast_search/csv
+    # requests that have never returned non-zero data in production, and
+    # hammering that endpoint was likely triggering rate-limit blocks that
+    # broke subsequent leaderboard calls.
+    pitcher_zones: dict = {}
+    batter_zones: dict = {}
 
     # ---- Build output pitchers dict ----------------------------------------
     print("\n--- Building output ---", file=sys.stderr)
@@ -650,37 +659,15 @@ def main():
     # ---- Build output batters dict -----------------------------------------
     out_batters = {}
     for bid, bname in batter_id_to_name.items():
-        if bid in batter_overall:
-            base = dict(batter_overall[bid])
-        else:
+        if bid not in batter_overall:
+            # Skip — score_matchups.py will fall back to real MLB Stats API data
+            # (batter_raw from raw_slate.json) instead of fake constants.
             print(
-                f"  [fallback] batter {bid} ({bname}) not in Savant overall leaderboard",
+                f"  [skip] batter {bid} ({bname}) not in Savant leaderboard — MLB Stats fallback applies",
                 file=sys.stderr,
             )
-            base = {
-                "name": bname,
-                "stands": "R",
-                "pa": 0,
-                "xwoba": 0.320,
-                "xba": 0.250,
-                "xslg": 0.420,
-                "xiso": 0.170,
-                "exit_velo": 88.0,
-                "la_avg": 12.0,
-                "barrel_pct": 7.0,
-                "hard_hit_pct": 38.0,
-                "sweet_spot_pct": 33.0,
-                "swstr_pct": 10.0,
-                "o_swing_pct": 28.0,
-                "fb_pct": 35.0,
-                "gb_pct": 42.0,
-                "ld_pct": 23.0,
-                "pull_pct": 38.0,
-                "oppo_pct": 24.0,
-                "pull_brl_pct": 2.7,
-                "k_pct": 0.220,
-                "bb_pct": 0.080,
-            }
+            continue
+        base = dict(batter_overall[bid])
 
         # Fill name if missing
         if not base.get("name"):
