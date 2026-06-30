@@ -435,7 +435,9 @@ def get_fb_pct(batter_sv: dict, batter_raw: dict) -> float:
         v = batter_sv.get("fb_pct") or batter_sv.get("flyball_pct")
         if v is not None:
             return round(_fb(v), 1)
-    return 32.0  # league average
+    # Higher ISO → more fly-ball tendency
+    iso = _fb(batter_raw.get("iso"), 0.150)
+    return round(min(50.0, max(20.0, iso * 120.0 + 22.0)), 1)
 
 
 def get_hh_pct(batter_sv: dict, batter_raw: dict) -> float:
@@ -447,11 +449,16 @@ def get_hh_pct(batter_sv: dict, batter_raw: dict) -> float:
     return round(min(65.0, ops * 45.0), 1)
 
 
-def get_swstr_pct_batter(batter_sv: dict) -> float:
+def get_swstr_pct_batter(batter_sv: dict, batter_raw: dict = None) -> float:
     if batter_sv:
         v = batter_sv.get("swstr_pct")
         if v is not None:
             return round(_fb(v), 1)
+    # K% ≈ swinging strikes + called strikes; swinging ≈ 42% of total K%
+    if batter_raw:
+        k_pct = _fb(batter_raw.get("k_pct"), 0.0)
+        if k_pct > 0:
+            return round(min(20.0, k_pct * 42.0), 1)
     return 10.0
 
 
@@ -560,7 +567,7 @@ def build_batter_matchup(batter_raw: dict, team: str,
     la        = get_la(bsv)
     fb_pct    = get_fb_pct(bsv, batter_raw)
     hh_pct    = get_hh_pct(bsv, batter_raw)
-    swstr_b   = get_swstr_pct_batter(bsv)
+    swstr_b   = get_swstr_pct_batter(bsv, batter_raw)
 
     return {
         "batterId":      pid,
@@ -623,7 +630,7 @@ for game_idx, g in enumerate(games_raw):
     away_throws = get_pitcher_throws(away_pid) if away_pid else "R"
     home_throws = get_pitcher_throws(home_pid) if home_pid else "R"
 
-    # ── Build pitcher slate entries ───────────────────────────────────────────
+    # ── Build pitcher slate entries ─────────────────────────────────────────────
     for pid, pname, team, opp in [
         (away_pid, away_pname, away_team, home_team),
         (home_pid, home_pname, home_team, away_team),
@@ -634,7 +641,7 @@ for game_idx, g in enumerate(games_raw):
             )
             seen_pitcher_ids.add(pid)
 
-    # ── Away batters face HOME pitcher ────────────────────────────────────────
+    # ── Away batters face HOME pitcher ──────────────────────────────────────────
     away_batters_raw = players_by_team.get(away_team, [])
     away_matchups = []
     for braw in away_batters_raw:
@@ -651,7 +658,7 @@ for game_idx, g in enumerate(games_raw):
     away_matchups.sort(key=lambda x: -x["matchup_score"])
     away_matchups = away_matchups[:8]
 
-    # ── Home batters face AWAY pitcher ────────────────────────────────────────
+    # ── Home batters face AWAY pitcher ──────────────────────────────────────────
     home_batters_raw = players_by_team.get(home_team, [])
     home_matchups = []
     for braw in home_batters_raw:
@@ -668,7 +675,7 @@ for game_idx, g in enumerate(games_raw):
     home_matchups.sort(key=lambda x: -x["matchup_score"])
     home_matchups = home_matchups[:8]
 
-    # ── Assemble game time (raw_slate may not carry it) ───────────────────────
+    # ── Assemble game time (raw_slate may not carry it) ────────────────────────
     game_time = g.get("gameTime") or g.get("time") or "TBD"
 
     output_games.append({

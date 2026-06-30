@@ -14,7 +14,7 @@ import json
 import datetime
 import sys
 
-# ── Static team name → abbreviation map ──────────────────────────────────────
+# ── Static team name → abbreviation map ───────────────────────────────────────────
 # Keys match the full team names returned by statsapi.schedule()
 TEAM_NAME_TO_ABBR = {
     "Arizona Diamondbacks":      "ARI",
@@ -66,7 +66,7 @@ def team_abbr(name: str) -> str:
     print(f"  ⚠ Unknown team name '{name}' — using '{safe}'")
     return safe or "UNK"
 
-# ── Static config ─────────────────────────────────────────────────────────────
+# ── Static config ─────────────────────────────────────────────────────
 
 RETRACTABLE_ROOF_PARKS = {
     "Chase Field",
@@ -154,7 +154,7 @@ CITY_WEATHER_MAP = {
     "Guaranteed Rate Field":        "Chicago IL",
 }
 
-# ── Date helpers ──────────────────────────────────────────────────────────────
+# ── Date helpers ───────────────────────────────────────────────────
 
 def today_str():
     return datetime.date.today().strftime("%Y-%m-%d")
@@ -167,7 +167,7 @@ def format_day_label(date_str):
     d = datetime.datetime.strptime(date_str, "%Y-%m-%d")
     return d.strftime("%A").upper() + " MLB SLATE"
 
-# ── Weather ───────────────────────────────────────────────────────────────────
+# ── Weather ────────────────────────────────────────────────────────────
 
 def get_weather(venue_name):
     """Fetch current conditions from wttr.in. Falls back to neutral defaults."""
@@ -191,7 +191,7 @@ def get_weather(venue_name):
         print(f"  ⚠ weather error for {venue_name}: {e}")
         return {"temp_f": 72, "wind_mph": 5, "wind_dir": "E", "roof": False}
 
-# ── Pitcher ID lookup ─────────────────────────────────────────────────────────
+# ── Pitcher ID lookup ────────────────────────────────────────────────────
 
 def get_pitcher_id(name):
     """Look up a player ID by full name. Returns None if not found."""
@@ -205,7 +205,7 @@ def get_pitcher_id(name):
         print(f"  ⚠ pitcher lookup error for {name}: {e}")
     return None
 
-# ── Pitcher stats ─────────────────────────────────────────────────────────────
+# ── Pitcher stats ────────────────────────────────────────────────────────
 
 def get_pitcher_stats(player_id, season=2026):
     """Return dict with era/whip/hr9/bb9/k9/fip/ip, or {} on failure."""
@@ -255,7 +255,7 @@ def get_pitcher_stats(player_id, season=2026):
         print(f"  ⚠ pitcher stats error for id={player_id}: {e}")
         return {}
 
-# ── Batter stats ──────────────────────────────────────────────────────────────
+# ── Batter stats ─────────────────────────────────────────────────────────
 
 def get_team_batters(team_id, season=2026, top_n=6):
     """Return top_n batters (by HR then OPS) with season stats. Skips pitchers."""
@@ -304,16 +304,22 @@ def get_team_batters(team_id, season=2026, top_n=6):
             iso   = max(0.0, round(slg - avg, 3))
             games = max(1, int(f("gamesPlayed", 1)))
 
+            pa  = int(f("plateAppearances"))
+            k   = int(f("strikeOuts"))
+            bb  = int(f("baseOnBalls"))
             batters.append({
                 "playerName": name,
                 "playerId":   pid,
-                "hr":    hr,
-                "avg":   round(avg, 3),
-                "ops":   round(ops, 3),
-                "slg":   round(slg, 3),
-                "iso":   iso,
-                "ab":    ab,
-                "games": games,
+                "hr":     hr,
+                "avg":    round(avg, 3),
+                "ops":    round(ops, 3),
+                "slg":    round(slg, 3),
+                "iso":    iso,
+                "ab":     ab,
+                "pa":     pa,
+                "k_pct":  round(k / pa, 3) if pa > 0 else 0.220,
+                "bb_pct": round(bb / pa, 3) if pa > 0 else 0.080,
+                "games":  games,
             })
         except Exception as e:
             print(f"    ⚠ batter stats error for {name}: {e}")
@@ -321,7 +327,7 @@ def get_team_batters(team_id, season=2026, top_n=6):
     batters.sort(key=lambda x: (-x["hr"], -x["ops"]))
     return batters[:top_n]
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# ── Main ───────────────────────────────────────────────────────────────
 
 def main():
     date_str   = today_str()
