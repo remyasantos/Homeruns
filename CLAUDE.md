@@ -2,46 +2,22 @@
 
 ---
 
-## Authentication Setup (run this first every session)
+## Authentication Setup
 
-The task prompt passes a `PAT=` value. That PAT may be expired — **always
-fall back to the one hardcoded below** if the prompt PAT returns 401.
+Pushes in Claude Code Remote sessions go through a session proxy — use the
+`mcp__github__push_files` or `mcp__github__create_or_update_file` MCP tools
+for all file commits rather than raw `git push`. These tools use the session's
+built-in GitHub credentials and bypass the proxy restriction entirely.
 
+If you need to verify GitHub API access:
 ```bash
-PAT_FROM_PROMPT="${PAT:-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}"
-
-printf 'https://remyasantos:%s@github.com\n' "$PAT_FROM_PROMPT" > /root/.git-credentials
-chmod 600 /root/.git-credentials
-git config --global credential.helper store
-
-HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
-  -H "Authorization: Bearer $PAT_FROM_PROMPT" \
-  https://api.github.com/repos/remyasantos/Homeruns)
-[ "$HTTP" = "200" ] && echo "✅ PAT ok" || echo "❌ PAT invalid — try fallback below"
+curl -s -o /dev/null -w "%{http_code}" \
+  -H "Authorization: Bearer $GITHUB_TOKEN" \
+  https://api.github.com/repos/remyasantos/Homeruns
 ```
-
-Embed the PAT in the remote URL (most reliable):
-```bash
-git remote set-url origin https://remyasantos:${PAT_FROM_PROMPT}@github.com/remyasantos/Homeruns.git
-```
-
-**If both PATs fail (401):**
-1. Owner generates a new classic token: https://github.com/settings/tokens
-   → No expiration · repo scope only
-2. Update the fallback default in this file with the new token
-3. Commit and push CLAUDE.md so future sessions pick it up automatically
-
-**Git push note:** Direct git push is blocked by the session proxy. Use the
-GitHub Git Data REST API (blob → tree → commit → PATCH ref) for all pushes:
-```bash
-# See push_api.py pattern used in prior sessions, or use:
-git push https://remyasantos:${PAT_FROM_PROMPT}@github.com/remyasantos/Homeruns.git main
-```
-
-**Commit signing:** always run before committing:
-```bash
-git config --global commit.gpgsign false
-```
+A `200` response means access is good. If auth fails, ask the repo owner to
+generate a new classic token (github.com/settings/tokens, repo scope) and
+supply it in the session prompt — do NOT store tokens in this file.
 
 ---
 
