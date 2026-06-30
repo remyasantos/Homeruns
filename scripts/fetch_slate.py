@@ -255,6 +255,89 @@ def get_pitcher_stats(player_id, season=2026):
         print(f"  ⚠ pitcher stats error for id={player_id}: {e}")
         return {}
 
+# ── Batter splits ────────────────────────────────────────────────────────
+
+def get_batter_splits(pid, season=2026):
+    """Return {vs_lhp: {avg,obp,slg,ops,hr,ab,pa}, vs_rhp: {...}} from MLB Stats API."""
+    if not pid:
+        return {}
+    try:
+        data = statsapi.player_stat_data(pid, group="hitting", type="statSplits", sportId=1)
+        splits = {}
+        for entry in data.get("stats", []):
+            desc = entry.get("split", {}).get("description", "")
+            sp = entry.get("stats", {})
+            if not sp:
+                continue
+            def f(key, default=0.0):
+                v = sp.get(key)
+                try:
+                    return float(v) if v not in (None, "", "-", ".---") else default
+                except Exception:
+                    return default
+            s = {
+                "avg": f("avg"),
+                "obp": f("obp"),
+                "slg": f("slg"),
+                "ops": f("ops"),
+                "hr":  int(f("homeRuns")),
+                "ab":  int(f("atBats")),
+                "pa":  int(f("plateAppearances")),
+            }
+            desc_l = desc.lower()
+            if "left" in desc_l:
+                splits["vs_lhp"] = s
+            elif "right" in desc_l:
+                splits["vs_rhp"] = s
+        return splits
+    except Exception as e:
+        print(f"  ⚠ splits error for pid={pid}: {e}")
+        return {}
+
+
+# ── Pitcher arsenal ───────────────────────────────────────────────────────
+
+def get_pitcher_arsenal(pid, season=2026):
+    """Return list of {abbrev, pitch_name, pct, velo} from MLB Stats API pitchArsenal."""
+    if not pid:
+        return []
+    try:
+        data = statsapi.get("stats", {
+            "personId": str(pid),
+            "stats": "pitchArsenal",
+            "group": "pitching",
+            "season": str(season),
+        })
+        result = []
+        for stat_group in data.get("stats", []):
+            for split in stat_group.get("splits", []):
+                pt = split.get("pitchType", {})
+                sp = split.get("stat", {})
+                try:
+                    pct = float(sp.get("percentage", 0) or 0)
+                    if pct > 1:  # already 0-100
+                        pct = pct / 100.0
+                except Exception:
+                    pct = 0.0
+                if pct <= 0:
+                    continue
+                result.append({
+                    "abbrev":     (pt.get("code") or "").strip(),
+                    "pitch_name": (pt.get("description") or "").strip(),
+                    "pct":        round(pct, 3),
+                    "velo":       float(sp.get("avgSpeed", 0) or 0),
+                    "spin":       0,
+                    "run_value":  0,
+                    "whiff_pct":  0,
+                    "xwoba":      0,
+                })
+        result.sort(key=lambda p: p["pct"], reverse=True)
+        return result
+    except Exception as e:
+        print(f"  ⚠ arsenal error for pid={pid}: {e}")
+        return []
+
+
 # ── Batter stats ─────────────────────────────────────────────────────────
 
 def get_team_batters(team_id, season=2026, top_n=6):
@@ -320,6 +403,7 @@ def get_team_batters(team_id, season=2026, top_n=6):
                 "k_pct":  round(k / pa, 3) if pa > 0 else 0.220,
                 "bb_pct": round(bb / pa, 3) if pa > 0 else 0.080,
                 "games":  games,
+                "splits": get_batter_splits(pid),
             })
         except Exception as e:
             print(f"    ⚠ batter stats error for {name}: {e}")
@@ -407,8 +491,9 @@ def main():
     for pid in sorted(pitcher_ids):
         stats = get_pitcher_stats(pid)
         if stats:
+            stats["arsenal"] = get_pitcher_arsenal(pid)
             pitcher_stats[str(pid)] = stats
-            print(f"  ✓ pitcher {pid}: ERA {stats.get('era', '?')}")
+            print(f"  ✓ pitcher {pid}: ERA {stats.get('era', '?')}, {len(stats['arsenal'])} pitches")
         else:
             print(f"  ⚠ pitcher {pid}: no stats")
 

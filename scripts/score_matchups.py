@@ -243,29 +243,31 @@ def get_batter_savant(pid: int) -> dict:
 
 
 def compute_khr(batter_sv: dict, batter_raw: dict, pitcher_throws: str) -> float:
-    """
-    KHR = xwoba_vs_pitcher_hand * 170.
-    Uses savant split data, falls back to overall xwoba or raw OPS proxy.
-    """
+    """KHR = xwoba_vs_pitcher_hand * 170. Uses Savant split, then MLB Stats split, then overall."""
     if batter_sv:
         if pitcher_throws == "L":
             xwoba_split = _fb(batter_sv.get("xwoba_vs_lhp"), None)
         else:
             xwoba_split = _fb(batter_sv.get("xwoba_vs_rhp"), None)
-
         if xwoba_split is None:
             xwoba_split = _fb(batter_sv.get("xwoba"), None)
         if xwoba_split is not None:
             return round(xwoba_split * 170.0, 2)
 
-    # Fallback: estimate xwoba from OPS
-    ops = _fb(batter_raw.get("ops"), 0.750)
-    xwoba_est = ops * 0.38
-    return round(xwoba_est * 170.0, 2)
+    # MLB Stats API split fallback (xwoba ≈ ops * 0.38 per split)
+    splits = batter_raw.get("splits", {})
+    split = splits.get("vs_lhp" if pitcher_throws == "L" else "vs_rhp", {})
+    ops_split = _fb(split.get("ops"), None)
+    if ops_split is not None and ops_split > 0:
+        return round(ops_split * 0.38 * 170.0, 2)
+
+    # Overall OPS fallback
+    ops = _fb(batter_raw.get("ops"), 0.700)
+    return round(ops * 0.38 * 170.0, 2)
 
 
 def compute_xwobac(batter_sv: dict, batter_raw: dict, pitcher_throws: str) -> float:
-    """xwOBA on contact vs pitcher hand. Proxy if missing."""
+    """xwOBA on contact vs pitcher hand."""
     if batter_sv:
         if pitcher_throws == "L":
             v = _fb(batter_sv.get("xwoba_vs_lhp"), None)
@@ -276,7 +278,14 @@ def compute_xwobac(batter_sv: dict, batter_raw: dict, pitcher_throws: str) -> fl
         xwoba = _fb(batter_sv.get("xwoba"), None)
         if xwoba is not None:
             return round(xwoba * 1.08, 3)
-    ops = _fb(batter_raw.get("ops"), 0.750)
+
+    splits = batter_raw.get("splits", {})
+    split = splits.get("vs_lhp" if pitcher_throws == "L" else "vs_rhp", {})
+    ops_split = _fb(split.get("ops"), None)
+    if ops_split is not None and ops_split > 0:
+        return round(ops_split * 0.38 * 1.08, 3)
+
+    ops = _fb(batter_raw.get("ops"), 0.700)
     return round(ops * 0.38 * 1.08, 3)
 
 
@@ -524,7 +533,7 @@ def build_pitcher_entry(pid: int, name: str, team: str, opp_team: str,
         "fb_pct":             fb_pct_p,
         "hard_hit_pct":       hard_hit_p,
         "oppo_pct":           oppo_pct_p,
-        "arsenal":            sv.get("arsenal", []),
+        "arsenal":            (sv.get("arsenal") or []) or raw.get("arsenal", []),
         "zones":              sv.get("zones", [0.0] * 9),
     }
 
