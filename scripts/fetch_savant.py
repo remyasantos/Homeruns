@@ -139,7 +139,7 @@ PITCHER_SELECTIONS = [
 def fetch_pitcher_leaderboard():
     """
     Fetch the Savant custom leaderboard for pitchers (2026, regular season).
-    Returns dict keyed by int player_id → stat dict.
+    Returns dict keyed by int player_id -> stat dict.
     """
     params = {
         "year": "2026",
@@ -226,7 +226,7 @@ _ARSENAL_URL = "https://baseballsavant.mlb.com/leaderboard/pitch-arsenal-stats"
 def fetch_pitch_arsenal():
     """
     Fetch pitch arsenal stats for all pitchers from the Savant leaderboard.
-    Returns dict keyed by int pitcher_id → list of pitch-type dicts.
+    Returns dict keyed by int pitcher_id -> list of pitch-type dicts.
     """
     params = {
         "type": "pitcher",
@@ -307,19 +307,15 @@ def _extract_player_id(row):
     return 0
 
 
-# ---------------------------------------------------------------------------
-# Shared pandas aggregation helpers
-# ---------------------------------------------------------------------------
-
 def _build_bip_flags(df: "pd.DataFrame") -> "pd.DataFrame":
     """
-    Add computed boolean columns to a BIP-filtered DataFrame.
+    Add computed boolean/numeric columns to a BIP-filtered DataFrame.
     Expects columns: launch_speed, launch_angle, launch_speed_angle, bb_type, hc_x, stand.
     """
     df = df.copy()
-    df["hard_hit"]   = df["launch_speed"] >= 95
-    df["barrel"]     = df["launch_speed_angle"].astype(str).str.strip() == "6"
-    df["sweet_spot"] = df["launch_angle"].between(8, 32)
+    df["hard_hit"]    = df["launch_speed"] >= 95
+    df["barrel"]      = df["launch_speed_angle"].astype(str).str.strip() == "6"
+    df["sweet_spot"]  = df["launch_angle"].between(8, 32)
     bb = df["bb_type"].astype(str).str.lower().str.strip()
     df["gb"] = bb == "ground_ball"
     df["fb"] = bb == "fly_ball"
@@ -363,15 +359,15 @@ def _aggregate_batter_rows(rows, include_meta=False):
     woba_denom = pd.to_numeric(df.get("woba_denom", 0), errors="coerce").fillna(0)
     pa_mask = woba_denom == 1
 
-    xw   = pd.to_numeric(df.get("estimated_woba_using_speedangle"), errors="coerce")
-    xba  = pd.to_numeric(df.get("estimated_ba_using_speedangle"),   errors="coerce")
-    xslg = pd.to_numeric(df.get("estimated_slg_using_speedangle"),  errors="coerce")
+    xw  = pd.to_numeric(df.get("estimated_woba_using_speedangle"), errors="coerce")
+    xba = pd.to_numeric(df.get("estimated_ba_using_speedangle"),   errors="coerce")
+    xslg = pd.to_numeric(df.get("estimated_slg_using_speedangle"), errors="coerce")
 
-    valid_xw  = pa_mask & xw.notna()  & (xw  >= 0)
-    pa        = int(valid_xw.sum())
-    xwoba     = round(float(xw[valid_xw].mean()),  3) if pa > 0 else 0.0
-    xba_val   = round(float(xba [pa_mask & xba.notna()  & (xba  >= 0)].mean()), 3) if pa > 0 else 0.0
-    xslg_val  = round(float(xslg[pa_mask & xslg.notna() & (xslg >= 0)].mean()), 3) if pa > 0 else 0.0
+    valid_xw = pa_mask & xw.notna() & (xw >= 0)
+    pa       = int(valid_xw.sum())
+    xwoba    = round(float(xw[valid_xw].mean()),  3) if pa > 0 else 0.0
+    xba_val  = round(float(xba[pa_mask & xba.notna() & (xba >= 0)].mean()), 3) if pa > 0 else 0.0
+    xslg_val = round(float(xslg[pa_mask & xslg.notna() & (xslg >= 0)].mean()), 3) if pa > 0 else 0.0
 
     # --- BIP-level (launch_speed > 0) ---
     ls = pd.to_numeric(df.get("launch_speed"), errors="coerce")
@@ -383,7 +379,7 @@ def _aggregate_batter_rows(rows, include_meta=False):
     df["hc_x"]               = pd.to_numeric(df.get("hc_x"), errors="coerce").fillna(0.0)
     df["stand"]              = df.get("stand", "R").fillna("R")
 
-    bip_df    = _build_bip_flags(df[ls.notna() & (ls > 0)])
+    bip_df = _build_bip_flags(df[ls.notna() & (ls > 0)])
     bip_count = len(bip_df)
 
     exit_velo    = round(float(bip_df["launch_speed"].mean()), 3) if bip_count > 0 else 0.0
@@ -397,29 +393,29 @@ def _aggregate_batter_rows(rows, include_meta=False):
     pull_pct     = _pct(bip_df["pull"].sum(),        bip_count)
     oppo_pct     = _pct(bip_df["oppo"].sum(),        bip_count)
 
-    barrel_n = int(bip_df["barrel"].sum())
-    pull_n   = int(bip_df["pull"].sum())
-    pull_brl = round(barrel_n * pull_n / bip_count ** 2, 2) if bip_count > 0 else 0.0
+    barrel_n  = int(bip_df["barrel"].sum())
+    pull_n    = int(bip_df["pull"].sum())
+    pull_brl  = round(barrel_n * pull_n / bip_count ** 2, 2) if bip_count > 0 else 0.0
 
     d = {
-        "pa":             pa,
-        "xwoba":          xwoba,
-        "xba":            xba_val,
-        "xslg":           xslg_val,
-        "xiso":           round(max(0.0, xslg_val - xba_val), 3),
-        "exit_velo":      exit_velo,
-        "la_avg":         la_avg,
-        "barrel_pct":     barrel_pct,
-        "hard_hit_pct":   hard_hit_pct,
+        "pa":            pa,
+        "xwoba":         xwoba,
+        "xba":           xba_val,
+        "xslg":          xslg_val,
+        "xiso":          round(max(0.0, xslg_val - xba_val), 3),
+        "exit_velo":     exit_velo,
+        "la_avg":        la_avg,
+        "barrel_pct":    barrel_pct,
+        "hard_hit_pct":  hard_hit_pct,
         "sweet_spot_pct": sweet_pct,
-        "swstr_pct":      0.0,
-        "o_swing_pct":    0.0,
-        "gb_pct":         gb_pct,
-        "fb_pct":         fb_pct,
-        "ld_pct":         ld_pct,
-        "pull_pct":       pull_pct,
-        "oppo_pct":       oppo_pct,
-        "pull_brl_pct":   pull_brl,
+        "swstr_pct":     0.0,
+        "o_swing_pct":   0.0,
+        "gb_pct":        gb_pct,
+        "fb_pct":        fb_pct,
+        "ld_pct":        ld_pct,
+        "pull_pct":      pull_pct,
+        "oppo_pct":      oppo_pct,
+        "pull_brl_pct":  pull_brl,
     }
 
     if include_meta:
@@ -444,9 +440,9 @@ _BATTER_BATCH_SIZE = 40
 def _fetch_batter_statcast_batched(bids, pitcher_throws=None, label_prefix="batter statcast"):
     """
     Fetch statcast_search/csv for a list of batter IDs in batches.
-    Returns dict keyed by int player_id → aggregated stat dict.
+    Returns dict keyed by int player_id -> aggregated stat dict.
     The endpoint returns raw pitch-level rows; we aggregate per batter here.
-    pitcher_throws: None (all), "R", or "L" — filters opponent pitcher hand.
+    pitcher_throws: None (all), "R", or "L" -- filters opponent pitcher hand.
     """
     result = {}
     for i in range(0, len(bids), _BATTER_BATCH_SIZE):
@@ -494,7 +490,7 @@ def _fetch_batter_statcast_batched(bids, pitcher_throws=None, label_prefix="batt
 def fetch_batter_leaderboards(batter_ids):
     """
     Returns (overall_dict, rhp_dict, lhp_dict) each keyed by int player_id.
-    Uses statcast_search/csv with batters_lookup[] — same endpoint as zone fetches.
+    Uses statcast_search/csv with batters_lookup[] -- same endpoint as zone fetches.
     """
     bids = list(batter_ids)
 
@@ -606,12 +602,12 @@ def pitcher_fallback_from_raw(pitcher_id, pitcher_name, raw_pitcher_stats):
         "name": pitcher_name,
         "throws": "R",
         "pa": 0,               # 0 signals "no real Savant data" to score_matchups.py
-        "xwoba": xwoba_est,    # ERA-derived estimate — acceptable
+        "xwoba": xwoba_est,    # ERA-derived estimate -- acceptable
         "xba": None,
         "xslg": None,
         "exit_velo": None,     # Savant-only, no MLB Stats equivalent
         "la_avg": None,
-        "barrel_pct": barrel_pct_est,  # HR/9-derived estimate — acceptable
+        "barrel_pct": barrel_pct_est,  # HR/9-derived estimate -- acceptable
         "hard_hit_pct": None,  # Savant-only
         "sweet_spot_pct": None,
         "swstr_pct": None,     # Savant-only
@@ -720,34 +716,34 @@ def _aggregate_pitcher_rows(rows):
     throws = str(valid_throws.iloc[-1]) if len(valid_throws) else "R"
 
     return {
-        "pa":             pa,
-        "name":           name,
-        "throws":         throws,
-        "xwoba":          xwoba,
-        "exit_velo":      exit_velo,
-        "la_avg":         la_avg,
-        "barrel_pct":     barrel_pct,
-        "hard_hit_pct":   hard_hit_pct,
+        "pa":            pa,
+        "name":          name,
+        "throws":        throws,
+        "xwoba":         xwoba,
+        "exit_velo":     exit_velo,
+        "la_avg":        la_avg,
+        "barrel_pct":    barrel_pct,
+        "hard_hit_pct":  hard_hit_pct,
         "sweet_spot_pct": sweet_pct,
-        "gb_pct":         gb_pct,
-        "fb_pct":         fb_pct,
-        "ld_pct":         ld_pct,
-        "pull_pct":       pull_pct,
-        "oppo_pct":       oppo_pct,
-        # Savant leaderboard-only — not available in raw pitch rows
-        "xba":            None,
-        "xslg":           None,
-        "swstr_pct":      None,
-        "csw_pct":        None,
-        "o_swing_pct":    None,
-        "in_zone_pct":    None,
-        "f_strike_pct":   None,
-        "ball_pct":       None,
+        "gb_pct":        gb_pct,
+        "fb_pct":        fb_pct,
+        "ld_pct":        ld_pct,
+        "pull_pct":      pull_pct,
+        "oppo_pct":      oppo_pct,
+        # Savant leaderboard-only -- not available in raw pitch rows
+        "xba":           None,
+        "xslg":          None,
+        "swstr_pct":     None,
+        "csw_pct":       None,
+        "o_swing_pct":   None,
+        "in_zone_pct":   None,
+        "f_strike_pct":  None,
+        "ball_pct":      None,
         "pulled_barrel_pct": None,
-        "k_pct":          None,
-        "bb_pct":         None,
-        "zones":          [],
-        "arsenal":        [],
+        "k_pct":         None,
+        "bb_pct":        None,
+        "zones":         [],
+        "arsenal":       [],
     }
 
 
@@ -755,7 +751,7 @@ def fetch_pitcher_statcast_search(pitcher_ids):
     """
     Fetch statcast_search/csv for specific pitcher IDs.
     Used as fallback for pitchers not found in the leaderboard.
-    Returns dict keyed by int pitcher_id → aggregated stat dict.
+    Returns dict keyed by int pitcher_id -> aggregated stat dict.
     """
     if not pitcher_ids:
         return {}
@@ -814,7 +810,7 @@ def main():
     status = raw_slate.get("status", "")
     if status != "ok":
         print(
-            f"raw_slate.json status='{status}' — no games today. "
+            f"raw_slate.json status='{status}' -- no games today. "
             "Writing empty savant_data.json.",
             file=sys.stderr,
         )
@@ -911,7 +907,7 @@ def main():
                 entry["name"] = pname
         else:
             print(
-                f"  [raw fallback] pitcher {pid} ({pname}) not in Savant — using MLB Stats estimates",
+                f"  [raw fallback] pitcher {pid} ({pname}) not in Savant -- using MLB Stats estimates",
                 file=sys.stderr,
             )
             entry = pitcher_fallback_from_raw(pid, pname, raw_pitcher_stats)
@@ -925,7 +921,7 @@ def main():
     for bid, bname in batter_id_to_name.items():
         if bid not in batter_overall:
             print(
-                f"  [skip] batter {bid} ({bname}) not in Savant data — MLB Stats fallback applies",
+                f"  [skip] batter {bid} ({bname}) not in Savant data -- MLB Stats fallback applies",
                 file=sys.stderr,
             )
             continue
@@ -937,15 +933,15 @@ def main():
 
         # vs-hand splits
         r = batter_rhp.get(bid, {})
-        base["pa_vs_rhp"]           = r.get("pa", 0)
-        base["xwoba_vs_rhp"]        = r.get("xwoba", 0.0)
-        base["barrel_pct_vs_rhp"]   = r.get("barrel_pct", 0.0)
+        base["pa_vs_rhp"] = r.get("pa", 0)
+        base["xwoba_vs_rhp"] = r.get("xwoba", 0.0)
+        base["barrel_pct_vs_rhp"] = r.get("barrel_pct", 0.0)
         base["hard_hit_pct_vs_rhp"] = r.get("hard_hit_pct", 0.0)
 
         lh = batter_lhp.get(bid, {})
-        base["pa_vs_lhp"]           = lh.get("pa", 0)
-        base["xwoba_vs_lhp"]        = lh.get("xwoba", 0.0)
-        base["barrel_pct_vs_lhp"]   = lh.get("barrel_pct", 0.0)
+        base["pa_vs_lhp"] = lh.get("pa", 0)
+        base["xwoba_vs_lhp"] = lh.get("xwoba", 0.0)
+        base["barrel_pct_vs_lhp"] = lh.get("barrel_pct", 0.0)
         base["hard_hit_pct_vs_lhp"] = lh.get("hard_hit_pct", 0.0)
 
         base["zones"] = batter_zones.get(bid, [])
