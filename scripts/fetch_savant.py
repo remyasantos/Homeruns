@@ -724,66 +724,56 @@ def main():
 
         if not base.get("name"):
             base["name"] = bname
-
         base["mlb_id"] = bid
 
-        # vs-RHP stats
-        if bid in batter_rhp:
-            r = batter_rhp[bid]
-            base["pa_vs_rhp"] = r.get("pa", 0)
-            base["xwoba_vs_rhp"] = r.get("xwoba", base.get("xwoba", 0.320))
-            base["barrel_pct_vs_rhp"] = r.get("barrel_pct", base.get("barrel_pct", 7.0))
-            base["hard_hit_pct_vs_rhp"] = r.get("hard_hit_pct", base.get("hard_hit_pct", 38.0))
-        else:
-            base["pa_vs_rhp"] = 0
-            base["xwoba_vs_rhp"] = base.get("xwoba", 0.320)
-            base["barrel_pct_vs_rhp"] = base.get("barrel_pct", 7.0)
-            base["hard_hit_pct_vs_rhp"] = base.get("hard_hit_pct", 38.0)
+        # vs-hand splits
+        r = batter_rhp.get(bid, {})
+        base["pa_vs_rhp"] = r.get("pa", 0)
+        base["xwoba_vs_rhp"] = r.get("xwoba", 0.0)
+        base["barrel_pct_vs_rhp"] = r.get("barrel_pct", 0.0)
+        base["hard_hit_pct_vs_rhp"] = r.get("hard_hit_pct", 0.0)
 
-        # vs-LHP stats
-        if bid in batter_lhp:
-            l = batter_lhp[bid]
-            base["pa_vs_lhp"] = l.get("pa", 0)
-            base["xwoba_vs_lhp"] = l.get("xwoba", base.get("xwoba", 0.320))
-            base["barrel_pct_vs_lhp"] = l.get("barrel_pct", base.get("barrel_pct", 7.0))
-            base["hard_hit_pct_vs_lhp"] = l.get("hard_hit_pct", base.get("hard_hit_pct", 38.0))
-        else:
-            base["pa_vs_lhp"] = 0
-            base["xwoba_vs_lhp"] = base.get("xwoba", 0.320)
-            base["barrel_pct_vs_lhp"] = base.get("barrel_pct", 7.0)
-            base["hard_hit_pct_vs_lhp"] = base.get("hard_hit_pct", 38.0)
+        l = batter_lhp.get(bid, {})
+        base["pa_vs_lhp"] = l.get("pa", 0)
+        base["xwoba_vs_lhp"] = l.get("xwoba", 0.0)
+        base["barrel_pct_vs_lhp"] = l.get("barrel_pct", 0.0)
+        base["hard_hit_pct_vs_lhp"] = l.get("hard_hit_pct", 0.0)
 
         base["zones"] = batter_zones.get(bid, [0.0] * 9)
 
         entry = {
-            "mlb_id": base["mlb_id"],
+            "mlb_id": bid,
             "name": base.get("name", bname),
             "stands": base.get("stands", "R"),
             "pa": base.get("pa", 0),
-            "pa_vs_rhp": base.get("pa_vs_rhp", 0),
-            "pa_vs_lhp": base.get("pa_vs_lhp", 0),
-            "xwoba": base.get("xwoba", 0.320),
-            "xba": base.get("xba", 0.250),
-            "xslg": base.get("xslg", 0.420),
-            "xiso": base.get("xiso", 0.170),
-            "xwoba_vs_rhp": base.get("xwoba_vs_rhp", 0.320),
-            "xwoba_vs_lhp": base.get("xwoba_vs_lhp", 0.320),
-            "exit_velo": base.get("exit_velo", 88.0),
-            "la_avg": base.get("la_avg", 12.0),
-            "barrel_pct": base.get("barrel_pct", 7.0),
-            "hard_hit_pct": base.get("hard_hit_pct", 38.0),
-            "sweet_spot_pct": base.get("sweet_spot_pct", 33.0),
-            "swstr_pct": base.get("swstr_pct", 10.0),
-            "o_swing_pct": base.get("o_swing_pct", 28.0),
-            "fb_pct": base.get("fb_pct", 35.0),
-            "gb_pct": base.get("gb_pct", 42.0),
-            "ld_pct": base.get("ld_pct", 23.0),
-            "pull_pct": base.get("pull_pct", 38.0),
-            "oppo_pct": base.get("oppo_pct", 24.0),
-            "pull_brl_pct": base.get("pull_brl_pct", 2.7),
-            "k_pct": base.get("k_pct", 0.220),
-            "bb_pct": base.get("bb_pct", 0.080),
-            "zones": base.get("zones", [0.0] * 9),
+            "pa_vs_rhp": base["pa_vs_rhp"],
+            "pa_vs_lhp": base["pa_vs_lhp"],
+            "xwoba": base.get("xwoba", 0.0),
+            "xba": base.get("xba", 0.0),
+            "xslg": base.get("xslg", 0.0),
+            "xiso": base.get("xiso", 0.0),
+            "xwoba_vs_rhp": base["xwoba_vs_rhp"],
+            "xwoba_vs_lhp": base["xwoba_vs_lhp"],
+            "exit_velo": base.get("exit_velo", 0.0),
+            "la_avg": base.get("la_avg", 0.0),
+            "barrel_pct": base.get("barrel_pct", 0.0),
+            "hard_hit_pct": base.get("hard_hit_pct", 0.0),
+            "sweet_spot_pct": base.get("sweet_spot_pct", 0.0),
+            "barrel_pct_vs_rhp": base["barrel_pct_vs_rhp"],
+            "hard_hit_pct_vs_rhp": base["hard_hit_pct_vs_rhp"],
+            "barrel_pct_vs_lhp": base["barrel_pct_vs_lhp"],
+            "hard_hit_pct_vs_lhp": base["hard_hit_pct_vs_lhp"],
+            "swstr_pct": 0.0,
+            "o_swing_pct": 0.0,
+            "fb_pct": base.get("fb_pct", 0.0),
+            "gb_pct": base.get("gb_pct", 0.0),
+            "ld_pct": base.get("ld_pct", 0.0),
+            "pull_pct": base.get("pull_pct", 0.0),
+            "oppo_pct": base.get("oppo_pct", 0.0),
+            "pull_brl_pct": base.get("pull_brl_pct", 0.0),
+            "k_pct": 0.0,
+            "bb_pct": 0.0,
+            "zones": base["zones"],
         }
         out_batters[str(bid)] = entry
 
