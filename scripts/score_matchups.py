@@ -649,7 +649,7 @@ for game_idx, g in enumerate(games_raw):
             print(f"  ⚠ Error scoring {name} ({away_team}): {exc}")
 
     away_matchups.sort(key=lambda x: (x["matchup_score"] is None, -(x["matchup_score"] or 0)))
-    away_matchups = away_matchups[:12]
+    # No truncation -- show every batter fetch_slate.py gathered for this team.
 
     home_batters_raw = players_by_team.get(home_team, [])
     home_matchups = []
@@ -665,7 +665,7 @@ for game_idx, g in enumerate(games_raw):
             print(f"  ⚠ Error scoring {name} ({home_team}): {exc}")
 
     home_matchups.sort(key=lambda x: (x["matchup_score"] is None, -(x["matchup_score"] or 0)))
-    home_matchups = home_matchups[:12]
+    # No truncation -- show every batter fetch_slate.py gathered for this team.
 
     game_time = g.get("gameTime") or g.get("time") or "TBD"
 

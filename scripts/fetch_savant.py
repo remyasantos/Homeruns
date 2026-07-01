@@ -70,7 +70,13 @@ def get_csv(url, params, label="request", retries=3, backoff=3.0):
         try:
             resp = SESSION.get(url, params=params, timeout=45)
             resp.raise_for_status()
-            text = resp.text.strip()
+            # Savant's CSV responses are UTF-8-with-BOM. Decoding via
+            # resp.text leaves a stray U+FEFF glued onto the first header
+            # cell (e.g. '"last_name, first_name"' -> a quote that no longer
+            # starts the field), which breaks csv's quote handling on that
+            # one cell and silently shifts every later column in every row
+            # by one position. utf-8-sig strips the BOM before parsing.
+            text = resp.content.decode("utf-8-sig").strip()
             if not text or text.startswith("<"):
                 print(
                     f"  [{label}] attempt {attempt}: non-CSV response "
@@ -210,8 +216,8 @@ def fetch_pitch_arsenal():
         if not pid:
             continue
 
-        pitch_type = (row.get("pitch_type") or row.get("pitch_name") or "").strip()
-        pitch_name = (row.get("pitch_type_name") or row.get("pitch_type") or pitch_type).strip()
+        pitch_type = (row.get("pitch_type") or "").strip()
+        pitch_name = (row.get("pitch_name") or pitch_type).strip()
         if not pitch_type:
             continue
 
@@ -338,6 +344,16 @@ def _aggregate_batter_rows(rows, include_meta=False):
     pull_n   = int(bip_df["pull"].sum())
     pull_brl = round(barrel_n * pull_n / bip_count ** 2, 2) if bip_count > 0 else 0.0
 
+    # SwStr% computed directly from real pitch-level outcomes the batter saw
+    # (swinging strikes / total pitches faced) -- the real definition, not a
+    # proxy, mirroring the pitcher-side computation.
+    total_pitches_faced = len(df)
+    swstr_pct = 0.0
+    if total_pitches_faced > 0:
+        description = df.get("description", pd.Series(dtype=str)).fillna("").astype(str)
+        swstr_count = description.isin(["swinging_strike", "swinging_strike_blocked"]).sum()
+        swstr_pct = round(float(swstr_count) / total_pitches_faced * 100.0, 1)
+
     d = {
         "pa":            pa,
         "xwoba":         xwoba,
@@ -349,7 +365,7 @@ def _aggregate_batter_rows(rows, include_meta=False):
         "barrel_pct":    barrel_pct,
         "hard_hit_pct":  hard_hit_pct,
         "sweet_spot_pct": sweet_pct,
-        "swstr_pct":     0.0,
+        "swstr_pct":     swstr_pct,
         "o_swing_pct":   0.0,
         "gb_pct":        gb_pct,
         "fb_pct":        fb_pct,
@@ -434,63 +450,94 @@ def fetch_batter_leaderboards(batter_ids):
 # Zone fetches
 # ---------------------------------------------------------------------------
 
+def _zone_xwoba_from_rows(rows):
+    """Aggregate real per-pitch rows into a 9-zone xwOBA array. Savant's
+    group_by=zone combined with type=details collapses to a single row
+    instead of one row per zone, so instead we fetch raw per-pitch details
+    (same as every other real fetch in this file) and average
+    estimated_woba_using_speedangle for real batted-ball events ourselves,
+    grouped by the real "zone" column on each pitch."""
+    if not rows:
+        return [0.0] * 9
+    df = pd.DataFrame(rows)
+    zone = pd.to_numeric(df.get("zone"), errors="coerce")
+    woba_denom = pd.to_numeric(df.get("woba_denom", 0), errors="coerce").fillna(0)
+    xw = pd.to_numeric(df.get("estimated_woba_using_speedangle"), errors="coerce")
+    valid = (woba_denom == 1) & xw.notna() & (xw >= 0) & zone.between(1, 9)
+    result = [0.0] * 9
+    if valid.any():
+        grouped = xw[valid].groupby(zone[valid].astype(int)).mean()
+        for z, v in grouped.items():
+            result[int(z) - 1] = round(float(v), 3)
+    return result
+
+
+def _pitch_type_velo_spin_from_rows(rows):
+    """Real average velocity/spin rate per pitch type, computed from raw
+    per-pitch rows (release_speed/release_spin_rate) -- the bulk pitch-arsenal
+    leaderboard doesn't expose either field at all, but statcast_search's
+    per-pitch details do."""
+    if not rows:
+        return {}
+    df = pd.DataFrame(rows)
+    pitch_type = df.get("pitch_type", pd.Series(dtype=str)).fillna("").astype(str)
+    speed = pd.to_numeric(df.get("release_speed"), errors="coerce")
+    spin = pd.to_numeric(df.get("release_spin_rate"), errors="coerce")
+    out = {}
+    for pt in pitch_type.unique():
+        if not pt:
+            continue
+        mask = pitch_type == pt
+        s = speed[mask].dropna()
+        sp = spin[mask].dropna()
+        out[pt] = {
+            "avg_speed": round(float(s.mean()), 1) if len(s) else None,
+            "avg_spin": round(float(sp.mean())) if len(sp) else None,
+        }
+    return out
+
+
 def fetch_pitcher_zones(pitcher_id):
     params = {
         "all": "true", "hfGT": "R|", "hfSea": "2026|",
         "player_type": "pitcher", "pitchers_lookup[]": str(pitcher_id),
-        "group_by": "zone", "type": "details",
+        "group_by": "name", "type": "details",
         "min_pitches": "0", "min_results": "0",
         "sort_col": "pitches", "sort_order": "desc",
     }
     rows = get_csv(_ZONE_CSV_BASE, params, label=f"pitcher zones {pitcher_id}")
-    zone_xwoba = {}
-    for row in rows:
-        try:
-            z = int(safe_float(row.get("zone", 0)))
-        except Exception:
-            continue
-        if z < 1 or z > 9:
-            continue
-        xw = safe_float(row.get("xwoba_mean", row.get("xwoba", 0)))
-        zone_xwoba[z] = xw
-    return [zone_xwoba.get(i, 0.0) for i in range(1, 10)]
+    return _zone_xwoba_from_rows(rows), _pitch_type_velo_spin_from_rows(rows)
 
 
 def fetch_all_pitcher_zones(pitcher_ids):
-    """Real per-zone xwOBA for every pitcher, one player at a time (Savant's
-    statcast_search API aggregates zone stats across whatever players are in
-    the request, so it can't be safely batched per-player)."""
+    """Real per-zone xwOBA (and, as a byproduct of the same real per-pitch
+    fetch, real per-pitch-type velocity/spin) for every pitcher, one player
+    at a time (Savant's statcast_search API aggregates zone stats across
+    whatever players are in the request, so it can't be safely batched)."""
     ids = sorted(pitcher_ids)
-    result = {}
+    zones_result = {}
+    velo_spin_result = {}
     print(f"  Fetching zone data for {len(ids)} pitchers ...", file=sys.stderr)
     for i, pid in enumerate(ids, 1):
-        result[pid] = fetch_pitcher_zones(pid)
+        zones, velo_spin = fetch_pitcher_zones(pid)
+        zones_result[pid] = zones
+        velo_spin_result[pid] = velo_spin
         if i % 10 == 0:
             print(f"    ...{i}/{len(ids)} pitcher zones fetched", file=sys.stderr)
         time.sleep(0.5)
-    return result
+    return zones_result, velo_spin_result
 
 
 def fetch_batter_zones(batter_id):
     params = {
         "all": "true", "hfGT": "R|", "hfSea": "2026|",
         "player_type": "batter", "batters_lookup[]": str(batter_id),
-        "group_by": "zone", "type": "details",
+        "group_by": "name", "type": "details",
         "min_pitches": "0", "min_results": "0",
         "sort_col": "pitches", "sort_order": "desc",
     }
     rows = get_csv(_ZONE_CSV_BASE, params, label=f"batter zones {batter_id}")
-    zone_xwoba = {}
-    for row in rows:
-        try:
-            z = int(safe_float(row.get("zone", 0)))
-        except Exception:
-            continue
-        if z < 1 or z > 9:
-            continue
-        xw = safe_float(row.get("xwoba_mean", row.get("xwoba", 0)))
-        zone_xwoba[z] = xw
-    return [zone_xwoba.get(i, 0.0) for i in range(1, 10)]
+    return _zone_xwoba_from_rows(rows)
 
 
 def fetch_all_batter_zones(batter_ids):
@@ -605,16 +652,40 @@ def _aggregate_pitcher_rows(rows):
     valid_throws = throws_col[throws_col.isin(["R", "L"])]
     throws = str(valid_throws.iloc[-1]) if len(valid_throws) else "R"
 
+    # SwStr%/CSW% computed directly from real pitch-level outcomes (the
+    # "description" of every pitch thrown) -- not a proxy, the actual
+    # definition: swinging strikes / total pitches thrown.
+    total_pitches = len(df)
+    description = df.get("description", pd.Series(dtype=str)).fillna("").astype(str)
+    swstr_pct = csw_pct = None
+    if total_pitches > 0:
+        swstr_count = description.isin(["swinging_strike", "swinging_strike_blocked"]).sum()
+        csw_count = description.isin(
+            ["swinging_strike", "swinging_strike_blocked", "called_strike"]
+        ).sum()
+        swstr_pct = round(float(swstr_count) / total_pitches * 100.0, 1)
+        csw_pct = round(float(csw_count) / total_pitches * 100.0, 1)
+
+    # K%/BB% computed from real plate-appearance outcomes ("events" is only
+    # populated on the final pitch of each PA) -- strikeouts and walks over
+    # total real PAs charted, not an estimate.
+    events = df.get("events", pd.Series(dtype=str)).fillna("").astype(str)
+    pa_events = events[events != ""]
+    k_pct = bb_pct = None
+    if len(pa_events) > 0:
+        k_pct = round(float((pa_events == "strikeout").sum()) / len(pa_events) * 100.0, 1)
+        bb_pct = round(float(pa_events.isin(["walk"]).sum()) / len(pa_events) * 100.0, 1)
+
     return {
         "pa": pa, "name": name, "throws": throws,
         "xwoba": xwoba, "exit_velo": exit_velo, "la_avg": la_avg,
         "barrel_pct": barrel_pct, "hard_hit_pct": hard_hit_pct, "sweet_spot_pct": sweet_pct,
         "gb_pct": gb_pct, "fb_pct": fb_pct, "ld_pct": ld_pct,
         "pull_pct": pull_pct, "oppo_pct": oppo_pct,
-        "xba": None, "xslg": None, "swstr_pct": None, "csw_pct": None,
+        "xba": None, "xslg": None, "swstr_pct": swstr_pct, "csw_pct": csw_pct,
         "o_swing_pct": None, "in_zone_pct": None, "f_strike_pct": None,
-        "ball_pct": None, "pulled_barrel_pct": None, "k_pct": None,
-        "bb_pct": None, "zones": [], "arsenal": [],
+        "ball_pct": None, "pulled_barrel_pct": None, "k_pct": k_pct,
+        "bb_pct": bb_pct, "zones": [], "arsenal": [],
     }
 
 
@@ -713,7 +784,7 @@ def main():
     arsenal_by_pitcher = fetch_pitch_arsenal()
 
     print("\n--- Fetching pitcher zone data ---", file=sys.stderr)
-    pitcher_zones = fetch_all_pitcher_zones(pitcher_ids)
+    pitcher_zones, pitcher_velo_spin = fetch_all_pitcher_zones(pitcher_ids)
 
     print("\n--- Fetching batter zone data ---", file=sys.stderr)
     batter_zones = fetch_all_batter_zones(batter_ids)
@@ -744,7 +815,18 @@ def main():
             entry = pitcher_fallback_from_raw(pid, pname, raw_pitcher_stats)
 
         entry["zones"]   = pitcher_zones.get(pid, [0.0] * 9)
-        entry["arsenal"] = arsenal_by_pitcher.get(pid, [])
+        arsenal = [dict(p) for p in arsenal_by_pitcher.get(pid, [])]
+        # The bulk pitch-arsenal leaderboard doesn't expose velocity/spin at
+        # all -- fill them in from the real per-pitch-type averages computed
+        # alongside this pitcher's zone fetch, when the leaderboard left them None.
+        velo_spin_by_type = pitcher_velo_spin.get(pid, {})
+        for p in arsenal:
+            vs = velo_spin_by_type.get(p.get("pitch_type"), {})
+            if p.get("avg_speed") is None and vs.get("avg_speed") is not None:
+                p["avg_speed"] = vs["avg_speed"]
+            if p.get("avg_spin") is None and vs.get("avg_spin") is not None:
+                p["avg_spin"] = vs["avg_spin"]
+        entry["arsenal"] = arsenal
         out_pitchers[str(pid)] = entry
 
     out_batters = {}
