@@ -14,6 +14,7 @@ import os
 import sys
 import time
 
+import pandas as pd
 import requests
 
 # ---------------------------------------------------------------------------
@@ -306,130 +307,127 @@ def _extract_player_id(row):
     return 0
 
 
+# ---------------------------------------------------------------------------
+# Shared pandas aggregation helpers
+# ---------------------------------------------------------------------------
+
+def _build_bip_flags(df: "pd.DataFrame") -> "pd.DataFrame":
+    """
+    Add computed boolean columns to a BIP-filtered DataFrame.
+    Expects columns: launch_speed, launch_angle, launch_speed_angle, bb_type, hc_x, stand.
+    """
+    df = df.copy()
+    df["hard_hit"]   = df["launch_speed"] >= 95
+    df["barrel"]     = df["launch_speed_angle"].astype(str).str.strip() == "6"
+    df["sweet_spot"] = df["launch_angle"].between(8, 32)
+    bb = df["bb_type"].astype(str).str.lower().str.strip()
+    df["gb"] = bb == "ground_ball"
+    df["fb"] = bb == "fly_ball"
+    df["ld"] = bb == "line_drive"
+    # pull/oppo: hc_x < 100 = pull for RHB, > 155 = pull for LHB
+    rh = df["stand"].astype(str).str.strip() == "R"
+    hx = df["hc_x"]
+    valid_hx = hx > 0
+    df["pull"] = valid_hx & ((rh & (hx < 100)) | (~rh & (hx > 155)))
+    df["oppo"] = valid_hx & ((rh & (hx > 155)) | (~rh & (hx < 100)))
+    return df
+
+
+def _pct(count, total, none_on_empty=False):
+    """count/total * 100, rounded to 1 dp. Returns 0.0 or None when total==0."""
+    if total == 0:
+        return None if none_on_empty else 0.0
+    return round(int(count) / int(total) * 100, 1)
+
+
 def _aggregate_batter_rows(rows, include_meta=False):
     """
     Aggregate per-pitch statcast_search rows into a single batter stat dict.
-    Computes proper averages from event-level and contact-level data.
+    Uses pandas for vectorised filtering and aggregation.
     """
-    xwoba_vals, xba_vals, xslg_vals = [], [], []
-    ev_vals, la_vals = [], []
-    bip_count = 0
-    barrel_count = 0
-    hard_hit_count = 0
-    sweet_spot_count = 0
-    gb_count = 0
-    fb_count = 0
-    ld_count = 0
-    pull_count = 0
-    oppo_count = 0
-    name = ""
-    stands = "R"
-
-    for row in rows:
-        # PA-level metrics: only on rows where woba_denom == 1 (valid plate appearances)
-        denom = str(row.get("woba_denom", "")).strip()
-        if denom == "1":
-            v = safe_float(row.get("estimated_woba_using_speedangle", ""), -1)
-            if v >= 0:
-                xwoba_vals.append(v)
-            v = safe_float(row.get("estimated_ba_using_speedangle", ""), -1)
-            if v >= 0:
-                xba_vals.append(v)
-            v = safe_float(row.get("estimated_slg_using_speedangle", ""), -1)
-            if v >= 0:
-                xslg_vals.append(v)
-
-        # Contact metrics: only on rows with a real batted ball (launch_speed > 0)
-        ls_raw = str(row.get("launch_speed", "")).strip()
-        la_raw = str(row.get("launch_angle", "")).strip()
-        if ls_raw not in ("", ".", "null", "None"):
-            ls = safe_float(ls_raw, 0.0)
-            if ls > 0:
-                ev_vals.append(ls)
-                bip_count += 1
-                la = safe_float(la_raw, 0.0)
-                la_vals.append(la)
-                if ls >= 95:
-                    hard_hit_count += 1
-                # launch_speed_angle codes: 6=barrel, 5=solid, 4=flare, 3=under, 2=topped, 1=weak
-                lsa = str(row.get("launch_speed_angle", "")).strip()
-                if lsa == "6":
-                    barrel_count += 1
-                # sweet spot: launch angle 8-32 degrees
-                if 8 <= la <= 32:
-                    sweet_spot_count += 1
-                bb_type = str(row.get("bb_type", "")).strip().lower()
-                if bb_type == "ground_ball":
-                    gb_count += 1
-                elif bb_type == "fly_ball":
-                    fb_count += 1
-                elif bb_type == "line_drive":
-                    ld_count += 1
-                # pull/oppo: hc_x < ~100 = left side, > ~155 = right side of field
-                hc_x = safe_float(row.get("hc_x", ""), 0.0)
-                bat_side = str(row.get("stand", stands)).strip()
-                if hc_x > 0:
-                    if bat_side == "R":
-                        if hc_x < 100:
-                            pull_count += 1
-                        elif hc_x > 155:
-                            oppo_count += 1
-                    else:
-                        if hc_x > 155:
-                            pull_count += 1
-                        elif hc_x < 100:
-                            oppo_count += 1
-
+    if not rows:
+        d = {
+            "pa": 0, "xwoba": 0.0, "xba": 0.0, "xslg": 0.0, "xiso": 0.0,
+            "exit_velo": 0.0, "la_avg": 0.0, "barrel_pct": 0.0, "hard_hit_pct": 0.0,
+            "sweet_spot_pct": 0.0, "swstr_pct": 0.0, "o_swing_pct": 0.0,
+            "gb_pct": 0.0, "fb_pct": 0.0, "ld_pct": 0.0,
+            "pull_pct": 0.0, "oppo_pct": 0.0, "pull_brl_pct": 0.0,
+        }
         if include_meta:
-            n = (row.get("player_name") or row.get("name") or "").strip()
-            if n:
-                name = n
-            s = str(row.get("stand") or row.get("bat_side") or "").strip()
-            if s:
-                stands = s
+            d.update({"name": "", "stands": "R"})
+        return d
 
-    def _avg(vals):
-        return round(sum(vals) / len(vals), 3) if vals else 0.0
+    df = pd.DataFrame(rows)
 
-    pa = len(xwoba_vals)
-    xwoba = _avg(xwoba_vals)
-    xba = _avg(xba_vals)
-    xslg = _avg(xslg_vals)
-    exit_velo = _avg(ev_vals)
-    la_avg = _avg(la_vals)
-    barrel_pct = round(barrel_count / bip_count * 100, 1) if bip_count > 0 else 0.0
-    hard_hit_pct = round(hard_hit_count / bip_count * 100, 1) if bip_count > 0 else 0.0
-    sweet_spot_pct = round(sweet_spot_count / bip_count * 100, 1) if bip_count > 0 else 0.0
-    gb_pct = round(gb_count / bip_count * 100, 1) if bip_count > 0 else 0.0
-    fb_pct = round(fb_count / bip_count * 100, 1) if bip_count > 0 else 0.0
-    ld_pct = round(ld_count / bip_count * 100, 1) if bip_count > 0 else 0.0
-    pull_pct = round(pull_count / bip_count * 100, 1) if bip_count > 0 else 0.0
-    oppo_pct = round(oppo_count / bip_count * 100, 1) if bip_count > 0 else 0.0
-    pull_brl_pct = round(barrel_count / bip_count * pull_pct / 100, 2) if bip_count > 0 else 0.0
+    # --- PA-level (woba_denom == 1) ---
+    woba_denom = pd.to_numeric(df.get("woba_denom", 0), errors="coerce").fillna(0)
+    pa_mask = woba_denom == 1
+
+    xw   = pd.to_numeric(df.get("estimated_woba_using_speedangle"), errors="coerce")
+    xba  = pd.to_numeric(df.get("estimated_ba_using_speedangle"),   errors="coerce")
+    xslg = pd.to_numeric(df.get("estimated_slg_using_speedangle"),  errors="coerce")
+
+    valid_xw  = pa_mask & xw.notna()  & (xw  >= 0)
+    pa        = int(valid_xw.sum())
+    xwoba     = round(float(xw[valid_xw].mean()),  3) if pa > 0 else 0.0
+    xba_val   = round(float(xba [pa_mask & xba.notna()  & (xba  >= 0)].mean()), 3) if pa > 0 else 0.0
+    xslg_val  = round(float(xslg[pa_mask & xslg.notna() & (xslg >= 0)].mean()), 3) if pa > 0 else 0.0
+
+    # --- BIP-level (launch_speed > 0) ---
+    ls = pd.to_numeric(df.get("launch_speed"), errors="coerce")
+    la = pd.to_numeric(df.get("launch_angle"), errors="coerce").fillna(0.0)
+    df["launch_speed"]       = ls
+    df["launch_angle"]       = la
+    df["launch_speed_angle"] = df.get("launch_speed_angle", "").fillna("")
+    df["bb_type"]            = df.get("bb_type", "").fillna("")
+    df["hc_x"]               = pd.to_numeric(df.get("hc_x"), errors="coerce").fillna(0.0)
+    df["stand"]              = df.get("stand", "R").fillna("R")
+
+    bip_df    = _build_bip_flags(df[ls.notna() & (ls > 0)])
+    bip_count = len(bip_df)
+
+    exit_velo    = round(float(bip_df["launch_speed"].mean()), 3) if bip_count > 0 else 0.0
+    la_avg       = round(float(bip_df["launch_angle"].mean()),  3) if bip_count > 0 else 0.0
+    barrel_pct   = _pct(bip_df["barrel"].sum(),     bip_count)
+    hard_hit_pct = _pct(bip_df["hard_hit"].sum(),   bip_count)
+    sweet_pct    = _pct(bip_df["sweet_spot"].sum(),  bip_count)
+    gb_pct       = _pct(bip_df["gb"].sum(),          bip_count)
+    fb_pct       = _pct(bip_df["fb"].sum(),          bip_count)
+    ld_pct       = _pct(bip_df["ld"].sum(),          bip_count)
+    pull_pct     = _pct(bip_df["pull"].sum(),        bip_count)
+    oppo_pct     = _pct(bip_df["oppo"].sum(),        bip_count)
+
+    barrel_n = int(bip_df["barrel"].sum())
+    pull_n   = int(bip_df["pull"].sum())
+    pull_brl = round(barrel_n * pull_n / bip_count ** 2, 2) if bip_count > 0 else 0.0
 
     d = {
-        "pa": pa,
-        "xwoba": xwoba,
-        "xba": xba,
-        "xslg": xslg,
-        "xiso": round(max(0.0, xslg - xba), 3),
-        "exit_velo": exit_velo,
-        "la_avg": la_avg,
-        "barrel_pct": barrel_pct,
-        "hard_hit_pct": hard_hit_pct,
-        "sweet_spot_pct": sweet_spot_pct,
-        "swstr_pct": 0.0,
-        "o_swing_pct": 0.0,
-        "gb_pct": gb_pct,
-        "fb_pct": fb_pct,
-        "ld_pct": ld_pct,
-        "pull_pct": pull_pct,
-        "oppo_pct": oppo_pct,
-        "pull_brl_pct": pull_brl_pct,
+        "pa":             pa,
+        "xwoba":          xwoba,
+        "xba":            xba_val,
+        "xslg":           xslg_val,
+        "xiso":           round(max(0.0, xslg_val - xba_val), 3),
+        "exit_velo":      exit_velo,
+        "la_avg":         la_avg,
+        "barrel_pct":     barrel_pct,
+        "hard_hit_pct":   hard_hit_pct,
+        "sweet_spot_pct": sweet_pct,
+        "swstr_pct":      0.0,
+        "o_swing_pct":    0.0,
+        "gb_pct":         gb_pct,
+        "fb_pct":         fb_pct,
+        "ld_pct":         ld_pct,
+        "pull_pct":       pull_pct,
+        "oppo_pct":       oppo_pct,
+        "pull_brl_pct":   pull_brl,
     }
+
     if include_meta:
-        d["name"] = name
-        d["stands"] = stands
+        name_col  = df.get("player_name", df.get("name", pd.Series(dtype=str))).dropna()
+        stand_col = df.get("stand", pd.Series(dtype=str)).dropna()
+        d["name"]   = str(name_col.iloc[-1]).strip() if len(name_col) else ""
+        d["stands"] = str(stand_col.iloc[-1]).strip() if len(stand_col) else "R"
+
     return d
 
 
@@ -654,105 +652,102 @@ def _extract_pitcher_id(row):
 
 
 def _aggregate_pitcher_rows(rows):
-    """Aggregate per-pitch statcast_search rows into pitcher stat dict."""
-    xwoba_vals = []
-    ev_vals, la_vals = [], []
-    bip_count = 0
-    barrel_count = 0
-    hard_hit_count = 0
-    sweet_spot_count = 0
-    gb_count = 0
-    fb_count = 0
-    ld_count = 0
-    pull_count = 0
-    oppo_count = 0
-    name = ""
-    throws = "R"
+    """
+    Aggregate per-pitch statcast_search rows into a pitcher stat dict.
+    Uses pandas for vectorised filtering and aggregation.
+    Returns None for Savant leaderboard-only fields (CSW%, SwStr%, etc.)
+    that are not present in raw pitch rows.
+    """
+    if not rows:
+        return {
+            "pa": 0, "name": "", "throws": "R",
+            "xwoba": None, "exit_velo": None, "la_avg": None,
+            "barrel_pct": None, "hard_hit_pct": None, "sweet_spot_pct": None,
+            "gb_pct": None, "fb_pct": None, "ld_pct": None,
+            "pull_pct": None, "oppo_pct": None,
+            "xba": None, "xslg": None, "swstr_pct": None, "csw_pct": None,
+            "o_swing_pct": None, "in_zone_pct": None, "f_strike_pct": None,
+            "ball_pct": None, "pulled_barrel_pct": None, "k_pct": None,
+            "bb_pct": None, "zones": [], "arsenal": [],
+        }
 
-    for row in rows:
-        denom = str(row.get("woba_denom", "")).strip()
-        if denom == "1":
-            v = safe_float(row.get("estimated_woba_using_speedangle", ""), -1)
-            if v >= 0:
-                xwoba_vals.append(v)
+    df = pd.DataFrame(rows)
 
-        ls_raw = str(row.get("launch_speed", "")).strip()
-        la_raw = str(row.get("launch_angle", "")).strip()
-        if ls_raw not in ("", ".", "null", "None"):
-            ls = safe_float(ls_raw, 0.0)
-            if ls > 0:
-                ev_vals.append(ls)
-                bip_count += 1
-                la = safe_float(la_raw, 0.0)
-                la_vals.append(la)
-                if ls >= 95:
-                    hard_hit_count += 1
-                lsa = str(row.get("launch_speed_angle", "")).strip()
-                if lsa == "6":
-                    barrel_count += 1
-                if 8 <= la <= 32:
-                    sweet_spot_count += 1
-                bb_type = str(row.get("bb_type", "")).strip().lower()
-                if bb_type == "ground_ball":
-                    gb_count += 1
-                elif bb_type == "fly_ball":
-                    fb_count += 1
-                elif bb_type == "line_drive":
-                    ld_count += 1
-                hc_x = safe_float(row.get("hc_x", ""), 0.0)
-                bat_side = str(row.get("stand", "R")).strip()
-                if hc_x > 0:
-                    if bat_side == "R":
-                        if hc_x < 100:
-                            pull_count += 1
-                        elif hc_x > 155:
-                            oppo_count += 1
-                    else:
-                        if hc_x > 155:
-                            pull_count += 1
-                        elif hc_x < 100:
-                            oppo_count += 1
+    # --- PA-level (woba_denom == 1) ---
+    woba_denom = pd.to_numeric(df.get("woba_denom", 0), errors="coerce").fillna(0)
+    pa_mask = woba_denom == 1
+    xw = pd.to_numeric(df.get("estimated_woba_using_speedangle"), errors="coerce")
+    valid_xw = pa_mask & xw.notna() & (xw >= 0)
+    pa    = int(valid_xw.sum())
+    xwoba = round(float(xw[valid_xw].mean()), 3) if pa > 0 else None
 
-        n = (row.get("player_name") or row.get("pitcher_name") or "").strip()
-        if n:
-            name = n
-        t = str(row.get("p_throws") or row.get("throws") or "").strip()
-        if t in ("R", "L"):
-            throws = t
+    # --- BIP-level (launch_speed > 0) ---
+    ls = pd.to_numeric(df.get("launch_speed"), errors="coerce")
+    la = pd.to_numeric(df.get("launch_angle"), errors="coerce").fillna(0.0)
+    df["launch_speed"]       = ls
+    df["launch_angle"]       = la
+    df["launch_speed_angle"] = df.get("launch_speed_angle", "").fillna("")
+    df["bb_type"]            = df.get("bb_type", "").fillna("")
+    df["hc_x"]               = pd.to_numeric(df.get("hc_x"), errors="coerce").fillna(0.0)
+    df["stand"]              = df.get("stand", "R").fillna("R")
 
-    def _avg(vals):
-        return round(sum(vals) / len(vals), 3) if vals else None
+    bip_df    = _build_bip_flags(df[ls.notna() & (ls > 0)])
+    bip_count = len(bip_df)
 
-    pa = len(xwoba_vals)
+    exit_velo    = round(float(bip_df["launch_speed"].mean()), 3) if bip_count > 0 else None
+    la_avg       = round(float(bip_df["launch_angle"].mean()),  3) if bip_count > 0 else None
+    barrel_pct   = _pct(bip_df["barrel"].sum(),     bip_count, none_on_empty=True)
+    hard_hit_pct = _pct(bip_df["hard_hit"].sum(),   bip_count, none_on_empty=True)
+    sweet_pct    = _pct(bip_df["sweet_spot"].sum(),  bip_count, none_on_empty=True)
+    gb_pct       = _pct(bip_df["gb"].sum(),          bip_count, none_on_empty=True)
+    fb_pct       = _pct(bip_df["fb"].sum(),          bip_count, none_on_empty=True)
+    ld_pct       = _pct(bip_df["ld"].sum(),          bip_count, none_on_empty=True)
+    pull_pct     = _pct(bip_df["pull"].sum(),        bip_count, none_on_empty=True)
+    oppo_pct     = _pct(bip_df["oppo"].sum(),        bip_count, none_on_empty=True)
+
+    # Extract name and throws from last non-empty row
+    name_col = (
+        df.get("player_name", pd.Series(dtype=str))
+        .fillna(df.get("pitcher_name", pd.Series(dtype=str)).fillna(""))
+    ).astype(str).str.strip()
+    name = str(name_col[name_col != ""].iloc[-1]) if (name_col != "").any() else ""
+
+    throws_col = (
+        df.get("p_throws", pd.Series(dtype=str))
+        .fillna(df.get("throws", pd.Series(dtype=str)).fillna(""))
+    ).astype(str).str.strip()
+    valid_throws = throws_col[throws_col.isin(["R", "L"])]
+    throws = str(valid_throws.iloc[-1]) if len(valid_throws) else "R"
+
     return {
-        "pa": pa,
-        "name": name,
-        "throws": throws,
-        "xwoba": _avg(xwoba_vals),
-        "exit_velo": _avg(ev_vals),
-        "la_avg": _avg(la_vals),
-        "barrel_pct": round(barrel_count / bip_count * 100, 1) if bip_count > 0 else None,
-        "hard_hit_pct": round(hard_hit_count / bip_count * 100, 1) if bip_count > 0 else None,
-        "sweet_spot_pct": round(sweet_spot_count / bip_count * 100, 1) if bip_count > 0 else None,
-        "gb_pct": round(gb_count / bip_count * 100, 1) if bip_count > 0 else None,
-        "fb_pct": round(fb_count / bip_count * 100, 1) if bip_count > 0 else None,
-        "ld_pct": round(ld_count / bip_count * 100, 1) if bip_count > 0 else None,
-        "pull_pct": round(pull_count / bip_count * 100, 1) if bip_count > 0 else None,
-        "oppo_pct": round(oppo_count / bip_count * 100, 1) if bip_count > 0 else None,
-        # Savant leaderboard-only fields — not in statcast_search rows
-        "xba": None,
-        "xslg": None,
-        "swstr_pct": None,
-        "csw_pct": None,
-        "o_swing_pct": None,
-        "in_zone_pct": None,
-        "f_strike_pct": None,
-        "ball_pct": None,
+        "pa":             pa,
+        "name":           name,
+        "throws":         throws,
+        "xwoba":          xwoba,
+        "exit_velo":      exit_velo,
+        "la_avg":         la_avg,
+        "barrel_pct":     barrel_pct,
+        "hard_hit_pct":   hard_hit_pct,
+        "sweet_spot_pct": sweet_pct,
+        "gb_pct":         gb_pct,
+        "fb_pct":         fb_pct,
+        "ld_pct":         ld_pct,
+        "pull_pct":       pull_pct,
+        "oppo_pct":       oppo_pct,
+        # Savant leaderboard-only — not available in raw pitch rows
+        "xba":            None,
+        "xslg":           None,
+        "swstr_pct":      None,
+        "csw_pct":        None,
+        "o_swing_pct":    None,
+        "in_zone_pct":    None,
+        "f_strike_pct":   None,
+        "ball_pct":       None,
         "pulled_barrel_pct": None,
-        "k_pct": None,
-        "bb_pct": None,
-        "zones": [],
-        "arsenal": [],
+        "k_pct":          None,
+        "bb_pct":         None,
+        "zones":          [],
+        "arsenal":        [],
     }
 
 
@@ -942,15 +937,15 @@ def main():
 
         # vs-hand splits
         r = batter_rhp.get(bid, {})
-        base["pa_vs_rhp"] = r.get("pa", 0)
-        base["xwoba_vs_rhp"] = r.get("xwoba", 0.0)
-        base["barrel_pct_vs_rhp"] = r.get("barrel_pct", 0.0)
+        base["pa_vs_rhp"]           = r.get("pa", 0)
+        base["xwoba_vs_rhp"]        = r.get("xwoba", 0.0)
+        base["barrel_pct_vs_rhp"]   = r.get("barrel_pct", 0.0)
         base["hard_hit_pct_vs_rhp"] = r.get("hard_hit_pct", 0.0)
 
         lh = batter_lhp.get(bid, {})
-        base["pa_vs_lhp"] = lh.get("pa", 0)
-        base["xwoba_vs_lhp"] = lh.get("xwoba", 0.0)
-        base["barrel_pct_vs_lhp"] = lh.get("barrel_pct", 0.0)
+        base["pa_vs_lhp"]           = lh.get("pa", 0)
+        base["xwoba_vs_lhp"]        = lh.get("xwoba", 0.0)
+        base["barrel_pct_vs_lhp"]   = lh.get("barrel_pct", 0.0)
         base["hard_hit_pct_vs_lhp"] = lh.get("hard_hit_pct", 0.0)
 
         base["zones"] = batter_zones.get(bid, [])
