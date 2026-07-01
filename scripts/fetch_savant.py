@@ -209,88 +209,13 @@ def fetch_pitcher_leaderboard():
 
 
 # ---------------------------------------------------------------------------
-# 2 & 3. Batter leaderboard (overall, vs RHP, vs LHP)
+# 2 & 3. Batter stats via statcast_search/csv (batched by player ID)
 # ---------------------------------------------------------------------------
-BATTER_SELECTIONS_BASE = ",".join([
-    "pa", "xba", "xslg", "xwoba", "xobp", "xiso",
-    "exit_velocity_avg", "launch_angle_avg",
-    "sweet_spot_percent", "barrel_batted_rate", "hardHitPercent",
-    "z_swing_miss_percent", "oz_swing_miss_percent",
-    "groundballs_percent", "flyballs_percent", "linedrives_percent",
-    "pulled_percent", "oppo_percent",
-])
+# NOTE: statcast_search/csv with group_by=name returns per-pitch rows, NOT
+# aggregated stats. We collect all rows per batter and aggregate ourselves.
 
-BATTER_SELECTIONS_OVERALL = BATTER_SELECTIONS_BASE + "," + ",".join([
-    "b_k_percent", "b_bb_percent",
-    "batting_avg", "slg_percent", "on_base_percent", "on_base_plus_slg",
-])
-
-
-def _fetch_batter_leaderboard(handedness=None, min_pa=25, label="batter leaderboard"):
-    params = {
-        "year": "2026",
-        "type": "batter",
-        "filter": "",
-        "sort": "4",
-        "sortDir": "desc",
-        "min": str(min_pa),
-        "excel": "false",
-        "chart": "false",
-        "csv": "true",
-    }
-    if handedness:
-        params["handedness"] = handedness
-        params["selections"] = BATTER_SELECTIONS_BASE
-    else:
-        params["selections"] = BATTER_SELECTIONS_OVERALL
-
-    return get_csv(
-        "https://baseballsavant.mlb.com/leaderboard/custom",
-        params,
-        label=label,
-    )
-
-
-def _parse_batter_row_base(row):
-    """Parse the shared batter fields present in all three leaderboard calls."""
-    pa_val = safe_int(row.get("pa", 0))
-    xwoba = safe_float(row.get("xwoba", 0))
-    xba = safe_float(row.get("xba", 0))
-    xslg = safe_float(row.get("xslg", 0))
-    xiso = safe_float(row.get("xiso", 0))
-    exit_velo = safe_float(row.get("exit_velocity_avg", 0))
-    la_avg = safe_float(row.get("launch_angle_avg", 0))
-    sweet_spot_pct = safe_float(row.get("sweet_spot_percent", 0))
-    barrel_pct = safe_float(row.get("barrel_batted_rate", 0))
-    hard_hit_pct = safe_float(row.get("hardHitPercent", 0))
-    swstr_pct = safe_float(row.get("z_swing_miss_percent", 0))
-    oz_swing_pct = safe_float(row.get("oz_swing_miss_percent", 0))
-    gb_pct = safe_float(row.get("groundballs_percent", 0))
-    fb_pct = safe_float(row.get("flyballs_percent", 0))
-    ld_pct = safe_float(row.get("linedrives_percent", 0))
-    pull_pct = safe_float(row.get("pulled_percent", 0))
-    oppo_pct = safe_float(row.get("oppo_percent", 0))
-    pull_brl_pct = barrel_pct * pull_pct / 100.0
-    return {
-        "pa": pa_val,
-        "xwoba": xwoba,
-        "xba": xba,
-        "xslg": xslg,
-        "xiso": xiso,
-        "exit_velo": exit_velo,
-        "la_avg": la_avg,
-        "sweet_spot_pct": sweet_spot_pct,
-        "barrel_pct": barrel_pct,
-        "hard_hit_pct": hard_hit_pct,
-        "swstr_pct": swstr_pct,
-        "o_swing_pct": oz_swing_pct,
-        "gb_pct": gb_pct,
-        "fb_pct": fb_pct,
-        "ld_pct": ld_pct,
-        "pull_pct": pull_pct,
-        "oppo_pct": oppo_pct,
-        "pull_brl_pct": pull_brl_pct,
-    }
+_ZONE_CSV_BASE = "https://baseballsavant.mlb.com/statcast_search/csv"
+_BATTER_BATCH_SIZE = 40
 
 
 def _extract_player_id(row):
@@ -302,7 +227,7 @@ def _extract_player_id(row):
     if not getattr(_extract_player_id, "_logged", False):
         _extract_player_id._logged = True
         print(f"  [debug] batter row columns: {list(row.keys())}", file=sys.stderr)
-    for col in ("player_id", "mlb_id", "xMLBAMID", "key_mlbam", "batter_id", "id"):
+    for col in ("batter", "player_id", "mlb_id", "xMLBAMID", "key_mlbam", "batter_id", "id"):
         v = row.get(col)
         if v is not None and str(v).strip() not in ("", "0", "None"):
             try:
@@ -314,60 +239,200 @@ def _extract_player_id(row):
     return 0
 
 
-def fetch_batter_leaderboards():
+def _aggregate_batter_rows(rows, include_meta=False):
     """
-    Returns (overall_dict, rhp_dict, lhp_dict)
-    Each dict: keyed by int player_id → relevant stat sub-dict.
+    Aggregate per-pitch statcast_search rows into a single batter stat dict.
+    Computes proper averages from event-level and contact-level data.
     """
-    # Overall
-    overall_rows = _fetch_batter_leaderboard(
-        handedness=None, min_pa=10, label="batter leaderboard (overall)"
-    )
-    overall = {}
-    for row in overall_rows:
-        pid = _extract_player_id(row)
-        if pid == 0:
-            continue
-        d = _parse_batter_row_base(row)
-        # Overall-only fields
-        d["k_pct"] = safe_float(row.get("b_k_percent", 0)) / 100.0
-        d["bb_pct"] = safe_float(row.get("b_bb_percent", 0)) / 100.0
-        name = (
-            row.get("player_name")
-            or row.get("last_name, first_name")
-            or row.get("name")
-            or ""
-        ).strip()
+    xwoba_vals, xba_vals, xslg_vals = [], [], []
+    ev_vals, la_vals = [], []
+    bip_count = 0
+    barrel_count = 0
+    hard_hit_count = 0
+    sweet_spot_count = 0
+    gb_count = 0
+    fb_count = 0
+    ld_count = 0
+    pull_count = 0
+    oppo_count = 0
+    name = ""
+    stands = "R"
+
+    for row in rows:
+        # PA-level metrics: only on rows where woba_denom == 1 (valid plate appearances)
+        denom = str(row.get("woba_denom", "")).strip()
+        if denom == "1":
+            v = safe_float(row.get("estimated_woba_using_speedangle", ""), -1)
+            if v >= 0:
+                xwoba_vals.append(v)
+            v = safe_float(row.get("estimated_ba_using_speedangle", ""), -1)
+            if v >= 0:
+                xba_vals.append(v)
+            v = safe_float(row.get("estimated_slg_using_speedangle", ""), -1)
+            if v >= 0:
+                xslg_vals.append(v)
+
+        # Contact metrics: only on rows with a real batted ball (launch_speed > 0)
+        ls_raw = str(row.get("launch_speed", "")).strip()
+        la_raw = str(row.get("launch_angle", "")).strip()
+        if ls_raw not in ("", ".", "null", "None"):
+            ls = safe_float(ls_raw, 0.0)
+            if ls > 0:
+                ev_vals.append(ls)
+                bip_count += 1
+                la = safe_float(la_raw, 0.0)
+                la_vals.append(la)
+                if ls >= 95:
+                    hard_hit_count += 1
+                # launch_speed_angle codes: 6=barrel, 5=solid, 4=flare, 3=under, 2=topped, 1=weak
+                lsa = str(row.get("launch_speed_angle", "")).strip()
+                if lsa == "6":
+                    barrel_count += 1
+                # sweet spot: launch angle 8-32 degrees
+                if 8 <= la <= 32:
+                    sweet_spot_count += 1
+                bb_type = str(row.get("bb_type", "")).strip().lower()
+                if bb_type == "ground_ball":
+                    gb_count += 1
+                elif bb_type == "fly_ball":
+                    fb_count += 1
+                elif bb_type == "line_drive":
+                    ld_count += 1
+                # pull/oppo: hc_x < ~100 = left side, > ~155 = right side of field
+                hc_x = safe_float(row.get("hc_x", ""), 0.0)
+                bat_side = str(row.get("stand", stands)).strip()
+                if hc_x > 0:
+                    if bat_side == "R":
+                        if hc_x < 100:
+                            pull_count += 1
+                        elif hc_x > 155:
+                            oppo_count += 1
+                    else:
+                        if hc_x > 155:
+                            pull_count += 1
+                        elif hc_x < 100:
+                            oppo_count += 1
+
+        if include_meta:
+            n = (row.get("player_name") or row.get("name") or "").strip()
+            if n:
+                name = n
+            s = str(row.get("stand") or row.get("bat_side") or "").strip()
+            if s:
+                stands = s
+
+    def _avg(vals):
+        return round(sum(vals) / len(vals), 3) if vals else 0.0
+
+    pa = len(xwoba_vals)
+    xwoba = _avg(xwoba_vals)
+    xba = _avg(xba_vals)
+    xslg = _avg(xslg_vals)
+    exit_velo = _avg(ev_vals)
+    la_avg = _avg(la_vals)
+    barrel_pct = round(barrel_count / bip_count * 100, 1) if bip_count > 0 else 0.0
+    hard_hit_pct = round(hard_hit_count / bip_count * 100, 1) if bip_count > 0 else 0.0
+    sweet_spot_pct = round(sweet_spot_count / bip_count * 100, 1) if bip_count > 0 else 0.0
+    gb_pct = round(gb_count / bip_count * 100, 1) if bip_count > 0 else 0.0
+    fb_pct = round(fb_count / bip_count * 100, 1) if bip_count > 0 else 0.0
+    ld_pct = round(ld_count / bip_count * 100, 1) if bip_count > 0 else 0.0
+    pull_pct = round(pull_count / bip_count * 100, 1) if bip_count > 0 else 0.0
+    oppo_pct = round(oppo_count / bip_count * 100, 1) if bip_count > 0 else 0.0
+    pull_brl_pct = round(barrel_count / bip_count * pull_pct / 100, 2) if bip_count > 0 else 0.0
+
+    d = {
+        "pa": pa,
+        "xwoba": xwoba,
+        "xba": xba,
+        "xslg": xslg,
+        "xiso": round(max(0.0, xslg - xba), 3),
+        "exit_velo": exit_velo,
+        "la_avg": la_avg,
+        "barrel_pct": barrel_pct,
+        "hard_hit_pct": hard_hit_pct,
+        "sweet_spot_pct": sweet_spot_pct,
+        "swstr_pct": 0.0,
+        "o_swing_pct": 0.0,
+        "gb_pct": gb_pct,
+        "fb_pct": fb_pct,
+        "ld_pct": ld_pct,
+        "pull_pct": pull_pct,
+        "oppo_pct": oppo_pct,
+        "pull_brl_pct": pull_brl_pct,
+    }
+    if include_meta:
         d["name"] = name
-        # stands: default to "R"; score_matchups.py can fetch it
-        d["stands"] = "R"
-        overall[pid] = d
+        d["stands"] = stands
+    return d
 
-    # vs RHP
-    time.sleep(5)
-    rhp_rows = _fetch_batter_leaderboard(
-        handedness="R", min_pa=25, label="batter leaderboard vs RHP"
-    )
-    rhp = {}
-    for row in rhp_rows:
-        pid = _extract_player_id(row)
-        if pid == 0:
-            continue
-        d = _parse_batter_row_base(row)
-        rhp[pid] = d
 
-    # vs LHP
-    time.sleep(5)
-    lhp_rows = _fetch_batter_leaderboard(
-        handedness="L", min_pa=10, label="batter leaderboard vs LHP"
-    )
-    lhp = {}
-    for row in lhp_rows:
-        pid = _extract_player_id(row)
-        if pid == 0:
-            continue
-        d = _parse_batter_row_base(row)
-        lhp[pid] = d
+def _fetch_batter_statcast_batched(bids, pitcher_throws=None, label_prefix="batter statcast"):
+    """
+    Fetch statcast_search/csv for a list of batter IDs in batches.
+    Returns dict keyed by int player_id → aggregated stat dict.
+    The endpoint returns raw pitch-level rows; we aggregate per batter here.
+    pitcher_throws: None (all), "R", or "L" — filters opponent pitcher hand.
+    """
+    result = {}
+    for i in range(0, len(bids), _BATTER_BATCH_SIZE):
+        batch = bids[i:i + _BATTER_BATCH_SIZE]
+        batch_num = i // _BATTER_BATCH_SIZE + 1
+        label = f"{label_prefix} batch {batch_num}"
+        params = {
+            "all": "true",
+            "hfGT": "R|",
+            "hfSea": "2026|",
+            "player_type": "batter",
+            "group_by": "name",
+            "type": "details",
+            "min_pitches": "0",
+            "min_results": "0",
+            "sort_col": "pitches",
+            "sort_order": "desc",
+            "batters_lookup[]": [str(b) for b in batch],
+        }
+        if pitcher_throws:
+            params["pitcherHand"] = pitcher_throws
+        rows = get_csv(_ZONE_CSV_BASE, params, label=label)
+
+        # Group rows by batter ID, then aggregate each batter's pitches
+        batter_rows: dict = {}
+        for row in rows:
+            pid = _extract_player_id(row)
+            if pid == 0:
+                continue
+            batter_rows.setdefault(pid, []).append(row)
+
+        include_meta = (pitcher_throws is None)
+        for pid, prows in batter_rows.items():
+            result[pid] = _aggregate_batter_rows(prows, include_meta=include_meta)
+
+        print(
+            f"  [{label}] {len(batter_rows)} batters aggregated from {len(rows)} rows",
+            file=sys.stderr,
+        )
+        if i + _BATTER_BATCH_SIZE < len(bids):
+            time.sleep(3)
+    return result
+
+
+def fetch_batter_leaderboards(batter_ids):
+    """
+    Returns (overall_dict, rhp_dict, lhp_dict) each keyed by int player_id.
+    Uses statcast_search/csv with batters_lookup[] — same endpoint as zone fetches.
+    """
+    bids = list(batter_ids)
+
+    print(f"  Fetching overall batter Statcast stats ({len(bids)} batters) ...", file=sys.stderr)
+    overall = _fetch_batter_statcast_batched(bids, pitcher_throws=None, label_prefix="batter statcast overall")
+
+    time.sleep(8)
+    print("  Fetching batter stats vs RHP ...", file=sys.stderr)
+    rhp = _fetch_batter_statcast_batched(bids, pitcher_throws="R", label_prefix="batter statcast vs RHP")
+
+    time.sleep(8)
+    print("  Fetching batter stats vs LHP ...", file=sys.stderr)
+    lhp = _fetch_batter_statcast_batched(bids, pitcher_throws="L", label_prefix="batter statcast vs LHP")
 
     return overall, rhp, lhp
 
@@ -423,12 +488,10 @@ def fetch_pitch_arsenal():
 # ---------------------------------------------------------------------------
 # 5 & 6. Per-player zone data
 # ---------------------------------------------------------------------------
-_ZONE_CSV_BASE = "https://baseballsavant.mlb.com/statcast_search/csv"
-
 
 def fetch_pitcher_zones(pitcher_id):
     """
-    Returns a 9-element list (zones 1–9) of pitch frequency fractions.
+    Returns a 9-element list (zones 1-9) of pitch frequency fractions.
     Falls back to 9 equal weights on error.
     """
     params = {
@@ -464,7 +527,7 @@ def fetch_pitcher_zones(pitcher_id):
 
 def fetch_batter_zones(batter_id):
     """
-    Returns a 9-element list of xwoba_mean per zone (zones 1–9).
+    Returns a 9-element list of xwoba_mean per zone (zones 1-9).
     Falls back to zeros on error.
     """
     params = {
@@ -510,6 +573,7 @@ def pitcher_fallback_from_raw(pitcher_id, pitcher_name, raw_pitcher_stats):
 
     # Rough estimates
     xwoba_est = round(era * 0.055 + 0.22, 3)
+    xba_est = round(xwoba_est * 0.72, 3)
     xba_est = round(xwoba_est * 0.72, 3)
     xslg_est = round(xwoba_est * 1.35, 3)
     k_pct_est = round(min(k9 / 27.0, 0.40), 3)
@@ -606,16 +670,12 @@ def main():
     )
 
     # ---- Fetch leaderboards (bulk) -----------------------------------------
-    # Longer gaps between bulk calls: Savant rate-limits rapid sequential
-    # requests. Pitcher leaderboard (first) succeeds; batter leaderboard
-    # was consistently returning zero usable rows when fired < 3s after.
-    # 15s gap gives Savant time to reset the rate-limit window.
     print("\n--- Fetching pitcher leaderboard ---", file=sys.stderr)
     pitcher_savant = fetch_pitcher_leaderboard()
 
     time.sleep(15)
     print("\n--- Fetching batter leaderboards ---", file=sys.stderr)
-    batter_overall, batter_rhp, batter_lhp = fetch_batter_leaderboards()
+    batter_overall, batter_rhp, batter_lhp = fetch_batter_leaderboards(batter_ids)
     print(
         f"  batter_overall={len(batter_overall)} rhp={len(batter_rhp)} lhp={len(batter_lhp)}",
         file=sys.stderr,
@@ -638,7 +698,6 @@ def main():
     for pid, pname in pitcher_id_to_name.items():
         if pid in pitcher_savant:
             entry = dict(pitcher_savant[pid])
-            # Ensure name is filled if leaderboard had it blank
             if not entry.get("name"):
                 entry["name"] = pname
         else:
@@ -648,32 +707,24 @@ def main():
             )
             entry = pitcher_fallback_from_raw(pid, pname, raw_pitcher_stats)
 
-        # Attach zones
         entry["zones"] = pitcher_zones.get(pid, [0.0] * 9)
-
-        # Attach arsenal
         entry["arsenal"] = arsenal_by_pitcher.get(pid, [])
-
         out_pitchers[str(pid)] = entry
 
     # ---- Build output batters dict -----------------------------------------
     out_batters = {}
     for bid, bname in batter_id_to_name.items():
         if bid not in batter_overall:
-            # Skip — score_matchups.py will fall back to real MLB Stats API data
-            # (batter_raw from raw_slate.json) instead of fake constants.
             print(
-                f"  [skip] batter {bid} ({bname}) not in Savant leaderboard — MLB Stats fallback applies",
+                f"  [skip] batter {bid} ({bname}) not in Savant data — MLB Stats fallback applies",
                 file=sys.stderr,
             )
             continue
         base = dict(batter_overall[bid])
 
-        # Fill name if missing
         if not base.get("name"):
             base["name"] = bname
 
-        # Merge mlb_id
         base["mlb_id"] = bid
 
         # vs-RHP stats
@@ -702,10 +753,8 @@ def main():
             base["barrel_pct_vs_lhp"] = base.get("barrel_pct", 7.0)
             base["hard_hit_pct_vs_lhp"] = base.get("hard_hit_pct", 38.0)
 
-        # Attach zones
         base["zones"] = batter_zones.get(bid, [0.0] * 9)
 
-        # Canonical field ordering for readability
         entry = {
             "mlb_id": base["mlb_id"],
             "name": base.get("name", bname),
