@@ -14,7 +14,7 @@ import json
 import datetime
 import sys
 
-# ── Static team name → abbreviation map ─────────────────────────────────────────────────────────────────────
+# ── Static team name → abbreviation map ─────────────────────────────────────────────────────────────────────────────────────
 # Keys match the full team names returned by statsapi.schedule()
 TEAM_NAME_TO_ABBR = {
     "Arizona Diamondbacks":      "ARI",
@@ -54,19 +54,16 @@ def team_abbr(name: str) -> str:
     """Return the correct MLB abbreviation for a team name."""
     if not name:
         return "UNK"
-    # Direct lookup first
     if name in TEAM_NAME_TO_ABBR:
         return TEAM_NAME_TO_ABBR[name]
-    # Partial match fallback
     for full_name, abbr in TEAM_NAME_TO_ABBR.items():
         if full_name in name or name in full_name:
             return abbr
-    # Last resort: strip non-alpha and take first 3 chars (better than crashing)
     safe = "".join(c for c in name.upper() if c.isalpha())[:3]
     print(f"  ⚠ Unknown team name '{name}' — using '{safe}'")
     return safe or "UNK"
 
-# ── Static config ───────────────────────────────────────────────────────────────────
+# ── Static config ──────────────────────────────────────────────────────────────────────────────────────────
 RETRACTABLE_ROOF_PARKS = {
     "Chase Field",
     "American Family Field",
@@ -76,13 +73,11 @@ RETRACTABLE_ROOF_PARKS = {
     "Daikin Park",
 }
 
-# Hard-dome parks (always closed)
 HARD_DOME_PARKS = {
     "Tropicana Field",
     "Rogers Centre",
 }
 
-# HR factor ranks (1 = best HR park). Update annually.
 PARK_HR_RANKS = {
     "Coors Field":                  1,
     "Great American Ball Park":     2,
@@ -153,8 +148,6 @@ CITY_WEATHER_MAP = {
     "Guaranteed Rate Field":        "Chicago IL",
 }
 
-# ── Date helpers ───────────────────────────────────────────────
-
 def today_str():
     return datetime.date.today().strftime("%Y-%m-%d")
 
@@ -166,10 +159,7 @@ def format_day_label(date_str):
     d = datetime.datetime.strptime(date_str, "%Y-%m-%d")
     return d.strftime("%A").upper() + " MLB SLATE"
 
-# ── Weather ──────────────────────────────────────────────────────
-
 def get_weather(venue_name):
-    """Fetch current conditions from wttr.in. Falls back to neutral defaults."""
     if venue_name in RETRACTABLE_ROOF_PARKS or venue_name in HARD_DOME_PARKS:
         return {"temp_f": 72, "wind_mph": 0, "wind_dir": "", "roof": True}
     city = CITY_WEATHER_MAP.get(venue_name, venue_name)
@@ -190,10 +180,7 @@ def get_weather(venue_name):
         print(f"  ⚠ weather error for {venue_name}: {e}")
         return {"temp_f": 72, "wind_mph": 5, "wind_dir": "E", "roof": False}
 
-# ── Pitcher ID lookup ───────────────────────────────────────────────────────────────────
-
 def get_pitcher_id(name):
-    """Look up a player ID by full name. Returns None if not found."""
     if not name or name == "TBD":
         return None
     try:
@@ -204,10 +191,7 @@ def get_pitcher_id(name):
         print(f"  ⚠ pitcher lookup error for {name}: {e}")
     return None
 
-# ── Pitcher stats ────────────────────────────────────────────────────────────────────
-
 def get_pitcher_stats(player_id, season=2026):
-    """Return dict with era/whip/hr9/bb9/k9/fip/ip, or {} on failure."""
     if not player_id:
         return {}
     try:
@@ -238,14 +222,12 @@ def get_pitcher_stats(player_id, season=2026):
         bb   = f("baseOnBalls")
         k    = f("strikeOuts")
 
-        # HR/9 — prefer direct field, else calculate
         hr9_direct = sp.get("homeRunsPer9")
         if hr9_direct not in (None, "", "-"):
             hr9 = float(hr9_direct)
         else:
             hr9 = round(hr / ip * 9, 2) if ip > 0 else 1.0
 
-        # FIP: (13*HR + 3*BB - 2*K) / IP + 3.2
         fip = round((13 * hr + 3 * bb - 2 * k) / ip + 3.2, 2) if ip > 0 else era
 
         return {"era": era, "whip": whip, "hr9": hr9, "bb9": bb9,
@@ -254,10 +236,7 @@ def get_pitcher_stats(player_id, season=2026):
         print(f"  ⚠ pitcher stats error for id={player_id}: {e}")
         return {}
 
-# ── Batter splits ────────────────────────────────────────────────────────────────────
-
 def get_batter_splits(pid, season=2026):
-    """Return {vs_lhp: {avg,obp,slg,ops,hr,ab,pa}, vs_rhp: {...}} from MLB Stats API."""
     if not pid:
         return {}
     try:
@@ -293,11 +272,7 @@ def get_batter_splits(pid, season=2026):
         print(f"  ⚠ splits error for pid={pid}: {e}")
         return {}
 
-
-# ── Pitcher arsenal ────────────────────────────────────────────────────────────────────
-
 def get_pitcher_arsenal(pid, season=2026):
-    """Return list of {abbrev, pitch_name, pct, velo} from MLB Stats API pitchArsenal."""
     if not pid:
         return []
     try:
@@ -314,7 +289,7 @@ def get_pitcher_arsenal(pid, season=2026):
                 sp = split.get("stat", {})
                 try:
                     pct = float(sp.get("percentage", 0) or 0)
-                    if pct > 1:  # already 0-100
+                    if pct > 1:
                         pct = pct / 100.0
                 except Exception:
                     pct = 0.0
@@ -336,11 +311,7 @@ def get_pitcher_arsenal(pid, season=2026):
         print(f"  ⚠ arsenal error for pid={pid}: {e}")
         return []
 
-
-# ── Batter stats ─────────────────────────────────────────────────────────────────────
-
 def get_team_batters(team_id, season=2026, top_n=15):
-    """Return top_n batters (by HR then OPS) with season stats. Skips pitchers."""
     try:
         roster_data = statsapi.get(
             "team_roster",
@@ -376,7 +347,7 @@ def get_team_batters(team_id, season=2026, top_n=15):
 
             ab    = int(f("atBats"))
             if ab < 10:
-                continue  # skip players with no meaningful sample
+                continue
 
             hr    = int(f("homeRuns"))
             avg   = f("avg")
@@ -410,8 +381,6 @@ def get_team_batters(team_id, season=2026, top_n=15):
     batters.sort(key=lambda x: (-x["hr"], -x["ops"]))
     return batters[:top_n]
 
-# ── Main ────────────────────────────────────────────────────────────────────────────────
-
 def main():
     date_str   = today_str()
     date_label = format_date_label(date_str)
@@ -419,7 +388,6 @@ def main():
 
     print(f"Fetching slate for {date_str} ({date_label})")
 
-    # 1. Schedule
     try:
         sched = statsapi.schedule(date=date_str)
     except Exception as e:
@@ -428,7 +396,6 @@ def main():
                   open("scripts/raw_slate.json", "w"), indent=2)
         sys.exit(0)
 
-    # Filter to final/scheduled games (status != Postponed/Cancelled)
     live_games = [
         g for g in sched
         if g.get("status") not in ("Postponed", "Cancelled", "Suspended")
@@ -441,18 +408,15 @@ def main():
                   open("scripts/raw_slate.json", "w"), indent=2)
         sys.exit(0)
 
-    # 2. Build game list + collect pitcher IDs
     games        = []
     pitcher_ids  = set()
-    team_ids     = {}   # team_abbr -> team_id
+    team_ids     = {}
 
     for g in live_games:
-        # Use full team name → static abbreviation lookup for correctness
         away_abbr = team_abbr(g.get("away_name", ""))
         home_abbr = team_abbr(g.get("home_name", ""))
         venue     = g.get("venue_name", "Unknown Park")
 
-        # schedule() returns probable pitcher as a plain string (name), not a dict
         away_pname = g.get("away_probable_pitcher") or "TBD"
         home_pname = g.get("home_probable_pitcher") or "TBD"
 
@@ -484,7 +448,6 @@ def main():
 
     print(f"  {len(games)} games, {len(pitcher_ids)} pitchers, {len(team_ids)} teams")
 
-    # 3. Pitcher stats
     print("Fetching pitcher stats...")
     pitcher_stats = {}
     for pid in sorted(pitcher_ids):
@@ -496,7 +459,6 @@ def main():
         else:
             print(f"  ⚠ pitcher {pid}: no stats")
 
-    # 4. Batter stats
     print("Fetching batter stats...")
     players_by_team = {}
     for abbr, tid in sorted(team_ids.items()):
@@ -504,7 +466,6 @@ def main():
         players_by_team[abbr] = batters
         print(f"  ✓ {abbr}: {len(batters)} batters")
 
-    # 5. Weather
     print("Fetching weather...")
     venues_in_slate = list({g["venueName"] for g in games})
     weather = {}
@@ -514,10 +475,8 @@ def main():
         print(f"  ✓ {venue}: {w['temp_f']}°F  {w['wind_mph']}mph {w['wind_dir']}"
               f"{'  [dome]' if w.get('roof') else ''}")
 
-    # 6. Build park HR rank lookup (only venues in today's slate)
     park_hr_ranks = {v: PARK_HR_RANKS.get(v, 20) for v in venues_in_slate}
 
-    # 7. Write output
     output = {
         "status":                 "ok",
         "date":                   date_label,

@@ -50,9 +50,9 @@
     thead th:first-child { text-align: left; }
     thead th:hover { background: #263150; }
     .sort-arrow { margin-left: 4px; font-size: 9px; opacity: 0.5; }
-    thead th.sort-asc .sort-arrow::after { content: '▲'; opacity: 1; }
-    thead th.sort-desc .sort-arrow::after { content: '▼'; opacity: 1; }
-    thead th:not(.sort-asc):not(.sort-desc) .sort-arrow::after { content: '⇅'; }
+    thead th.sort-asc .sort-arrow::after { content: '\25b2'; opacity: 1; }
+    thead th.sort-desc .sort-arrow::after { content: '\25bc'; opacity: 1; }
+    thead th:not(.sort-asc):not(.sort-desc) .sort-arrow::after { content: '\21c5'; }
     td { padding: 5px 9px; text-align: right; border-bottom: 1px solid #f0f0f0; white-space: nowrap; }
     td:first-child { text-align: left; font-weight: 500; }
     tr:hover td { filter: brightness(0.96); }
@@ -221,9 +221,9 @@ function sortedRows(rows, tbl, defKey) {
 
 function colTh(tbl, col) {
   var cls = thClass(tbl, col.key);
-  return '<th class="' + cls + '" onclick="sortClick(\'' + tbl + '\',\'' + col.key + '\')">'
-    + '<span class="tip" data-tip="' + esc(col.tip||col.label) + '">' + col.label + '</span>'
-    + '<span class="sort-arrow"></span></th>';
+  return '<th class="' + cls + '" onclick="sortClick(\'' + tbl + '\',\'' + col.key + '\')">' +
+    '<span class="tip" data-tip="' + esc(col.tip||col.label) + '">' + col.label + '</span>' +
+    '<span class="sort-arrow"></span></th>';
 }
 
 function batterTable(batters, tbl) {
@@ -353,7 +353,7 @@ function exportCSV(batters, gameKey) {
   var hdr = ['Name','Stands','MScore','KHR','Ceiling','ZoneFit','xwOBAvP','ISO','HH%','BRL%','PullBRL%','FB%','SwStr%','LA','Likely','HRForm'];
   var rows = batters.map(function(b) {
     return [
-      '"'+(b.name||'')+'"', b.stands||'R',
+      '"'+(b.name||'')'"', b.stands||'R',
       b.matchup_score!=null?parseFloat(b.matchup_score).toFixed(2):'',
       b.khr!=null?parseFloat(b.khr).toFixed(1):'',
       b.ceiling!=null?parseFloat(b.ceiling).toFixed(1):'',
@@ -382,17 +382,17 @@ function buildTabBar() {
   var games = gamesData();
   var h = '';
   h += '<div class="tab'+(activeTab==='slate'?' active':'')+'", onclick="setTab(\'slate\')">'
-  h += '<div class="tab-teams">\u{1F4CA} Slate Summary</div></div>';
+  h += '<div class="tab-teams">&#128202; Slate Summary</div></div>';
   games.forEach(function(g,i) {
     var id = 'game-'+i;
     var live = isGameLive(g);
     var liveBadge = live ? ' <span class="badge badge-live">LIVE</span>' : '';
-    h += '<div class="tab'+(activeTab===id?' active':'')+(live?' tab-live':'')+'", onclick="setTab(\''+id+'\')">';
+    h += '<div class="tab'+(activeTab===id?' active':'')+(live?' tab-live':'')+'", onclick="setTab(\''+id+'\')">'
     h += '<div class="tab-teams">'+esc(g.awayTeam)+' @ '+esc(g.homeTeam)+liveBadge+'</div>';
     h += '<div class="tab-time">'+fmtTime(g.gameTime)+'</div></div>';
   });
-  h += '<div class="tab'+(activeTab==='weather'?' active':'')+'", onclick="setTab(\'weather\')">'
-  h += '<div class="tab-teams">\u{1F324} Weather</div></div>';
+  h += '<div class="tab'+(activeTab==='weather'?' active':'')+'", onclick="setTab(\'weather\')">';
+  h += '<div class="tab-teams">&#127780; Weather</div></div>';
   document.getElementById('tab-bar').innerHTML = h;
 }
 
@@ -413,7 +413,7 @@ function slateView() {
 
 function weatherView() {
   var games = gamesData();
-  var h = '<h2 class="section-title">\u{1F324} Weather Summary</h2>';
+  var h = '<h2 class="section-title">&#127780; Weather Summary</h2>';
   if (!games.length) return h + '<p style="color:#999">No games.</p>';
   games.forEach(function(g) {
     var w = g.weather || {};
@@ -421,7 +421,7 @@ function weatherView() {
     h += '<div class="weather-card">';
     h += '<div style="font-weight:700;margin-bottom:4px">'+esc(g.awayTeam)+' @ '+esc(g.homeTeam)+' &mdash; '+esc(g.park||'')+(w.roof?' <span style="color:#666">[DOME]</span>':'')+' &mdash; '+fmtTime(g.gameTime)+'</div>';
     h += '<div style="font-size:12px">'+(w.temp_f!=null?w.temp_f+'&deg;F':'--')+'  '+(w.wind_mph!=null?w.wind_mph+' mph':'--')+' '+esc(w.wind_dir||'');
-    if (windO) h += ' <span style="color:#2563eb;font-weight:700">\u{1F680} WIND OUT</span>';
+    if (windO) h += ' <span style="color:#2563eb;font-weight:700">&#128640; WIND OUT</span>';
     h += '  '+esc(w.condition||'')+'</div></div>';
   });
   return h;
@@ -435,7 +435,7 @@ function gameView(idx) {
   var live = isGameLive(g);
   var ps = pitchersData();
   var h = '';
-  if (live) h += '<div class="live-strip">\u{1F534} GAME IN PROGRESS &mdash; data reflects pre-game projections</div>';
+  if (live) h += '<div class="live-strip">&#128308; GAME IN PROGRESS &mdash; data reflects pre-game projections</div>';
 
   h += '<h2 class="section-title">Pitcher Cards</h2><div class="cards-grid">';
   [{key:'away',pid:g.awayPitcherId,name:g.awayPitcherName,team:g.awayTeam},
@@ -450,12 +450,12 @@ function gameView(idx) {
 
   var awayTbl = 'g'+idx+'-away';
   h += '<div class="team-header"><span>'+esc(g.awayTeam)+' Batters vs '+esc(g.homePitcherName||'TBD')+(g.homeThrows?' ['+g.homeThrows+']':'')+' </span>';
-  h += '<button class="export-btn" onclick="exportCSV(gamesData()['+idx+'].awayMatchups,\''+esc(gk)+'-away\')">\u{2B07} CSV</button></div>';
+  h += '<button class="export-btn" onclick="exportCSV(gamesData()['+idx+'].awayMatchups,\''+esc(gk)+'-away\')">&#11015; CSV</button></div>';
   h += batterTable(g.awayMatchups||[], awayTbl);
 
   var homeTbl = 'g'+idx+'-home';
   h += '<div class="team-header"><span>'+esc(g.homeTeam)+' Batters vs '+esc(g.awayPitcherName||'TBD')+(g.awayThrows?' ['+g.awayThrows+']':'')+' </span>';
-  h += '<button class="export-btn" onclick="exportCSV(gamesData()['+idx+'].homeMatchups,\''+esc(gk)+'-home\')">\u{2B07} CSV</button></div>';
+  h += '<button class="export-btn" onclick="exportCSV(gamesData()['+idx+'].homeMatchups,\''+esc(gk)+'-home\')">&#11015; CSV</button></div>';
   h += batterTable(g.homeMatchups||[], homeTbl);
   return h;
 }
