@@ -65,158 +65,225 @@ def parse_pct(v):
 
 
 def get_csv(url, params, label="request", retries=3, backoff=3.0):
-    """Fetch a URL and return a list of dicts via csv.DictReader, or [] on error.
-    Retries on empty/error responses with exponential backoff — Savant
-    rate-limits/blocks bursts of requests, so a transient empty response
-    on attempt 1 is common and should not be treated as permanent failure.
+    """
+    GET a Savant CSV endpoint and return list-of-dicts.
+    Retries on network errors with exponential backoff.
     """
     for attempt in range(1, retries + 1):
         try:
-            resp = SESSION.get(url, params=params, timeout=30)
+            resp = SESSION.get(url, params=params, timeout=45)
             resp.raise_for_status()
             text = resp.text.strip()
-            if not text:
-                print(f"  [warn] Empty response for {label} (attempt {attempt}/{retries})", file=sys.stderr)
-            else:
-                reader = csv.DictReader(io.StringIO(text))
-                rows = list(reader)
-                if rows:
-                    print(f"  [ok] {label}: {len(rows)} rows", file=sys.stderr)
-                    return rows
-                print(f"  [warn] No rows parsed for {label} (attempt {attempt}/{retries})", file=sys.stderr)
-        except requests.exceptions.HTTPError as exc:
-            print(f"  [warn] HTTP error for {label} (attempt {attempt}/{retries}): {exc}", file=sys.stderr)
+            if not text or text.startswith("<"):
+                print(
+                    f"  [{label}] attempt {attempt}: non-CSV response "
+                    f"({len(text)} chars)",
+                    file=sys.stderr,
+                )
+                if attempt < retries:
+                    time.sleep(backoff * attempt)
+                    continue
+                return []
+            reader = csv.DictReader(io.StringIO(text))
+            rows = list(reader)
+            print(
+                f"  [{label}] {len(rows)} rows from {url.split('/')[-1]}",
+                file=sys.stderr,
+            )
+            return rows
         except Exception as exc:
-            print(f"  [warn] Error fetching {label} (attempt {attempt}/{retries}): {exc}", file=sys.stderr)
-
-        if attempt < retries:
-            time.sleep(backoff * attempt)
-
-    print(f"  [fail] Giving up on {label} after {retries} attempts", file=sys.stderr)
+            print(
+                f"  [{label}] attempt {attempt} error: {exc}",
+                file=sys.stderr,
+            )
+            if attempt < retries:
+                time.sleep(backoff * attempt)
     return []
 
 
 # ---------------------------------------------------------------------------
-# 1. Pitcher leaderboard
+# 1. Pitcher leaderboard (bulk fetch)
 # ---------------------------------------------------------------------------
-PITCHER_SELECTIONS = ",".join([
-    "p_game", "pa", "p_k_percent", "p_bb_percent",
-    "xba", "xslg", "xwoba",
-    "exit_velocity_avg", "launch_angle_avg",
-    "sweet_spot_percent", "barrel_batted_rate", "hardHitPercent",
-    "z_swing_miss_percent", "oz_swing_miss_percent", "oz_swing_percent",
-    "in_zone_percent", "f_strike_percent",
-    "groundballs_percent", "flyballs_percent", "linedrives_percent",
-    "pulled_percent", "straightaway_percent", "oppo_percent",
-])
+
+_PITCHER_LEADERBOARD_URL = "https://baseballsavant.mlb.com/leaderboard/custom"
+
+PITCHER_SELECTIONS = [
+    "xwoba",
+    "xba",
+    "xslg",
+    "exit_velocity_avg",
+    "launch_angle_avg",
+    "barrel_batted_rate",
+    "hard_hit_percent",
+    "sweet_spot_percent",
+    "whiff_percent",
+    "k_percent",
+    "bb_percent",
+    "csw_rate",
+    "groundballs_percent",
+    "flyballs_percent",
+    "linedrives_percent",
+    "pull_percent",
+    "straightaway_percent",
+    "opposite_percent",
+    "f_strike_percent",
+    "in_zone_percent",
+    "out_zone_swing_percent",
+    "pitch_count",
+    "pa",
+    "p_formatted_ip",
+]
 
 
 def fetch_pitcher_leaderboard():
-    """Returns dict keyed by int player_id → pitcher stat dict."""
+    """
+    Fetch the Savant custom leaderboard for pitchers (2026, regular season).
+    Returns dict keyed by int player_id → stat dict.
+    """
     params = {
         "year": "2026",
+        "pos": "1",  # pitchers
+        "hof": "0",
+        "p_hand": "",
+        "min_pa": "1",
+        "min_pitches": "0",
         "type": "pitcher",
-        "filter": "",
-        "sort": "4",
-        "sortDir": "desc",
-        "min": "10",
-        "selections": PITCHER_SELECTIONS,
-        "excel": "false",
-        "chart": "false",
+        "player_type": "pitcher",
+        "sort_col": "pa",
+        "sort_order": "desc",
         "csv": "true",
+        "selections": ",".join(PITCHER_SELECTIONS),
+        "game_type": "R",
     }
-    rows = get_csv(
-        "https://baseballsavant.mlb.com/leaderboard/custom",
-        params,
-        label="pitcher leaderboard",
-    )
+
+    rows = get_csv(_PITCHER_LEADERBOARD_URL, params, label="pitcher leaderboard")
+
     result = {}
     for row in rows:
-        try:
-            pid = int(safe_float(row.get("player_id", row.get("mlb_id", 0))))
-        except Exception:
+        pid = None
+        for col in ("player_id", "mlb_id", "xMLBAMID", "key_mlbam", "id", "pitcher_id"):
+            v = row.get(col)
+            if v and str(v).strip() not in ("", "0", "None"):
+                try:
+                    pid = int(safe_float(v))
+                    if pid > 0:
+                        break
+                except Exception:
+                    pass
+        if not pid:
             continue
-        if pid == 0:
-            continue
 
-        pa_val = safe_int(row.get("pa", 0))
-        k_pct = safe_float(row.get("p_k_percent", 0)) / 100.0
-        bb_pct = safe_float(row.get("p_bb_percent", 0)) / 100.0
-        xwoba = safe_float(row.get("xwoba", 0))
-        xba = safe_float(row.get("xba", 0))
-        xslg = safe_float(row.get("xslg", 0))
-        exit_velo = safe_float(row.get("exit_velocity_avg", 0))
-        la_avg = safe_float(row.get("launch_angle_avg", 0))
-        sweet_spot_pct = safe_float(row.get("sweet_spot_percent", 0))
-        barrel_pct = safe_float(row.get("barrel_batted_rate", 0))
-        hard_hit_pct = safe_float(row.get("hardHitPercent", 0))
-        swstr_pct = safe_float(row.get("z_swing_miss_percent", 0))
-        oz_swing_pct = safe_float(row.get("oz_swing_percent", 0))
-        in_zone_pct = safe_float(row.get("in_zone_percent", 0))
-        f_strike_pct = safe_float(row.get("f_strike_percent", 0))
-        gb_pct = safe_float(row.get("groundballs_percent", 0))
-        fb_pct = safe_float(row.get("flyballs_percent", 0))
-        ld_pct = safe_float(row.get("linedrives_percent", 0))
-        pull_pct = safe_float(row.get("pulled_percent", 0))
-        oppo_pct = safe_float(row.get("oppo_percent", 0))
+        def _f(k, default=0.0):
+            return safe_float(row.get(k, default), default)
 
-        # Derived metrics
-        csw_pct = in_zone_pct * 0.30 + swstr_pct * 0.80
-        ball_pct = max(0.0, 100.0 - in_zone_pct - (100.0 - in_zone_pct) * 0.67)
-        pulled_barrel_pct = barrel_pct * pull_pct / 100.0
-
-        # Determine name and handedness
-        name = (
-            row.get("player_name")
-            or row.get("last_name, first_name")
-            or row.get("name")
-            or ""
-        ).strip()
-        throws = (row.get("p_throws") or row.get("throws") or "R").strip()
+        xwoba = _f("xwoba") or _f("est_woba") or _f("xwoba_mean")
+        xba   = _f("xba") or _f("est_ba") or _f("xba_mean")
+        xslg  = _f("xslg") or _f("est_slg") or _f("xslg_mean")
 
         result[pid] = {
-            "mlb_id": pid,
-            "name": name,
-            "throws": throws,
-            "pa": pa_val,
-            "xwoba": xwoba,
-            "xba": xba,
-            "xslg": xslg,
-            "exit_velo": exit_velo,
-            "la_avg": la_avg,
-            "barrel_pct": barrel_pct,
-            "hard_hit_pct": hard_hit_pct,
-            "sweet_spot_pct": sweet_spot_pct,
-            "swstr_pct": swstr_pct,
-            "csw_pct": csw_pct,
-            "o_swing_pct": oz_swing_pct,
-            "in_zone_pct": in_zone_pct,
-            "f_strike_pct": f_strike_pct,
-            "ball_pct": ball_pct,
-            "fb_pct": fb_pct,
-            "gb_pct": gb_pct,
-            "ld_pct": ld_pct,
-            "pull_pct": pull_pct,
-            "oppo_pct": oppo_pct,
-            "pulled_barrel_pct": pulled_barrel_pct,
-            "k_pct": k_pct,
-            "bb_pct": bb_pct,
-            # zones and arsenal filled in later
-            "zones": [],
-            "arsenal": [],
+            "mlb_id":            pid,
+            "name":              (row.get("player_name") or row.get("name") or "").strip(),
+            "throws":            (row.get("p_throws") or row.get("pitch_hand") or "R").strip(),
+            "pa":                safe_int(row.get("pa") or row.get("total_pa"), 0),
+            "xwoba":             round(xwoba, 3),
+            "xba":               round(xba, 3),
+            "xslg":              round(xslg, 3),
+            "exit_velo":         _f("exit_velocity_avg") or _f("avg_exit_velo") or _f("exit_velo"),
+            "la_avg":            _f("launch_angle_avg") or _f("la_avg"),
+            "barrel_pct":        _f("barrel_batted_rate") or _f("barrel_pct"),
+            "hard_hit_pct":      _f("hard_hit_percent") or _f("hard_hit_pct") or _f("hardHitPercent"),
+            "sweet_spot_pct":    _f("sweet_spot_percent") or _f("sweet_spot_pct"),
+            "swstr_pct":         _f("whiff_percent") or _f("swstr_pct") or _f("z_swing_miss_percent"),
+            "csw_pct":           _f("csw_rate") or _f("csw_pct"),
+            "o_swing_pct":       _f("out_zone_swing_percent") or _f("o_swing_pct"),
+            "in_zone_pct":       _f("in_zone_percent") or _f("in_zone_pct"),
+            "f_strike_pct":      _f("f_strike_percent") or _f("f_strike_pct"),
+            "ball_pct":          0.0,  # not in leaderboard; populated from statcast_search
+            "fb_pct":            _f("flyballs_percent") or _f("fb_pct") or _f("flyballs_percent"),
+            "gb_pct":            _f("groundballs_percent") or _f("gb_pct"),
+            "ld_pct":            _f("linedrives_percent") or _f("ld_pct"),
+            "pull_pct":          _f("pull_percent") or _f("pull_pct"),
+            "oppo_pct":          _f("opposite_percent") or _f("oppo_pct") or _f("oppo_percent"),
+            "k_pct":             _f("k_percent") or _f("k_pct"),
+            "bb_pct":            _f("bb_percent") or _f("bb_pct"),
+            "pulled_barrel_pct": 0.0,
+            "zones":             [],
+            "arsenal":           [],
         }
+
+    print(f"  Pitcher leaderboard: {len(result)} pitchers", file=sys.stderr)
     return result
 
 
 # ---------------------------------------------------------------------------
-# 2 & 3. Batter stats via statcast_search/csv (batched by player ID)
+# Pitch arsenal (bulk leaderboard)
 # ---------------------------------------------------------------------------
-# NOTE: statcast_search/csv with group_by=name returns per-pitch rows, NOT
-# aggregated stats. We collect all rows per batter and aggregate ourselves.
 
-_ZONE_CSV_BASE = "https://baseballsavant.mlb.com/statcast_search/csv"
-_BATTER_BATCH_SIZE = 40
+_ARSENAL_URL = "https://baseballsavant.mlb.com/leaderboard/pitch-arsenal-stats"
 
+
+def fetch_pitch_arsenal():
+    """
+    Fetch pitch arsenal stats for all pitchers from the Savant leaderboard.
+    Returns dict keyed by int pitcher_id → list of pitch-type dicts.
+    """
+    params = {
+        "type": "pitcher",
+        "pitchType": "",
+        "year": "2026",
+        "team": "",
+        "csv": "true",
+    }
+    rows = get_csv(_ARSENAL_URL, params, label="pitch arsenal")
+
+    result = {}
+    for row in rows:
+        pid = None
+        for col in ("player_id", "pitcher_id", "mlb_id", "id", "xMLBAMID"):
+            v = row.get(col)
+            if v and str(v).strip() not in ("", "0", "None"):
+                try:
+                    pid = int(safe_float(v))
+                    if pid > 0:
+                        break
+                except Exception:
+                    pass
+        if not pid:
+            continue
+
+        pitch_type = (row.get("pitch_type") or row.get("pitch_name") or "").strip()
+        pitch_name = (row.get("pitch_type_name") or row.get("pitch_type") or pitch_type).strip()
+        if not pitch_type:
+            continue
+
+        def _pf(k, default=None):
+            v = row.get(k)
+            if v is None or str(v).strip() in ("", "null", "None", ".", "-"):
+                return default
+            try:
+                return round(float(str(v).replace("%", "")), 2)
+            except Exception:
+                return default
+
+        entry = {
+            "pitch_type":  pitch_type,
+            "pitch_name":  pitch_name,
+            "usage_pct":   _pf("pitch_usage") or _pf("pitch_percent") or _pf("run_value_per_100") or 0.0,
+            "avg_speed":   _pf("avg_speed") or _pf("velocity") or _pf("release_speed"),
+            "avg_spin":    _pf("avg_spin") or _pf("spin_rate"),
+            "run_value":   _pf("run_value") or _pf("rv100") or _pf("run_value_per_100"),
+            "whiff_pct":   _pf("whiff_percent") or _pf("whiff_pct"),
+            "xwoba":       _pf("xwoba") or _pf("est_woba"),
+        }
+        result.setdefault(pid, []).append(entry)
+
+    print(f"  Pitch arsenal: {len(result)} pitchers", file=sys.stderr)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Batter leaderboard helpers
+# ---------------------------------------------------------------------------
 
 def _extract_player_id(row):
     """
@@ -366,6 +433,16 @@ def _aggregate_batter_rows(rows, include_meta=False):
     return d
 
 
+# ---------------------------------------------------------------------------
+# 2 & 3. Batter stats via statcast_search/csv (batched by player ID)
+# ---------------------------------------------------------------------------
+# NOTE: statcast_search/csv with group_by=name returns per-pitch rows, NOT
+# aggregated stats. We collect all rows per batter and aggregate ourselves.
+
+_ZONE_CSV_BASE = "https://baseballsavant.mlb.com/statcast_search/csv"
+_BATTER_BATCH_SIZE = 40
+
+
 def _fetch_batter_statcast_batched(bids, pitcher_throws=None, label_prefix="batter statcast"):
     """
     Fetch statcast_search/csv for a list of batter IDs in batches.
@@ -438,61 +515,13 @@ def fetch_batter_leaderboards(batter_ids):
 
 
 # ---------------------------------------------------------------------------
-# 4. Pitch arsenal
-# ---------------------------------------------------------------------------
-
-def fetch_pitch_arsenal():
-    """Returns dict keyed by int player_id → list of pitch dicts, sorted by pct desc."""
-    params = {
-        "type": "pitcher",
-        "pitchType": "",
-        "year": "2026",
-        "team": "",
-        "min": "10",
-        "sort": "run_value_per_100",
-        "sortDir": "asc",
-        "csv": "true",
-    }
-    rows = get_csv(
-        "https://baseballsavant.mlb.com/leaderboard/pitch-arsenal-stats",
-        params,
-        label="pitch arsenal",
-    )
-    arsenal = {}
-    for row in rows:
-        try:
-            pid = int(safe_float(row.get("player_id", row.get("mlb_id", 0))))
-        except Exception:
-            continue
-        if pid == 0:
-            continue
-        pitch = {
-            "abbrev": (row.get("pitch_type") or "").strip(),
-            "pitch_name": (row.get("pitch_name") or "").strip(),
-            "pct": parse_pct(row.get("pitch_percent_formatted", "0")),
-            "velo": safe_float(row.get("mph", 0)),
-            "spin": safe_int(row.get("spin_rate_avg", 0)),
-            "run_value": safe_float(row.get("run_value_per_100", 0)),
-            "whiff_pct": safe_float(row.get("whiff_percent", 0)),
-            "xwoba": safe_float(row.get("xwoba", 0)),
-        }
-        arsenal.setdefault(pid, []).append(pitch)
-
-    # Sort each pitcher's arsenal by pct descending
-    for pid in arsenal:
-        arsenal[pid].sort(key=lambda p: p["pct"], reverse=True)
-
-    return arsenal
-
-
-# ---------------------------------------------------------------------------
-# 5 & 6. Per-player zone data
+# Zone fetches (per-pitcher, per-batter)
 # ---------------------------------------------------------------------------
 
 def fetch_pitcher_zones(pitcher_id):
     """
-    Returns a 9-element list (zones 1-9) of pitch frequency fractions.
-    Falls back to 9 equal weights on error.
+    Fetch xwOBA-by-zone for a specific pitcher from statcast_search/csv.
+    Returns list of 9 floats (zones 1-9, 0.0 if no data).
     """
     params = {
         "all": "true",
@@ -508,7 +537,7 @@ def fetch_pitcher_zones(pitcher_id):
         "sort_order": "desc",
     }
     rows = get_csv(_ZONE_CSV_BASE, params, label=f"pitcher zones {pitcher_id}")
-    zone_counts = {}
+    zone_xwoba = {}
     for row in rows:
         try:
             z = int(safe_float(row.get("zone", 0)))
@@ -516,19 +545,16 @@ def fetch_pitcher_zones(pitcher_id):
             continue
         if z < 1 or z > 9:
             continue
-        pitches = safe_int(row.get("pitches", 0))
-        zone_counts[z] = zone_counts.get(z, 0) + pitches
+        xw = safe_float(row.get("xwoba_mean", row.get("xwoba", 0)))
+        zone_xwoba[z] = xw
 
-    total = sum(zone_counts.values())
-    if total > 0:
-        return [zone_counts.get(i, 0) / total for i in range(1, 10)]
-    return [0.0] * 9
+    return [zone_xwoba.get(i, 0.0) for i in range(1, 10)]
 
 
 def fetch_batter_zones(batter_id):
     """
-    Returns a 9-element list of xwoba_mean per zone (zones 1-9).
-    Falls back to zeros on error.
+    Fetch xwOBA-by-zone for a specific batter from statcast_search/csv.
+    Returns list of 9 floats (zones 1-9, 0.0 if no data).
     """
     params = {
         "all": "true",
@@ -571,11 +597,8 @@ def pitcher_fallback_from_raw(pitcher_id, pitcher_name, raw_pitcher_stats):
     bb9 = safe_float(raw.get("bb9", 3.0))
     hr9 = safe_float(raw.get("hr9", 1.2))
 
-    # Rough estimates
+    # Rough estimates from MLB Stats
     xwoba_est = round(era * 0.055 + 0.22, 3)
-    xba_est = round(xwoba_est * 0.72, 3)
-    xba_est = round(xwoba_est * 0.72, 3)
-    xslg_est = round(xwoba_est * 1.35, 3)
     k_pct_est = round(min(k9 / 27.0, 0.40), 3)
     bb_pct_est = round(min(bb9 / 27.0, 0.20), 3)
     barrel_pct_est = round(hr9 * 1.8, 1)
@@ -584,32 +607,199 @@ def pitcher_fallback_from_raw(pitcher_id, pitcher_name, raw_pitcher_stats):
         "mlb_id": pitcher_id,
         "name": pitcher_name,
         "throws": "R",
-        "pa": 0,
-        "xwoba": xwoba_est,
-        "xba": xba_est,
-        "xslg": xslg_est,
-        "exit_velo": 88.0,
-        "la_avg": 12.0,
-        "barrel_pct": barrel_pct_est,
-        "hard_hit_pct": 38.0,
-        "sweet_spot_pct": 33.0,
-        "swstr_pct": 10.0,
-        "csw_pct": 28.0,
-        "o_swing_pct": 30.0,
-        "in_zone_pct": 46.0,
-        "f_strike_pct": 58.0,
-        "ball_pct": 18.0,
-        "fb_pct": 38.0,
-        "gb_pct": 42.0,
-        "ld_pct": 20.0,
-        "pull_pct": 36.0,
-        "oppo_pct": 24.0,
-        "pulled_barrel_pct": round(barrel_pct_est * 0.36, 2),
+        "pa": 0,               # 0 signals "no real Savant data" to score_matchups.py
+        "xwoba": xwoba_est,    # ERA-derived estimate — acceptable
+        "xba": None,
+        "xslg": None,
+        "exit_velo": None,     # Savant-only, no MLB Stats equivalent
+        "la_avg": None,
+        "barrel_pct": barrel_pct_est,  # HR/9-derived estimate — acceptable
+        "hard_hit_pct": None,  # Savant-only
+        "sweet_spot_pct": None,
+        "swstr_pct": None,     # Savant-only
+        "csw_pct": None,       # Savant-only
+        "o_swing_pct": None,
+        "in_zone_pct": None,
+        "f_strike_pct": None,
+        "ball_pct": None,      # Savant-only
+        "fb_pct": None,        # Savant-only
+        "gb_pct": None,
+        "ld_pct": None,
+        "pull_pct": None,
+        "oppo_pct": None,      # Savant-only
+        "pulled_barrel_pct": None,
         "k_pct": k_pct_est,
         "bb_pct": bb_pct_est,
         "zones": [0.0] * 9,
         "arsenal": [],
     }
+
+
+# ---------------------------------------------------------------------------
+# Pitcher statcast_search fallback (for pitchers not in leaderboard)
+# ---------------------------------------------------------------------------
+
+def _extract_pitcher_id(row):
+    """Extract pitcher MLBAM ID from a statcast_search/csv row (pitcher-type fetch)."""
+    for col in ("pitcher", "player_id", "mlb_id", "xMLBAMID", "key_mlbam", "pitcher_id", "id"):
+        v = row.get(col)
+        if v is not None and str(v).strip() not in ("", "0", "None"):
+            try:
+                pid = int(safe_float(v))
+                if pid > 0:
+                    return pid
+            except Exception:
+                pass
+    return 0
+
+
+def _aggregate_pitcher_rows(rows):
+    """Aggregate per-pitch statcast_search rows into pitcher stat dict."""
+    xwoba_vals = []
+    ev_vals, la_vals = [], []
+    bip_count = 0
+    barrel_count = 0
+    hard_hit_count = 0
+    sweet_spot_count = 0
+    gb_count = 0
+    fb_count = 0
+    ld_count = 0
+    pull_count = 0
+    oppo_count = 0
+    name = ""
+    throws = "R"
+
+    for row in rows:
+        denom = str(row.get("woba_denom", "")).strip()
+        if denom == "1":
+            v = safe_float(row.get("estimated_woba_using_speedangle", ""), -1)
+            if v >= 0:
+                xwoba_vals.append(v)
+
+        ls_raw = str(row.get("launch_speed", "")).strip()
+        la_raw = str(row.get("launch_angle", "")).strip()
+        if ls_raw not in ("", ".", "null", "None"):
+            ls = safe_float(ls_raw, 0.0)
+            if ls > 0:
+                ev_vals.append(ls)
+                bip_count += 1
+                la = safe_float(la_raw, 0.0)
+                la_vals.append(la)
+                if ls >= 95:
+                    hard_hit_count += 1
+                lsa = str(row.get("launch_speed_angle", "")).strip()
+                if lsa == "6":
+                    barrel_count += 1
+                if 8 <= la <= 32:
+                    sweet_spot_count += 1
+                bb_type = str(row.get("bb_type", "")).strip().lower()
+                if bb_type == "ground_ball":
+                    gb_count += 1
+                elif bb_type == "fly_ball":
+                    fb_count += 1
+                elif bb_type == "line_drive":
+                    ld_count += 1
+                hc_x = safe_float(row.get("hc_x", ""), 0.0)
+                bat_side = str(row.get("stand", "R")).strip()
+                if hc_x > 0:
+                    if bat_side == "R":
+                        if hc_x < 100:
+                            pull_count += 1
+                        elif hc_x > 155:
+                            oppo_count += 1
+                    else:
+                        if hc_x > 155:
+                            pull_count += 1
+                        elif hc_x < 100:
+                            oppo_count += 1
+
+        n = (row.get("player_name") or row.get("pitcher_name") or "").strip()
+        if n:
+            name = n
+        t = str(row.get("p_throws") or row.get("throws") or "").strip()
+        if t in ("R", "L"):
+            throws = t
+
+    def _avg(vals):
+        return round(sum(vals) / len(vals), 3) if vals else None
+
+    pa = len(xwoba_vals)
+    return {
+        "pa": pa,
+        "name": name,
+        "throws": throws,
+        "xwoba": _avg(xwoba_vals),
+        "exit_velo": _avg(ev_vals),
+        "la_avg": _avg(la_vals),
+        "barrel_pct": round(barrel_count / bip_count * 100, 1) if bip_count > 0 else None,
+        "hard_hit_pct": round(hard_hit_count / bip_count * 100, 1) if bip_count > 0 else None,
+        "sweet_spot_pct": round(sweet_spot_count / bip_count * 100, 1) if bip_count > 0 else None,
+        "gb_pct": round(gb_count / bip_count * 100, 1) if bip_count > 0 else None,
+        "fb_pct": round(fb_count / bip_count * 100, 1) if bip_count > 0 else None,
+        "ld_pct": round(ld_count / bip_count * 100, 1) if bip_count > 0 else None,
+        "pull_pct": round(pull_count / bip_count * 100, 1) if bip_count > 0 else None,
+        "oppo_pct": round(oppo_count / bip_count * 100, 1) if bip_count > 0 else None,
+        # Savant leaderboard-only fields — not in statcast_search rows
+        "xba": None,
+        "xslg": None,
+        "swstr_pct": None,
+        "csw_pct": None,
+        "o_swing_pct": None,
+        "in_zone_pct": None,
+        "f_strike_pct": None,
+        "ball_pct": None,
+        "pulled_barrel_pct": None,
+        "k_pct": None,
+        "bb_pct": None,
+        "zones": [],
+        "arsenal": [],
+    }
+
+
+def fetch_pitcher_statcast_search(pitcher_ids):
+    """
+    Fetch statcast_search/csv for specific pitcher IDs.
+    Used as fallback for pitchers not found in the leaderboard.
+    Returns dict keyed by int pitcher_id → aggregated stat dict.
+    """
+    if not pitcher_ids:
+        return {}
+
+    result = {}
+    pids = list(pitcher_ids)
+    batch_size = 20
+    for i in range(0, len(pids), batch_size):
+        batch = pids[i:i + batch_size]
+        params = {
+            "all": "true",
+            "hfGT": "R|",
+            "hfSea": "2026|",
+            "player_type": "pitcher",
+            "group_by": "name",
+            "type": "details",
+            "min_pitches": "0",
+            "min_results": "0",
+            "sort_col": "pitches",
+            "sort_order": "desc",
+            "pitchers_lookup[]": [str(p) for p in batch],
+        }
+        rows = get_csv(_ZONE_CSV_BASE, params, label=f"pitcher statcast_search batch {i//batch_size+1}")
+
+        pitcher_rows: dict = {}
+        for row in rows:
+            pid = _extract_pitcher_id(row)
+            if pid == 0:
+                continue
+            pitcher_rows.setdefault(pid, []).append(row)
+
+        for pid, prows in pitcher_rows.items():
+            result[pid] = _aggregate_pitcher_rows(prows)
+            print(f"  [statcast_search fallback] pitcher {pid}: {len(prows)} pitch rows", file=sys.stderr)
+
+        if i + batch_size < len(pids):
+            time.sleep(5)
+
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -692,6 +882,21 @@ def main():
     pitcher_zones: dict = {}
     batter_zones: dict = {}
 
+    # ---- Pitcher statcast_search fallback for missing pitchers -------------
+    missing_pitchers = {pid for pid in pitcher_ids if pid not in pitcher_savant}
+    pitcher_statcast_fallback = {}
+    if missing_pitchers:
+        print(
+            f"\n--- Fetching statcast_search fallback for {len(missing_pitchers)} missing pitchers ---",
+            file=sys.stderr,
+        )
+        time.sleep(5)
+        pitcher_statcast_fallback = fetch_pitcher_statcast_search(missing_pitchers)
+        print(
+            f"  statcast_search fallback found {len(pitcher_statcast_fallback)} pitchers",
+            file=sys.stderr,
+        )
+
     # ---- Build output pitchers dict ----------------------------------------
     print("\n--- Building output ---", file=sys.stderr)
     out_pitchers = {}
@@ -700,9 +905,18 @@ def main():
             entry = dict(pitcher_savant[pid])
             if not entry.get("name"):
                 entry["name"] = pname
+        elif pid in pitcher_statcast_fallback:
+            print(
+                f"  [statcast_search fallback] pitcher {pid} ({pname}) using statcast_search data",
+                file=sys.stderr,
+            )
+            entry = dict(pitcher_statcast_fallback[pid])
+            entry["mlb_id"] = pid
+            if not entry.get("name"):
+                entry["name"] = pname
         else:
             print(
-                f"  [fallback] pitcher {pid} ({pname}) not in Savant leaderboard",
+                f"  [raw fallback] pitcher {pid} ({pname}) not in Savant — using MLB Stats estimates",
                 file=sys.stderr,
             )
             entry = pitcher_fallback_from_raw(pid, pname, raw_pitcher_stats)
@@ -733,58 +947,22 @@ def main():
         base["barrel_pct_vs_rhp"] = r.get("barrel_pct", 0.0)
         base["hard_hit_pct_vs_rhp"] = r.get("hard_hit_pct", 0.0)
 
-        l = batter_lhp.get(bid, {})
-        base["pa_vs_lhp"] = l.get("pa", 0)
-        base["xwoba_vs_lhp"] = l.get("xwoba", 0.0)
-        base["barrel_pct_vs_lhp"] = l.get("barrel_pct", 0.0)
-        base["hard_hit_pct_vs_lhp"] = l.get("hard_hit_pct", 0.0)
+        lh = batter_lhp.get(bid, {})
+        base["pa_vs_lhp"] = lh.get("pa", 0)
+        base["xwoba_vs_lhp"] = lh.get("xwoba", 0.0)
+        base["barrel_pct_vs_lhp"] = lh.get("barrel_pct", 0.0)
+        base["hard_hit_pct_vs_lhp"] = lh.get("hard_hit_pct", 0.0)
 
-        base["zones"] = batter_zones.get(bid, [0.0] * 9)
-
-        entry = {
-            "mlb_id": bid,
-            "name": base.get("name", bname),
-            "stands": base.get("stands", "R"),
-            "pa": base.get("pa", 0),
-            "pa_vs_rhp": base["pa_vs_rhp"],
-            "pa_vs_lhp": base["pa_vs_lhp"],
-            "xwoba": base.get("xwoba", 0.0),
-            "xba": base.get("xba", 0.0),
-            "xslg": base.get("xslg", 0.0),
-            "xiso": base.get("xiso", 0.0),
-            "xwoba_vs_rhp": base["xwoba_vs_rhp"],
-            "xwoba_vs_lhp": base["xwoba_vs_lhp"],
-            "exit_velo": base.get("exit_velo", 0.0),
-            "la_avg": base.get("la_avg", 0.0),
-            "barrel_pct": base.get("barrel_pct", 0.0),
-            "hard_hit_pct": base.get("hard_hit_pct", 0.0),
-            "sweet_spot_pct": base.get("sweet_spot_pct", 0.0),
-            "barrel_pct_vs_rhp": base["barrel_pct_vs_rhp"],
-            "hard_hit_pct_vs_rhp": base["hard_hit_pct_vs_rhp"],
-            "barrel_pct_vs_lhp": base["barrel_pct_vs_lhp"],
-            "hard_hit_pct_vs_lhp": base["hard_hit_pct_vs_lhp"],
-            "swstr_pct": 0.0,
-            "o_swing_pct": 0.0,
-            "fb_pct": base.get("fb_pct", 0.0),
-            "gb_pct": base.get("gb_pct", 0.0),
-            "ld_pct": base.get("ld_pct", 0.0),
-            "pull_pct": base.get("pull_pct", 0.0),
-            "oppo_pct": base.get("oppo_pct", 0.0),
-            "pull_brl_pct": base.get("pull_brl_pct", 0.0),
-            "k_pct": 0.0,
-            "bb_pct": 0.0,
-            "zones": base["zones"],
-        }
-        out_batters[str(bid)] = entry
+        base["zones"] = batter_zones.get(bid, [])
+        out_batters[str(bid)] = base
 
     # ---- Write output -------------------------------------------------------
-    output = {"pitchers": out_pitchers, "batters": out_batters}
+    out = {"pitchers": out_pitchers, "batters": out_batters}
     with open(OUTPUT_PATH, "w") as f:
-        json.dump(output, f, indent=2)
-
+        json.dump(out, f, indent=2)
+    print(f"\nWrote {OUTPUT_PATH}", file=sys.stderr)
     print(
-        f"\nWrote {OUTPUT_PATH}  "
-        f"({len(out_pitchers)} pitchers, {len(out_batters)} batters)",
+        f"  pitchers={len(out_pitchers)} batters={len(out_batters)}",
         file=sys.stderr,
     )
 

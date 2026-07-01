@@ -497,32 +497,55 @@ def build_pitcher_entry(pid: int, name: str, team: str, opp_team: str,
     sv      = savant_pitchers.get(pid_str, {}) if pid_str else {}
     raw     = pitcher_stats_raw.get(pid_str, {}) if pid_str else {}
 
-    if sv:
+    has_real_savant = bool(sv) and sv.get("pa", 0) > 0
+
+    if has_real_savant:
         p_score  = pitcher_score_from_savant(sv)
         so_score = strikeout_score_from_savant(sv)
-        xwoba        = round(_fb(sv.get("xwoba"), 0.318), 3)
-        csw_pct      = round(_fb(sv.get("csw_pct"), 28.0), 1)
-        swstr_pct_p  = round(_fb(sv.get("swstr_pct"), 10.0), 1)
-        ball_pct     = round(_fb(sv.get("ball_pct"), 34.0), 1)
-        pulled_brl   = round(_fb(sv.get("pull_brl_pct") or sv.get("pulled_barrel_pct"), 3.0), 2)
-        fb_pct_p     = round(_fb(sv.get("fb_pct") or sv.get("flyball_pct"), 38.0), 1)
-        hard_hit_p   = round(_fb(sv.get("hard_hit_pct"), 38.0), 1)
-        oppo_pct_p   = round(_fb(sv.get("oppo_pct") or sv.get("opposite_field_pct"), 20.0), 1)
+        xwoba       = _sv(sv, "xwoba")
+        csw_pct     = _sv(sv, "csw_pct")
+        swstr_pct_p = _sv(sv, "swstr_pct")
+        ball_pct    = _sv(sv, "ball_pct")
+        pulled_brl  = _sv(sv, "pull_brl_pct") or _sv(sv, "pulled_barrel_pct")
+        fb_pct_p    = _sv(sv, "fb_pct") or _sv(sv, "flyball_pct")
+        hard_hit_p  = _sv(sv, "hard_hit_pct")
+        oppo_pct_p  = _sv(sv, "oppo_pct") or _sv(sv, "opposite_field_pct")
     else:
         p_score  = pitcher_score_from_raw(raw) if raw else 50.0
         so_score = strikeout_score_from_raw(raw) if raw else 40.0
-        era      = _fb(raw.get("era"), 4.50)
-        k9       = _fb(raw.get("k9"), 7.0)
-        xwoba        = round(max(0.220, min(0.420, era * 0.052 + 0.215)), 3)
-        swstr_pct_p  = round(max(5.0, k9 / 9.0 * 100.0 * 0.45), 1)
-        csw_pct      = round(max(22.0, k9 / 9.0 * 100.0 * 0.35 + 20.0), 1)
-        ball_pct     = 34.0
-        pulled_brl   = 3.0
-        fb_pct_p     = 38.0
-        hard_hit_p   = round(max(30.0, era * 4.0 + 22.0), 1)
-        oppo_pct_p   = 20.0
+        # xwoba: use statcast_search fallback value if available, else None
+        xwoba       = _sv(sv, "xwoba") if sv else None
+        csw_pct     = None  # Savant leaderboard only
+        swstr_pct_p = None
+        ball_pct    = None
+        pulled_brl  = None
+        fb_pct_p    = _sv(sv, "fb_pct") if sv else None
+        hard_hit_p  = _sv(sv, "hard_hit_pct") if sv else None
+        oppo_pct_p  = _sv(sv, "oppo_pct") if sv else None
 
     throws = get_pitcher_throws(pid) if pid else "R"
+
+    # MLB Stats primary fields — always include from raw
+    era  = raw.get("era")  if raw else None
+    whip = raw.get("whip") if raw else None
+    k9   = raw.get("k9")   if raw else None
+    bb9  = raw.get("bb9")  if raw else None
+    fip  = raw.get("fip")  if raw else None
+    ip   = raw.get("ip")   if raw else None
+    try: era  = round(float(era), 2)  if era  not in (None, "", "-") else None
+    except Exception: era  = None
+    try: whip = round(float(whip), 2) if whip not in (None, "", "-") else None
+    except Exception: whip = None
+    try: k9   = round(float(k9), 1)   if k9   not in (None, "", "-") else None
+    except Exception: k9   = None
+    try: bb9  = round(float(bb9), 1)  if bb9  not in (None, "", "-") else None
+    except Exception: bb9  = None
+    try: fip  = round(float(fip), 2)  if fip  not in (None, "", "-") else None
+    except Exception: fip  = None
+    try: ip   = round(float(ip), 1)   if ip   not in (None, "", "-") else None
+    except Exception: ip   = None
+
+    arsenal = (sv.get("arsenal") or [] if sv else []) or (raw.get("arsenal", []) if raw else [])
 
     return {
         "pitcherId":          pid or 0,
@@ -533,6 +556,12 @@ def build_pitcher_entry(pid: int, name: str, team: str, opp_team: str,
         "gameKey":            game_key,
         "pitcher_score":      p_score,
         "strikeout_score":    so_score,
+        "era":                era,
+        "whip":               whip,
+        "k9":                 k9,
+        "bb9":                bb9,
+        "fip":                fip,
+        "ip":                 ip,
         "xwoba":              xwoba,
         "csw_pct":            csw_pct,
         "swstr_pct":          swstr_pct_p,
@@ -541,8 +570,8 @@ def build_pitcher_entry(pid: int, name: str, team: str, opp_team: str,
         "fb_pct":             fb_pct_p,
         "hard_hit_pct":       hard_hit_p,
         "oppo_pct":           oppo_pct_p,
-        "arsenal":            (sv.get("arsenal") or []) or raw.get("arsenal", []),
-        "zones":              sv.get("zones", [0.0] * 9),
+        "arsenal":            arsenal,
+        "zones":              sv.get("zones", [0.0] * 9) if sv else [0.0] * 9,
     }
 
 
@@ -645,7 +674,7 @@ for game_idx, g in enumerate(games_raw):
     away_throws = get_pitcher_throws(away_pid) if away_pid else "R"
     home_throws = get_pitcher_throws(home_pid) if home_pid else "R"
 
-    # ── Build pitcher slate entries ───────────────────────────────────────────────────────
+    # ── Build pitcher slate entries ────────────────────────────────────────────────────────────────────
     for pid, pname, team, opp in [
         (away_pid, away_pname, away_team, home_team),
         (home_pid, home_pname, home_team, away_team),
@@ -656,7 +685,7 @@ for game_idx, g in enumerate(games_raw):
             )
             seen_pitcher_ids.add(pid)
 
-    # ── Away batters face HOME pitcher ──────────────────────────────────────────────────────
+    # ── Away batters face HOME pitcher ──────────────────────────────────────────────────────────────────────
     away_batters_raw = players_by_team.get(away_team, [])
     away_matchups = []
     for braw in away_batters_raw:
@@ -671,9 +700,9 @@ for game_idx, g in enumerate(games_raw):
             print(f"  ⚠ Error scoring {name} ({away_team}): {exc}")
 
     away_matchups.sort(key=lambda x: -x["matchup_score"])
-    away_matchups = away_matchups[:8]
+    away_matchups = away_matchups[:12]
 
-    # ── Home batters face AWAY pitcher ──────────────────────────────────────────────────────
+    # ── Home batters face AWAY pitcher ──────────────────────────────────────────────────────────────────────
     home_batters_raw = players_by_team.get(home_team, [])
     home_matchups = []
     for braw in home_batters_raw:
@@ -688,9 +717,9 @@ for game_idx, g in enumerate(games_raw):
             print(f"  ⚠ Error scoring {name} ({home_team}): {exc}")
 
     home_matchups.sort(key=lambda x: -x["matchup_score"])
-    home_matchups = home_matchups[:8]
+    home_matchups = home_matchups[:12]
 
-    # ── Assemble game time (raw_slate may not carry it) ──────────────────────────────────
+    # ── Assemble game time (raw_slate may not carry it) ────────────────────────────────────────────────
     game_time = g.get("gameTime") or g.get("time") or "TBD"
 
     output_games.append({
