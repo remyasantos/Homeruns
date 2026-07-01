@@ -221,9 +221,9 @@ function sortedRows(rows, tbl, defKey) {
 
 function colTh(tbl, col) {
   var cls = thClass(tbl, col.key);
-  return '<th class="' + cls + '" onclick="sortClick(\'' + tbl + '\',\'' + col.key + '\')">' +
-    '<span class="tip" data-tip="' + esc(col.tip||col.label) + '">' + col.label + '</span>' +
-    '<span class="sort-arrow"></span></th>';
+  return '<th class="' + cls + '" onclick="sortClick(\'' + tbl + '\',\'' + col.key + '\')">'
+    + '<span class="tip" data-tip="' + esc(col.tip||col.label) + '">' + col.label + '</span>'
+    + '<span class="sort-arrow"></span></th>';
 }
 
 function batterTable(batters, tbl) {
@@ -353,7 +353,7 @@ function exportCSV(batters, gameKey) {
   var hdr = ['Name','Stands','MScore','KHR','Ceiling','ZoneFit','xwOBAvP','ISO','HH%','BRL%','PullBRL%','FB%','SwStr%','LA','Likely','HRForm'];
   var rows = batters.map(function(b) {
     return [
-      '"'+(b.name||'')'"', b.stands||'R',
+      '"'+(b.name||'')+'"', b.stands||'R',
       b.matchup_score!=null?parseFloat(b.matchup_score).toFixed(2):'',
       b.khr!=null?parseFloat(b.khr).toFixed(1):'',
       b.ceiling!=null?parseFloat(b.ceiling).toFixed(1):'',
@@ -381,17 +381,17 @@ function exportCSV(batters, gameKey) {
 function buildTabBar() {
   var games = gamesData();
   var h = '';
-  h += '<div class="tab'+(activeTab==='slate'?' active':'')+'", onclick="setTab(\'slate\')">'
+  h += '<div class="tab'+(activeTab==='slate'?' active':'')+'", onclick="setTab(\'slate\')">';
   h += '<div class="tab-teams">&#128202; Slate Summary</div></div>';
   games.forEach(function(g,i) {
     var id = 'game-'+i;
     var live = isGameLive(g);
     var liveBadge = live ? ' <span class="badge badge-live">LIVE</span>' : '';
-    h += '<div class="tab'+(activeTab===id?' active':'')+(live?' tab-live':'')+'", onclick="setTab(\''+id+'\')">'
+    h += '<div class="tab'+(activeTab===id?' active':'')+(live?' tab-live':'')+'", onclick="setTab(\''+id+'\')">';
     h += '<div class="tab-teams">'+esc(g.awayTeam)+' @ '+esc(g.homeTeam)+liveBadge+'</div>';
     h += '<div class="tab-time">'+fmtTime(g.gameTime)+'</div></div>';
   });
-  h += '<div class="tab'+(activeTab==='weather'?' active':'')+'", onclick="setTab(\'weather\')">';
+  h += '<div class="tab'+(activeTab==='weather'?' active':'')+'", onclick="setTab(\'weather\')">'
   h += '<div class="tab-teams">&#127780; Weather</div></div>';
   document.getElementById('tab-bar').innerHTML = h;
 }
