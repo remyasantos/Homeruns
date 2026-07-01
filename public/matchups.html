@@ -73,12 +73,13 @@
 
     .trend-up { color: #166534; font-weight: 600; }
     .trend-down { color: #991b1b; font-weight: 600; }
+
     .weather-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 14px; padding: 2px; }
     .weather-card { background: white; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
     .weather-card-hdr { background: #343a40; color: white; padding: 8px 12px; }
     .weather-card-game { font-size: 14px; font-weight: 700; letter-spacing: 0.5px; }
     .weather-card-venue { font-size: 10px; opacity: 0.75; margin-top: 2px; }
-    .weather-card-body { display: flex; gap: 0; }
+    .weather-card-body { display: flex; }
     .weather-field-wrap { padding: 10px; background: #f8f9fa; border-right: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: center; }
     .weather-stats { padding: 10px 14px; flex: 1; display: flex; flex-direction: column; gap: 7px; justify-content: center; }
     .ws-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
@@ -106,11 +107,7 @@
     body.dark td { border-bottom-color: #21262d; }
     body.dark tr:hover td { filter: brightness(1.2); }
     body.dark .section-title { color: #c9d1d9; }
-    body.dark .weather-card { background: #16213e; border-color: #333; }
-    body.dark .weather-card-hdr { background: #0d0d1a; }
-    body.dark .weather-field-wrap { background: #1a1a2e; border-color: #333; }
-    body.dark .weather-stats .ws-val { color: #ddd; }
-    body.dark .weather-card-badges { background: #16213e; border-color: #333; }
+    body.dark .weather-card { background: #161b22; border-color: #30363d; }
     body.dark .zone-cell { border-color: #30363d; }
     body.dark .table-footer { color: #555; }
 
@@ -143,7 +140,15 @@ var pitcherCardTabs = {};
 var sortState = {};
 
 function gamesData() { return (typeof MATCHUPS_GAMES !== 'undefined') ? MATCHUPS_GAMES : []; }
-function pitchersData() { return (typeof MATCHUPS_PITCHERS_SLATE !== 'undefined') ? MATCHUPS_PITCHERS_SLATE : []; }
+function pitchersData() {
+  if (typeof PITCHERS_SLATE !== 'undefined') return PITCHERS_SLATE;
+  if (typeof MATCHUPS_PITCHERS_SLATE !== 'undefined') return MATCHUPS_PITCHERS_SLATE;
+  return [];
+}
+function pitcherById(pid) {
+  if (typeof PITCHERS_BY_ID !== 'undefined' && PITCHERS_BY_ID[pid]) return PITCHERS_BY_ID[pid];
+  return pitchersData().find(function(p){ return p.pitcherId === pid; }) || null;
+}
 
 function esc(s) {
   return String(s == null ? '' : s)
@@ -435,111 +440,71 @@ function slateView() {
   return h;
 }
 
-function windDirFromStr(dir) {
-  if (!dir) return null;
-  dir = String(dir).trim().toUpperCase();
-  var map = {N:0,NNE:22.5,NE:45,ENE:67.5,E:90,ESE:112.5,SE:135,SSE:157.5,
-             S:180,SSW:202.5,SW:225,WSW:247.5,W:270,WNW:292.5,NW:315,NNW:337.5};
-  if (map[dir] !== undefined) return map[dir];
-  var n = parseFloat(dir);
-  if (!isNaN(n)) return n;
-  if (dir.indexOf('OUT')>=0 && dir.indexOf('CF')>=0) return 180;
-  if (dir.indexOf('IN')>=0  && dir.indexOf('CF')>=0) return 0;
-  if (dir.indexOf('OUT')>=0 && dir.indexOf('LF')>=0) return 135;
-  if (dir.indexOf('OUT')>=0 && dir.indexOf('RF')>=0) return 225;
-  return null;
+function windDirFromStr(s) {
+  var map = {N:0,NNE:22.5,NE:45,ENE:67.5,E:90,ESE:112.5,SE:135,SSE:157.5,S:180,SSW:202.5,SW:225,WSW:247.5,W:270,WNW:292.5,NW:315,NNW:337.5};
+  return map[(s||'').toUpperCase()] != null ? map[(s||'').toUpperCase()] : null;
 }
-
-function renderWindArrow(windDir, windMph) {
-  var fromDeg = windDirFromStr(windDir);
-  if (fromDeg === null || !windMph) return '';
-  var toDeg = (fromDeg + 180) % 360;
-  var color = windMph >= 12 ? '#e65100' : windMph >= 7 ? '#f57f17' : '#78909c';
-  var cx = 75, cy = 60, len = 22;
-  return [
-    '<g transform="rotate('+toDeg+','+cx+','+cy+')" opacity="0.9">',
-    '<line x1="'+cx+'" y1="'+(cy+len/2)+'" x2="'+cx+'" y2="'+(cy-len/2)+'" stroke="'+color+'" stroke-width="3" stroke-linecap="round"/>',
-    '<polygon points="'+cx+','+(cy-len/2-7)+' '+(cx-5)+','+(cy-len/2+2)+' '+(cx+5)+','+(cy-len/2+2)+'" fill="'+color+'"/>',
-    '</g>'
-  ].join('');
+function renderWindArrow(deg, mph) {
+  var r = deg * Math.PI / 180;
+  var cx=50, cy=50, len=28;
+  var x2 = cx + len * Math.sin(r);
+  var y2 = cy - len * Math.cos(r);
+  var color = mph >= 15 ? '#e65100' : mph >= 8 ? '#f57f17' : '#43a047';
+  return '<line x1="'+cx+'" y1="'+cy+'" x2="'+x2+'" y2="'+y2+'" stroke="'+color+'" stroke-width="3" stroke-linecap="round" marker-end="url(#arr)"/>';
 }
-
 function renderFieldSVG(windDir, windMph) {
-  var arrow = renderWindArrow(windDir, windMph);
-  return [
-    '<svg width="150" height="130" viewBox="0 0 150 130" style="display:block">',
-    '<path d="M 75,112 L 10,52 Q 75,4 140,52 Z" fill="#2e7d32" opacity="0.75"/>',
-    '<path d="M 75,112 L 14,55 Q 75,7 136,55 Z" fill="none" stroke="#c4954a" stroke-width="4" opacity="0.4"/>',
-    '<polygon points="75,110 23,70 75,30 127,70" fill="#c4954a" opacity="0.85"/>',
-    '<polygon points="75,96 40,70 75,44 110,70" fill="#388e3c" opacity="0.9"/>',
-    '<circle cx="75" cy="70" r="5" fill="#b8863c" stroke="#8a6028" stroke-width="1"/>',
-    '<line x1="75" y1="110" x2="23" y2="70" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>',
-    '<line x1="75" y1="110" x2="127" y2="70" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>',
-    '<rect x="72" y="107" width="6" height="6" fill="white" stroke="#555" stroke-width="0.5"/>',
-    '<rect x="72" y="27" width="6" height="6" fill="white" stroke="#555" stroke-width="0.5"/>',
-    '<rect x="19" y="67" width="6" height="6" fill="white" stroke="#555" stroke-width="0.5" transform="rotate(45,22,70)"/>',
-    '<rect x="123" y="67" width="6" height="6" fill="white" stroke="#555" stroke-width="0.5" transform="rotate(45,126,70)"/>',
-    arrow,
-    '<text x="75" y="19" text-anchor="middle" font-size="9" fill="white" opacity="0.7" font-family="monospace">CF</text>',
-    '<text x="75" y="126" text-anchor="middle" font-size="9" fill="#666" font-family="monospace">HOME</text>',
-    '</svg>'
-  ].join('');
+  var deg = windDirFromStr(windDir);
+  var arrow = (deg != null && windMph > 0) ? renderWindArrow(deg, windMph) : '';
+  return '<svg width="90" height="90" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">'
+    + '<defs><marker id="arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#e65100"/></marker></defs>'
+    + '<rect width="100" height="100" fill="#e8f5e9" rx="4"/>'
+    + '<polygon points="50,15 85,50 50,85 15,50" fill="#8d6e63" opacity="0.25"/>'
+    + '<polygon points="50,15 85,50 50,85 15,50" fill="none" stroke="#795548" stroke-width="1.5"/>'
+    + '<circle cx="50" cy="50" r="4" fill="#795548"/>'
+    + '<circle cx="50" cy="15" r="3" fill="#fff" stroke="#795548" stroke-width="1.5"/>'
+    + '<circle cx="85" cy="50" r="3" fill="#fff" stroke="#795548" stroke-width="1.5"/>'
+    + '<circle cx="15" cy="50" r="3" fill="#fff" stroke="#795548" stroke-width="1.5"/>'
+    + arrow
+    + '</svg>';
 }
-
 function renderWeatherCard(g) {
   var w = g.weather || {};
-  var hasData = w.temp_f != null || w.wind_mph != null || w.condition;
-  var isDome = !!w.roof;
-
-  var tempVal = w.temp_f != null ? w.temp_f + '&#176;F' : '—';
-  var tempClass = w.temp_f >= 85 ? 'hot' : w.temp_f <= 52 ? 'cold' : '';
-  var windVal = w.wind_mph != null ? (w.wind_mph + ' mph' + (w.wind_dir ? ' ' + esc(w.wind_dir) : '')) : '—';
-  var windClass = w.wind_mph >= 12 ? 'wind-strong' : w.wind_mph >= 7 ? 'wind-moderate' : '';
-
-  var badges = '';
-  if (isDome) badges += '<span class="badge badge-dome">&#127968; DOME — No Weather</span>';
-  else {
-    if (w.wind_mph >= 12) badges += '<span class="badge badge-wind">&#128168; WIND FACTOR</span>';
-    if (w.temp_f >= 85)   badges += '<span class="badge badge-hot">&#x1F525; HOT</span>';
-    if (w.temp_f <= 52)   badges += '<span class="badge badge-cold">&#x1F9CA; COLD</span>';
-  }
-
-  var gameLabel = esc(g.awayTeam) + ' @ ' + esc(g.homeTeam);
-  var venueLabel = esc(g.park || g.venueName || '');
-  var gameTime = g.gameTime ? (' &nbsp;&middot;&nbsp; ' + fmtTime(g.gameTime)) : '';
-
-  var fieldSvg = isDome
-    ? '<div style="width:150px;height:130px;display:flex;align-items:center;justify-content:center;background:#e8e8e8;border-radius:4px;font-size:10px;color:#888;text-align:center">DOME<br>No Wind</div>'
-    : renderFieldSVG(w.wind_dir, w.wind_mph);
-
+  var live = isGameLive(g);
+  var windO = isWindOut(w.wind_dir);
+  var tempF = w.temp_f != null ? w.temp_f : null;
+  var windMph = w.wind_mph != null ? w.wind_mph : null;
+  var tempCls = tempF != null ? (tempF >= 90 ? ' hot' : tempF <= 50 ? ' cold' : '') : '';
+  var windCls = windMph != null ? (windMph >= 15 ? ' wind-strong' : windMph >= 8 ? ' wind-moderate' : '') : '';
   var h = '<div class="weather-card">';
   h += '<div class="weather-card-hdr">';
-  h += '<div class="weather-card-game">' + gameLabel + gameTime + '</div>';
-  if (venueLabel) h += '<div class="weather-card-venue">' + venueLabel + '</div>';
+  h += '<div class="weather-card-game">'+esc(g.awayTeam)+' @ '+esc(g.homeTeam)+'</div>';
+  h += '<div class="weather-card-venue">'+esc(g.park||'')+'  &bull;  '+fmtTime(g.gameTime)+'</div>';
   h += '</div>';
-  if (!hasData) {
-    h += '<div class="weather-no-data">Weather data unavailable</div>';
-  } else {
-    h += '<div class="weather-card-body">';
-    h += '<div class="weather-field-wrap">' + fieldSvg + '</div>';
-    h += '<div class="weather-stats">';
-    h += '<div class="ws-row"><span class="ws-lbl">TEMP</span><span class="ws-val ' + tempClass + '">' + tempVal + '</span></div>';
-    h += '<div class="ws-row"><span class="ws-lbl">WIND</span><span class="ws-val ' + windClass + '">' + windVal + '</span></div>';
-    if (w.condition) h += '<div class="ws-row"><span class="ws-lbl">COND</span><span class="ws-val" style="font-size:11px">' + esc(w.condition) + '</span></div>';
-    h += '</div>';
-    h += '</div>';
-  }
-  if (badges) h += '<div class="weather-card-badges">' + badges + '</div>';
+  h += '<div class="weather-card-body">';
+  h += '<div class="weather-field-wrap">'+renderFieldSVG(w.wind_dir, windMph||0)+'</div>';
+  h += '<div class="weather-stats">';
+  h += '<div class="ws-row"><span class="ws-lbl">TEMP</span><span class="ws-val'+tempCls+'">'+(tempF!=null?tempF+'°F':'—')+'</span></div>';
+  h += '<div class="ws-row"><span class="ws-lbl">WIND</span><span class="ws-val'+windCls+'">'+(windMph!=null?windMph+' mph '+esc(w.wind_dir||''):'—')+'</span></div>';
+  h += '<div class="ws-row"><span class="ws-lbl">CONDITION</span><span class="ws-val">'+esc(w.condition||'—')+'</span></div>';
+  h += '<div class="ws-row"><span class="ws-lbl">HUMIDITY</span><span class="ws-val">'+(w.humidity!=null?w.humidity+'%':'—')+'</span></div>';
+  h += '</div></div>';
+  h += '<div class="weather-card-badges">';
+  if (live) h += '<span class="badge badge-live">LIVE</span>';
+  if (w.roof === true) h += '<span class="badge badge-dome">DOME (roof closed)</span>';
+  else if (w.roof === null) h += '<span class="badge" style="background:#fff3cd;color:#92400e">ROOF STATUS UNKNOWN</span>';
+  if (windO) h += '<span class="badge badge-wind">&#128640; WIND OUT</span>';
+  if (tempF != null && tempF >= 90) h += '<span class="badge badge-hot">HOT</span>';
+  if (tempF != null && tempF <= 50) h += '<span class="badge badge-cold">COLD</span>';
+  h += '</div>';
   h += '</div>';
   return h;
 }
-
 function weatherView() {
   var games = gamesData();
-  var h = '<h2 class="section-title">&#127780; Park Weather</h2>';
+  var h = '<h2 class="section-title">&#127780; Weather Summary</h2>';
   if (!games.length) return h + '<p style="color:#999">No games.</p>';
   h += '<div class="weather-grid">';
-  games.forEach(function(g){ h += renderWeatherCard(g); });
+  games.forEach(function(g) { h += renderWeatherCard(g); });
   h += '</div>';
   return h;
 }
@@ -550,14 +515,13 @@ function gameView(idx) {
   var g = games[idx];
   var gk = g.awayTeam+'@'+g.homeTeam;
   var live = isGameLive(g);
-  var ps = pitchersData();
   var h = '';
   if (live) h += '<div class="live-strip">&#128308; GAME IN PROGRESS &mdash; data reflects pre-game projections</div>';
 
   h += '<h2 class="section-title">Pitcher Cards</h2><div class="cards-grid">';
   [{key:'away',pid:g.awayPitcherId,name:g.awayPitcherName,team:g.awayTeam},
    {key:'home',pid:g.homePitcherId,name:g.homePitcherName,team:g.homeTeam}].forEach(function(pi) {
-    var pd = ps.find(function(p){ return p.pitcherId===pi.pid && p.team===pi.team; });
+    var pd = pi.pid ? pitcherById(pi.pid) : null;
     var tk = gk+'-'+pi.key;
     h += '<div class="card"><div class="card-title">'+esc(pi.name||'TBD')+' ('+esc(pi.team)+')';
     if (pd && pd.throws) h += ' ['+esc(pd.throws)+']';
@@ -593,7 +557,11 @@ function updateWeatherBar() {
   if (!el) return;
   el.textContent = games.slice(0,4).map(function(g) {
     var w = g.weather||{};
-    return w.roof ? g.homeTeam+':DOME' : g.homeTeam+':'+(w.temp_f||'--')+'F '+(w.wind_mph||0)+'mph';
+    if (w.roof === true) return g.homeTeam+':DOME';
+    if (w.roof === null) return g.homeTeam+':roof?';
+    var temp = w.temp_f != null ? w.temp_f+'F' : '?F';
+    var wind = w.wind_mph != null ? w.wind_mph+'mph' : '?mph';
+    return g.homeTeam+':'+temp+' '+wind;
   }).join('  ·  ');
 }
 

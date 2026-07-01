@@ -456,6 +456,21 @@ def fetch_pitcher_zones(pitcher_id):
     return [zone_xwoba.get(i, 0.0) for i in range(1, 10)]
 
 
+def fetch_all_pitcher_zones(pitcher_ids):
+    """Real per-zone xwOBA for every pitcher, one player at a time (Savant's
+    statcast_search API aggregates zone stats across whatever players are in
+    the request, so it can't be safely batched per-player)."""
+    ids = sorted(pitcher_ids)
+    result = {}
+    print(f"  Fetching zone data for {len(ids)} pitchers ...", file=sys.stderr)
+    for i, pid in enumerate(ids, 1):
+        result[pid] = fetch_pitcher_zones(pid)
+        if i % 10 == 0:
+            print(f"    ...{i}/{len(ids)} pitcher zones fetched", file=sys.stderr)
+        time.sleep(0.5)
+    return result
+
+
 def fetch_batter_zones(batter_id):
     params = {
         "all": "true", "hfGT": "R|", "hfSea": "2026|",
@@ -478,34 +493,38 @@ def fetch_batter_zones(batter_id):
     return [zone_xwoba.get(i, 0.0) for i in range(1, 10)]
 
 
+def fetch_all_batter_zones(batter_ids):
+    """Real per-zone xwOBA for every batter, one player at a time (same
+    batching limitation as fetch_all_pitcher_zones above)."""
+    ids = sorted(batter_ids)
+    result = {}
+    print(f"  Fetching zone data for {len(ids)} batters ...", file=sys.stderr)
+    for i, bid in enumerate(ids, 1):
+        result[bid] = fetch_batter_zones(bid)
+        if i % 20 == 0:
+            print(f"    ...{i}/{len(ids)} batter zones fetched", file=sys.stderr)
+        time.sleep(0.5)
+    return result
+
+
 # ---------------------------------------------------------------------------
-# Fallback: estimate pitcher Savant stats from raw_slate pitcher_stats
+# Pitcher fallback -- no real Savant data available for this pitcher.
+# Every Statcast-derived field is left None; nothing here is estimated from
+# ERA/K9/HR9 proxies. Only genuinely known facts (id, name, throws) are set.
 # ---------------------------------------------------------------------------
 
 def pitcher_fallback_from_raw(pitcher_id, pitcher_name, raw_pitcher_stats):
-    raw = raw_pitcher_stats.get(str(pitcher_id), raw_pitcher_stats.get(pitcher_id, {}))
-    era = safe_float(raw.get("era", 4.50))
-    fip = safe_float(raw.get("fip", era))
-    k9 = safe_float(raw.get("k9", 8.0))
-    bb9 = safe_float(raw.get("bb9", 3.0))
-    hr9 = safe_float(raw.get("hr9", 1.2))
-
-    xwoba_est = round(era * 0.055 + 0.22, 3)
-    k_pct_est = round(min(k9 / 27.0, 0.40), 3)
-    bb_pct_est = round(min(bb9 / 27.0, 0.20), 3)
-    barrel_pct_est = round(hr9 * 1.8, 1)
-
     return {
         "mlb_id": pitcher_id, "name": pitcher_name, "throws": "R",
         "pa": 0,
-        "xwoba": xwoba_est, "xba": None, "xslg": None,
+        "xwoba": None, "xba": None, "xslg": None,
         "exit_velo": None, "la_avg": None,
-        "barrel_pct": barrel_pct_est, "hard_hit_pct": None,
+        "barrel_pct": None, "hard_hit_pct": None,
         "sweet_spot_pct": None, "swstr_pct": None, "csw_pct": None,
         "o_swing_pct": None, "in_zone_pct": None, "f_strike_pct": None,
         "ball_pct": None, "fb_pct": None, "gb_pct": None, "ld_pct": None,
         "pull_pct": None, "oppo_pct": None, "pulled_barrel_pct": None,
-        "k_pct": k_pct_est, "bb_pct": bb_pct_est,
+        "k_pct": None, "bb_pct": None,
         "zones": [0.0] * 9, "arsenal": [],
     }
 
@@ -693,8 +712,11 @@ def main():
     print("\n--- Fetching pitch arsenal ---", file=sys.stderr)
     arsenal_by_pitcher = fetch_pitch_arsenal()
 
-    pitcher_zones: dict = {}
-    batter_zones: dict = {}
+    print("\n--- Fetching pitcher zone data ---", file=sys.stderr)
+    pitcher_zones = fetch_all_pitcher_zones(pitcher_ids)
+
+    print("\n--- Fetching batter zone data ---", file=sys.stderr)
+    batter_zones = fetch_all_batter_zones(batter_ids)
 
     missing_pitchers = {pid for pid in pitcher_ids if pid not in pitcher_savant}
     pitcher_statcast_fallback = {}

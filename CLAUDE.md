@@ -57,7 +57,7 @@ same codebase but run on different schedules and commit different files.
 | **Output file** | `public/data.js` | `public/matchups_data.js` |
 | **UI page** | `public/parlays.html` | `public/matchups.html` |
 | **Status file** | `public/last-run.json` | none (check Actions log) |
-| **Fails silently?** | No — writes `validation-failed` status | Yes — Savant steps use `continue-on-error` |
+| **Fails silently?** | No — writes `validation-failed` status | Partially — Savant steps use `continue-on-error`, but missing data becomes `null` in the output, never a fabricated stat |
 
 ---
 
@@ -114,10 +114,11 @@ dashboard at `public/matchups.html`.
 
 ### Pipeline scripts
 ```
-scripts/fetch_slate.py         MLB Stats API             → scripts/raw_slate.json
-scripts/fetch_savant.py        Baseball Savant CSV API   → scripts/savant_data.json
-scripts/score_matchups.py      Matchup scoring model     → scripts/matchups.json
-scripts/generate_matchups_js.py  JS serializer           → public/matchups_data.js
+scripts/fetch_slate.py         MLB Stats API              → scripts/raw_slate.json
+scripts/fetch_savant.py        Baseball Savant CSV API    → scripts/savant_data.json
+scripts/fetch_park_factors.js  BallparkPal→VSiN (Playwright) → scripts/park_factors.json
+scripts/score_matchups.py      Matchup scoring model      → scripts/matchups.json
+scripts/generate_matchups_js.py  JS serializer            → public/matchups_data.js
 ```
 
 ### How to access
@@ -138,16 +139,72 @@ Look at the most recent commit — if it says `data: Statcast matchups ...` it r
 Or check Actions → "Daily Statcast Matchups" → latest run log.
 
 ### If Savant is down or data is missing
-All three Savant steps use `continue-on-error: true`. The pipeline degrades
-gracefully: if `savant_data.json` is empty or missing, `score_matchups.py`
-falls back to ERA-derived xwOBA estimates so `matchups_data.js` is still
-generated with partial data. The UI will show dashes for unavailable stats.
+All three Savant steps use `continue-on-error: true`. **The pipeline never
+fabricates a stat.** If `savant_data.json` is empty, missing, or a specific
+player has no real Savant sample, every Statcast-derived field for that
+player (`khr`, `xwoba`, `xwobac`, `ceiling`, `zone_fit`, `matchup_score`,
+`pitcher_score`, `swstr_pct`, `hh_pct`, `brl_bip_pct`, `pull_brl_pct`,
+`fb_pct`, `la`, `csw_pct`, `hard_hit_pct`) is written as `null` — never
+estimated from ERA/K9/OPS/ISO proxies. `matchups_data.js` is still
+generated with whatever real data is available; the UI shows `—` for
+anything null. Real box-score stats (`era`, `whip`, `k9`, `bb9`, `fip`,
+`ip`, `iso`, `hr_form`, `likely`) are unaffected since they come from the
+MLB Stats API directly, not Savant.
+
+Same principle for weather: `fetch_slate.py` fetches real per-game weather
+and roof state from the MLB live game feed (`gameData.weather`) and the
+venue's real `roofType` (via `/api/v1/venues/{id}?hydrate=fieldInfo`), with
+`wttr.in` as a real (not fabricated) fallback for open-air parks when the
+live feed hasn't posted yet. If a retractable-roof park's live status can't
+be confirmed, `roof` is `null` (unknown) — never assumed open or closed.
+The old behavior of hardcoding all retractable/dome parks to
+`temp_f: 72, wind_mph: 0, roof: true` regardless of actual conditions was
+removed because it silently zeroed out real wind data on open-roof days
+(e.g. Rogers Centre, Chase Field).
+
+### Park factors (BallparkPal, via BallparkPal or VSiN)
+Neither MLB Stats API nor Baseball Savant expose a park-factor endpoint, so
+`park_bonus` is sourced from BallparkPal's park-factor model — a real,
+per-game HR factor that already combines stadium dimensions with today's
+actual weather. `scripts/fetch_park_factors.js` (Playwright/Chromium,
+required because both source pages render their tables client-side) tries
+two sources in order:
+
+1. **Primary — ballparkpal.com/Park-Factors.php.** Rows are keyed by the
+   real MLB `gamePk` (BallparkPal's own game link uses the same gamePk MLB
+   Stats API does — verified, not assumed), so the join to
+   `score_matchups.py` is exact, not name-matched. This page's schema
+   metadata (`isAccessibleForFree: false`) and its behavior under repeated
+   same-day requests indicate at least part of the site is subscriber-gated
+   — in testing, hitting it many times in one session eventually produced a
+   "Select Your Plan / $10 a month" wall instead of the table. A single
+   fetch per day (the pipeline's actual cadence) is expected to avoid this;
+   if you need to test this script manually, don't run it more than once or
+   twice in a short window.
+2. **Fallback — vsin.com/projections-park-factors/**, used only if the
+   primary returns nothing. This page republishes the same BallparkPal
+   numbers for free (its own title is literally "Park Factors Powered by
+   Ballpark Pal") and was verified to match BallparkPal's numbers exactly.
+   It exposes no gamePk, so its rows are keyed by `"AWAY@HOME"` team
+   abbreviations instead (normalized through `TEAM_ABBR_ALIASES` in
+   `fetch_park_factors.js`, since BallparkPal/VSiN sometimes use a
+   different abbreviation than MLB's, e.g. `CHW`/`WAS` vs. our `CWS`/`WSH`).
+   `score_matchups.py` tries the gamePk key first, then this one.
+
+This is a deliberate exception to "MLB Stats API or Savant only": no
+authentic park-factor source exists on either of those, and the
+alternatives (a static hardcoded rank table, or dropping the bonus term
+entirely) were both judged less authentic than pulling the real number from
+BallparkPal's model. If both sources fail or their markup changes,
+`fetch_park_factors.js` writes an empty `{}` — `park_bonus` for a game
+becomes `0` (no bonus), never a guessed rank-based number.
 
 ### Scoring model (how to update)
 - **KHR score**: `xwoba_vs_pitcher_hand × 170` — edit in `scripts/score_matchups.py`, function `compute_khr()`
-- **Zone fit**: dot product of pitcher pitch-frequency-per-zone × batter xwOBA-per-zone
-- **Matchup score**: weighted sum of khr_norm + zone_fit_norm + park_bonus + power_raw + weather_bonus
-- Edit weights in `scripts/score_matchups.py` near the `WEIGHTS` dict at the top of the file
+- **Zone fit**: dot product of pitcher pitch-frequency-per-zone × batter xwOBA-per-zone (real Savant zone data only — `None` if either side lacks it)
+- **Park bonus**: BallparkPal's real per-game HR% factor, scaled and capped 0–10 — `0` if not available (see above)
+- **Matchup score**: weighted sum of khr_norm + zone_fit_norm + park_bonus + power_raw + weather_bonus — `None` if khr/zone_fit/ceiling aren't all real
+- Edit weights inline in `scripts/score_matchups.py`, function `compute_matchup_score()`
 - The dashboard UI layout is in `public/matchups.html` — all rendering is client-side JS, no build step
 
 ### What the matchups workflow does NOT touch

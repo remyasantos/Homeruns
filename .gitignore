@@ -4,6 +4,7 @@ scripts/scored_players.json
 scripts/parlays.json
 scripts/savant_data.json
 scripts/matchups.json
+scripts/park_factors.json
 
 # Python
 __pycache__/

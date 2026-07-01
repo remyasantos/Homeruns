@@ -64,6 +64,8 @@ def team_abbr(name: str) -> str:
     return safe or "UNK"
 
 # ── Static config ──────────────────────────────────────────────────────────────────────────────────────────
+# These sets are only a structural fallback (used if the live venue lookup below
+# fails) -- they say a park CAN close its roof, never whether it's closed today.
 RETRACTABLE_ROOF_PARKS = {
     "Chase Field",
     "American Family Field",
@@ -71,11 +73,11 @@ RETRACTABLE_ROOF_PARKS = {
     "loanDepot park",
     "T-Mobile Park",
     "Daikin Park",
+    "Rogers Centre",
 }
 
 HARD_DOME_PARKS = {
     "Tropicana Field",
-    "Rogers Centre",
 }
 
 PARK_HR_RANKS = {
@@ -159,26 +161,143 @@ def format_day_label(date_str):
     d = datetime.datetime.strptime(date_str, "%Y-%m-%d")
     return d.strftime("%A").upper() + " MLB SLATE"
 
-def get_weather(venue_name):
-    if venue_name in RETRACTABLE_ROOF_PARKS or venue_name in HARD_DOME_PARKS:
-        return {"temp_f": 72, "wind_mph": 0, "wind_dir": "", "roof": True}
+_ROOF_TYPE_CACHE: dict = {}
+
+def get_roof_type(venue_name, venue_id):
+    """Structural fact: does this venue have a roof, and what kind?
+    Tries the real MLB venue API first; the static sets above are only a
+    fallback for when that lookup fails (network error, unknown venue id)."""
+    if venue_id is not None:
+        if venue_id in _ROOF_TYPE_CACHE:
+            return _ROOF_TYPE_CACHE[venue_id]
+        try:
+            r = requests.get(
+                f"https://statsapi.mlb.com/api/v1/venues/{venue_id}?hydrate=fieldInfo",
+                timeout=10,
+            )
+            if r.status_code == 200:
+                venues = r.json().get("venues", [])
+                if venues:
+                    roof_type = venues[0].get("fieldInfo", {}).get("roofType")
+                    if roof_type:
+                        _ROOF_TYPE_CACHE[venue_id] = roof_type
+                        return roof_type
+        except Exception as e:
+            print(f"  ⚠ venue roofType lookup error for {venue_name}: {e}")
+
+    if venue_name in HARD_DOME_PARKS:
+        return "Dome"
+    if venue_name in RETRACTABLE_ROOF_PARKS:
+        return "Retractable"
+    return "Open"
+
+
+def get_live_feed_weather(game_pk):
+    """Real per-game weather/roof condition from the MLB live game feed.
+    Returns None if the feed hasn't posted weather yet (checked too early
+    pre-game) -- callers must treat that as unknown, not a default."""
+    if not game_pk:
+        return None
+    try:
+        r = requests.get(
+            f"https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live", timeout=10
+        )
+        if r.status_code != 200:
+            return None
+        w = r.json().get("gameData", {}).get("weather", {}) or {}
+        condition = (w.get("condition") or "").strip()
+        if not condition:
+            return None
+
+        temp_f = None
+        try:
+            temp_f = int(float(w.get("temp")))
+        except (TypeError, ValueError):
+            pass
+
+        wind_mph, wind_dir = None, None
+        wind_raw = (w.get("wind") or "").strip()
+        if wind_raw:
+            head, _, tail = wind_raw.partition(",")
+            try:
+                wind_mph = int(float(head.strip().split(" ")[0]))
+            except (ValueError, IndexError):
+                pass
+            tail = tail.strip()
+            if tail and tail.lower() != "none":
+                wind_dir = tail
+
+        return {
+            "temp_f":    temp_f,
+            "wind_mph":  wind_mph,
+            "wind_dir":  wind_dir,
+            "condition": condition,
+        }
+    except Exception as e:
+        print(f"  ⚠ live feed weather error for game {game_pk}: {e}")
+        return None
+
+
+def _int_or_none(v):
+    try:
+        return int(v) if v not in (None, "") else None
+    except (TypeError, ValueError):
+        return None
+
+
+def get_weather(venue_name, venue_id=None, game_pk=None):
+    """Real weather for a specific game. Never invents a temp/wind/roof
+    value -- anything not actually known comes back None so the dashboard
+    shows it as unavailable instead of a fabricated placeholder."""
+    roof_type  = get_roof_type(venue_name, venue_id)
+    has_roof   = roof_type in ("Retractable", "Dome", "Fixed Roof", "Convertible Roof")
+    live       = get_live_feed_weather(game_pk)
+
+    if has_roof:
+        if live is None:
+            # Can't verify today's roof state from the live feed -- mark
+            # unknown rather than assuming open or closed.
+            return {"temp_f": None, "wind_mph": None, "wind_dir": None,
+                    "humidity": None, "condition": None, "roof": None}
+        closed = "closed" in live["condition"].lower()
+        if closed:
+            return {"temp_f": live["temp_f"], "wind_mph": 0, "wind_dir": None,
+                    "humidity": None, "condition": live["condition"], "roof": True}
+        return {"temp_f": live["temp_f"], "wind_mph": live["wind_mph"],
+                "wind_dir": live["wind_dir"], "humidity": None,
+                "condition": live["condition"], "roof": False}
+
+    # Open-air park -- prefer real per-game feed weather when it's posted.
+    if live is not None:
+        return {"temp_f": live["temp_f"], "wind_mph": live["wind_mph"],
+                "wind_dir": live["wind_dir"], "humidity": None,
+                "condition": live["condition"], "roof": False}
+
+    # Feed hasn't posted yet -- fall back to real current city weather
+    # (an actual live observation, never a fabricated estimate).
     city = CITY_WEATHER_MAP.get(venue_name, venue_name)
     try:
         url = f"https://wttr.in/{requests.utils.quote(city)}?format=j1"
         r = requests.get(url, timeout=10)
         if r.status_code != 200:
-            return {"temp_f": 72, "wind_mph": 5, "wind_dir": "E", "roof": False}
+            return {"temp_f": None, "wind_mph": None, "wind_dir": None,
+                    "humidity": None, "condition": None, "roof": False}
         data = r.json()
         cur = data["current_condition"][0]
+        desc_list = cur.get("weatherDesc", [{}])
+        condition = desc_list[0].get("value") if desc_list else None
         return {
-            "temp_f":   int(cur.get("temp_F", 72)),
-            "wind_mph": int(cur.get("windspeedMiles", 0)),
-            "wind_dir": cur.get("winddir16Point", "E"),
-            "roof":     False,
+            "temp_f":    _int_or_none(cur.get("temp_F")),
+            "wind_mph":  _int_or_none(cur.get("windspeedMiles")),
+            "wind_dir":  cur.get("winddir16Point") or None,
+            "humidity":  _int_or_none(cur.get("humidity")),
+            "condition": condition,
+            "roof":      False,
         }
     except Exception as e:
         print(f"  ⚠ weather error for {venue_name}: {e}")
-        return {"temp_f": 72, "wind_mph": 5, "wind_dir": "E", "roof": False}
+        return {"temp_f": None, "wind_mph": None, "wind_dir": None,
+                "humidity": None, "condition": None, "roof": False}
 
 def get_pitcher_id(name):
     if not name or name == "TBD":
@@ -408,14 +527,18 @@ def main():
                   open("scripts/raw_slate.json", "w"), indent=2)
         sys.exit(0)
 
-    games        = []
-    pitcher_ids  = set()
-    team_ids     = {}
+    games         = []
+    pitcher_ids   = set()
+    team_ids      = {}
+    venue_context = {}  # venue_name -> (venue_id, game_pk), first game of the day at that venue
 
     for g in live_games:
         away_abbr = team_abbr(g.get("away_name", ""))
         home_abbr = team_abbr(g.get("home_name", ""))
         venue     = g.get("venue_name", "Unknown Park")
+
+        if venue not in venue_context:
+            venue_context[venue] = (g.get("venue_id"), g.get("game_id"))
 
         away_pname = g.get("away_probable_pitcher") or "TBD"
         home_pname = g.get("home_probable_pitcher") or "TBD"
@@ -436,6 +559,7 @@ def main():
             team_ids[home_abbr] = home_team_id
 
         games.append({
+            "gamePk":          g.get("game_id"),
             "awayTeam":        away_abbr,
             "homeTeam":        home_abbr,
             "venueName":       venue,
@@ -470,10 +594,14 @@ def main():
     venues_in_slate = list({g["venueName"] for g in games})
     weather = {}
     for venue in venues_in_slate:
-        weather[venue] = get_weather(venue)
+        venue_id, game_pk = venue_context.get(venue, (None, None))
+        weather[venue] = get_weather(venue, venue_id, game_pk)
         w = weather[venue]
-        print(f"  ✓ {venue}: {w['temp_f']}°F  {w['wind_mph']}mph {w['wind_dir']}"
-              f"{'  [dome]' if w.get('roof') else ''}")
+        temp_disp = f"{w['temp_f']}°F" if w['temp_f'] is not None else "?"
+        wind_disp = f"{w['wind_mph']}mph" if w['wind_mph'] is not None else "?"
+        roof_disp = "  [roof closed]" if w.get("roof") is True \
+            else "  [roof unknown]" if w.get("roof") is None else ""
+        print(f"  ✓ {venue}: {temp_disp}  {wind_disp} {w['wind_dir'] or ''}{roof_disp}")
 
     park_hr_ranks = {v: PARK_HR_RANKS.get(v, 20) for v in venues_in_slate}
 
