@@ -14,7 +14,7 @@ import json
 import datetime
 import sys
 
-# ── Static team name → abbreviation map ───────────────────────────────────────────
+# ── Static team name → abbreviation map ─────────────────────────────────────────────────────────────────────
 # Keys match the full team names returned by statsapi.schedule()
 TEAM_NAME_TO_ABBR = {
     "Arizona Diamondbacks":      "ARI",
@@ -66,8 +66,7 @@ def team_abbr(name: str) -> str:
     print(f"  ⚠ Unknown team name '{name}' — using '{safe}'")
     return safe or "UNK"
 
-# ── Static config ─────────────────────────────────────────────────────
-
+# ── Static config ───────────────────────────────────────────────────────────────────
 RETRACTABLE_ROOF_PARKS = {
     "Chase Field",
     "American Family Field",
@@ -154,7 +153,7 @@ CITY_WEATHER_MAP = {
     "Guaranteed Rate Field":        "Chicago IL",
 }
 
-# ── Date helpers ───────────────────────────────────────────────────
+# ── Date helpers ───────────────────────────────────────────────
 
 def today_str():
     return datetime.date.today().strftime("%Y-%m-%d")
@@ -167,7 +166,7 @@ def format_day_label(date_str):
     d = datetime.datetime.strptime(date_str, "%Y-%m-%d")
     return d.strftime("%A").upper() + " MLB SLATE"
 
-# ── Weather ────────────────────────────────────────────────────────────
+# ── Weather ──────────────────────────────────────────────────────
 
 def get_weather(venue_name):
     """Fetch current conditions from wttr.in. Falls back to neutral defaults."""
@@ -191,7 +190,7 @@ def get_weather(venue_name):
         print(f"  ⚠ weather error for {venue_name}: {e}")
         return {"temp_f": 72, "wind_mph": 5, "wind_dir": "E", "roof": False}
 
-# ── Pitcher ID lookup ────────────────────────────────────────────────────
+# ── Pitcher ID lookup ───────────────────────────────────────────────────────────────────
 
 def get_pitcher_id(name):
     """Look up a player ID by full name. Returns None if not found."""
@@ -205,7 +204,7 @@ def get_pitcher_id(name):
         print(f"  ⚠ pitcher lookup error for {name}: {e}")
     return None
 
-# ── Pitcher stats ────────────────────────────────────────────────────────
+# ── Pitcher stats ────────────────────────────────────────────────────────────────────
 
 def get_pitcher_stats(player_id, season=2026):
     """Return dict with era/whip/hr9/bb9/k9/fip/ip, or {} on failure."""
@@ -255,7 +254,7 @@ def get_pitcher_stats(player_id, season=2026):
         print(f"  ⚠ pitcher stats error for id={player_id}: {e}")
         return {}
 
-# ── Batter splits ────────────────────────────────────────────────────────
+# ── Batter splits ────────────────────────────────────────────────────────────────────
 
 def get_batter_splits(pid, season=2026):
     """Return {vs_lhp: {avg,obp,slg,ops,hr,ab,pa}, vs_rhp: {...}} from MLB Stats API."""
@@ -295,7 +294,7 @@ def get_batter_splits(pid, season=2026):
         return {}
 
 
-# ── Pitcher arsenal ───────────────────────────────────────────────────────
+# ── Pitcher arsenal ────────────────────────────────────────────────────────────────────
 
 def get_pitcher_arsenal(pid, season=2026):
     """Return list of {abbrev, pitch_name, pct, velo} from MLB Stats API pitchArsenal."""
@@ -338,9 +337,9 @@ def get_pitcher_arsenal(pid, season=2026):
         return []
 
 
-# ── Batter stats ─────────────────────────────────────────────────────────
+# ── Batter stats ─────────────────────────────────────────────────────────────────────
 
-def get_team_batters(team_id, season=2026, top_n=6):
+def get_team_batters(team_id, season=2026, top_n=15):
     """Return top_n batters (by HR then OPS) with season stats. Skips pitchers."""
     try:
         roster_data = statsapi.get(
@@ -376,7 +375,7 @@ def get_team_batters(team_id, season=2026, top_n=6):
                     return default
 
             ab    = int(f("atBats"))
-            if ab < 25:
+            if ab < 10:
                 continue  # skip players with no meaningful sample
 
             hr    = int(f("homeRuns"))
@@ -411,7 +410,7 @@ def get_team_batters(team_id, season=2026, top_n=6):
     batters.sort(key=lambda x: (-x["hr"], -x["ops"]))
     return batters[:top_n]
 
-# ── Main ───────────────────────────────────────────────────────────────
+# ── Main ────────────────────────────────────────────────────────────────────────────────
 
 def main():
     date_str   = today_str()
