@@ -441,8 +441,26 @@ function slateView() {
 }
 
 function windDirFromStr(s) {
+  if (!s) return null;
+  var t = String(s).trim().toUpperCase();
   var map = {N:0,NNE:22.5,NE:45,ENE:67.5,E:90,ESE:112.5,SE:135,SSE:157.5,S:180,SSW:202.5,SW:225,WSW:247.5,W:270,WNW:292.5,NW:315,NNW:337.5};
-  return map[(s||'').toUpperCase()] != null ? map[(s||'').toUpperCase()] : null;
+  if (map[t] != null) return map[t];
+  var n = parseFloat(t);
+  if (!isNaN(n)) return n;
+  // MLB's live game feed reports wind as phrases rather than compass points --
+  // translate the ones actually seen in the feed to a field bearing.
+  // "Out To X" / "In From X": blowing toward/from that part of the outfield.
+  var out = t.indexOf('OUT') >= 0;
+  var into = !out && /\bIN\b/.test(t);
+  if (out || into) {
+    if (t.indexOf('CF') >= 0 || t.indexOf('CENTER') >= 0) return out ? 180 : 0;
+    if (t.indexOf('LF') >= 0 || t.indexOf('LEFT') >= 0)   return out ? 135 : 315;
+    if (t.indexOf('RF') >= 0 || t.indexOf('RIGHT') >= 0)  return out ? 225 : 45;
+  }
+  // "R To L" / "L To R": a crosswind blowing sideways across the field.
+  if (/\bR\s*TO\s*L\b/.test(t)) return 270;
+  if (/\bL\s*TO\s*R\b/.test(t)) return 90;
+  return null;
 }
 function renderWindArrow(deg, mph) {
   var r = deg * Math.PI / 180;

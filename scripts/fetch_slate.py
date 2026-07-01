@@ -245,6 +245,29 @@ def _int_or_none(v):
         return None
 
 
+_HUMIDITY_CACHE: dict = {}
+
+def get_wttr_humidity(venue_name):
+    """Real current humidity from wttr.in. MLB's live game feed doesn't
+    expose humidity at all (verified against the actual API response), so
+    this is queried separately -- a real weather reading, not a fabricated
+    number -- for any game where outdoor conditions apply."""
+    if venue_name in _HUMIDITY_CACHE:
+        return _HUMIDITY_CACHE[venue_name]
+    city = CITY_WEATHER_MAP.get(venue_name, venue_name)
+    humidity = None
+    try:
+        url = f"https://wttr.in/{requests.utils.quote(city)}?format=j1"
+        r = requests.get(url, timeout=10)
+        if r.status_code == 200:
+            cur = r.json()["current_condition"][0]
+            humidity = _int_or_none(cur.get("humidity"))
+    except Exception as e:
+        print(f"  ⚠ humidity error for {venue_name}: {e}")
+    _HUMIDITY_CACHE[venue_name] = humidity
+    return humidity
+
+
 def get_weather(venue_name, venue_id=None, game_pk=None):
     """Real weather for a specific game. Never invents a temp/wind/roof
     value -- anything not actually known comes back None so the dashboard
@@ -261,16 +284,18 @@ def get_weather(venue_name, venue_id=None, game_pk=None):
                     "humidity": None, "condition": None, "roof": None}
         closed = "closed" in live["condition"].lower()
         if closed:
+            # Indoor, climate-controlled -- outdoor city humidity doesn't
+            # describe field conditions, so it isn't fetched here.
             return {"temp_f": live["temp_f"], "wind_mph": 0, "wind_dir": None,
                     "humidity": None, "condition": live["condition"], "roof": True}
         return {"temp_f": live["temp_f"], "wind_mph": live["wind_mph"],
-                "wind_dir": live["wind_dir"], "humidity": None,
+                "wind_dir": live["wind_dir"], "humidity": get_wttr_humidity(venue_name),
                 "condition": live["condition"], "roof": False}
 
     # Open-air park -- prefer real per-game feed weather when it's posted.
     if live is not None:
         return {"temp_f": live["temp_f"], "wind_mph": live["wind_mph"],
-                "wind_dir": live["wind_dir"], "humidity": None,
+                "wind_dir": live["wind_dir"], "humidity": get_wttr_humidity(venue_name),
                 "condition": live["condition"], "roof": False}
 
     # Feed hasn't posted yet -- fall back to real current city weather
@@ -286,11 +311,13 @@ def get_weather(venue_name, venue_id=None, game_pk=None):
         cur = data["current_condition"][0]
         desc_list = cur.get("weatherDesc", [{}])
         condition = desc_list[0].get("value") if desc_list else None
+        humidity = _int_or_none(cur.get("humidity"))
+        _HUMIDITY_CACHE[venue_name] = humidity
         return {
             "temp_f":    _int_or_none(cur.get("temp_F")),
             "wind_mph":  _int_or_none(cur.get("windspeedMiles")),
             "wind_dir":  cur.get("winddir16Point") or None,
-            "humidity":  _int_or_none(cur.get("humidity")),
+            "humidity":  humidity,
             "condition": condition,
             "roof":      False,
         }
