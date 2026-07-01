@@ -14,7 +14,7 @@ import json
 import datetime
 import sys
 
-# ── Static team name → abbreviation map ─────────────────────────────────────────────────────────────────────────────────────
+# ── Static team name → abbreviation map ────────────────────────────────────────────────────────────────────────────────────────────────────────────
 # Keys match the full team names returned by statsapi.schedule()
 TEAM_NAME_TO_ABBR = {
     "Arizona Diamondbacks":      "ARI",
@@ -63,7 +63,7 @@ def team_abbr(name: str) -> str:
     print(f"  ⚠ Unknown team name '{name}' — using '{safe}'")
     return safe or "UNK"
 
-# ── Static config ──────────────────────────────────────────────────────────────────────────────────────────
+# ── Static config ──────────────────────────────────────────────────────────────────────────────────────────────────────
 RETRACTABLE_ROOF_PARKS = {
     "Chase Field",
     "American Family Field",
@@ -170,11 +170,15 @@ def get_weather(venue_name):
             return {"temp_f": 72, "wind_mph": 5, "wind_dir": "E", "roof": False}
         data = r.json()
         cur = data["current_condition"][0]
+        desc_list = cur.get("weatherDesc", [{}])
+        condition = desc_list[0].get("value", "") if desc_list else ""
         return {
-            "temp_f":   int(cur.get("temp_F", 72)),
-            "wind_mph": int(cur.get("windspeedMiles", 0)),
-            "wind_dir": cur.get("winddir16Point", "E"),
-            "roof":     False,
+            "temp_f":    int(cur.get("temp_F", 72)),
+            "wind_mph":  int(cur.get("windspeedMiles", 0)),
+            "wind_dir":  cur.get("winddir16Point", "E"),
+            "humidity":  int(cur.get("humidity", 0)),
+            "condition": condition,
+            "roof":      False,
         }
     except Exception as e:
         print(f"  ⚠ weather error for {venue_name}: {e}")
