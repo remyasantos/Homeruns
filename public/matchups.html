@@ -11,90 +11,68 @@
     body { font-family: 'Roboto Mono', monospace; font-size: 12px; background: #f5f5f5; color: #333; }
     #app { display: flex; flex-direction: column; height: 100vh; }
 
-    header { background: #212529; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+    header { background: #0d1117; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
     .header-logo { font-size: 16px; font-weight: 700; letter-spacing: 1px; }
-    .header-date { font-size: 13px; opacity: 0.9; }
-    .header-nav { display: flex; gap: 12px; align-items: center; font-size: 11px; }
-    .theme-btn { background: transparent; border: 1px solid rgba(255,255,255,0.4); color: white; padding: 3px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; }
+    .header-date { font-size: 12px; opacity: 0.75; margin-top: 2px; }
+    .header-right { display: flex; gap: 12px; align-items: center; }
     #weather-status { font-size: 10px; opacity: 0.55; }
+    .theme-btn { background: transparent; border: 1px solid rgba(255,255,255,0.35); color: white; padding: 3px 8px; border-radius: 3px; cursor: pointer; font-size: 10px; }
 
-    #tab-bar { background: #f0f0f0; border-bottom: 1px solid #ddd; padding: 8px; display: flex; gap: 6px; overflow-x: auto; flex-shrink: 0; }
-    .tab { background: white; border: 1px solid #ccc; border-radius: 4px; padding: 6px 12px; cursor: pointer; white-space: nowrap; font-size: 11px; line-height: 1.4; text-align: center; }
-    .tab:hover { background: #e9ecef; }
-    .tab.active { background: #495057; color: white; border-color: #495057; }
-    .tab.tab-weather.active { background: #1565c0; border-color: #1565c0; }
+    #tab-bar { background: #1a1f2e; border-bottom: 2px solid #2d3748; padding: 6px 10px; display: flex; gap: 5px; overflow-x: auto; flex-shrink: 0; }
+    .tab { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); border-radius: 5px; padding: 6px 12px; cursor: pointer; white-space: nowrap; font-size: 11px; line-height: 1.4; text-align: center; color: #aab; transition: background 0.15s; }
+    .tab:hover { background: rgba(255,255,255,0.14); }
+    .tab.active { background: #2563eb; color: white; border-color: #2563eb; }
     .tab .tab-teams { font-weight: 700; font-size: 12px; }
     .tab .tab-time { font-size: 10px; opacity: 0.8; }
+    @keyframes pulse-live { 0%,100%{background:#c62828} 50%{background:#ef5350} }
+    .tab-live { animation: pulse-live 1.4s infinite; border-color: #ef5350 !important; }
 
-    #main-content { flex: 1; overflow-y: auto; padding: 12px; }
+    #main-content { flex: 1; overflow-y: auto; padding: 12px 14px; }
 
-    .section-title { font-size: 13px; font-weight: 700; margin: 14px 0 6px; color: #333; }
-    .section-divider { border: none; border-top: 2px solid #dee2e6; margin: 18px 0 10px; }
-    .game-header { display: flex; justify-content: space-between; align-items: center; padding: 8px; background: white; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 8px; font-size: 12px; }
-    .weather-line { font-size: 11px; color: #555; margin-bottom: 8px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-    .badge { padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; }
-    .badge-wind { background: #d4edda; color: #155724; }
-    .badge-dome { background: #e2e3e5; color: #383d41; }
-    .badge-hot  { background: #f8d7da; color: #721c24; }
-    .badge-cold { background: #cce5ff; color: #004085; }
+    .section-title { font-size: 13px; font-weight: 700; margin: 14px 0 8px; color: #1a1f2e; display: flex; align-items: center; gap: 8px; }
+    .row-count { font-size: 10px; font-weight: 400; background: #e2e8f0; color: #64748b; padding: 1px 6px; border-radius: 10px; }
 
-    .sub-tab-bar { display: flex; gap: 4px; margin-bottom: 10px; flex-wrap: wrap; }
-    .sub-tab { background: white; border: 1px solid #ccc; border-radius: 3px; padding: 5px 12px; cursor: pointer; font-size: 11px; }
-    .sub-tab.active { background: #6c757d; color: white; border-color: #6c757d; }
+    .cards-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+    .card { background: white; border: 1px solid #ddd; border-radius: 6px; padding: 12px; min-width: 200px; flex: 1; max-width: 320px; }
+    .card-title { font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+    .card-sub-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+    .card-sub-tab { padding: 2px 8px; font-size: 10px; cursor: pointer; border: 1px solid #ccc; border-radius: 3px; background: #f8f8f8; }
+    .card-sub-tab.active { background: #1a1f2e; color: white; border-color: #1a1f2e; }
+    .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-bottom: 8px; }
+    .stat-item { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px; padding: 5px 2px; text-align: center; }
+    .stat-val { font-weight: 700; font-size: 12px; }
+    .stat-lbl { font-size: 9px; opacity: 0.6; margin-top: 1px; }
+    .pitch-detail { font-size: 11px; margin-top: 8px; line-height: 1.7; }
 
+    .table-wrap { overflow-x: auto; margin-bottom: 16px; }
     table { border-collapse: collapse; width: 100%; font-size: 11px; }
-    th { background: #f0f0f0; border: 1px solid #ccc; padding: 5px 8px; cursor: pointer; white-space: nowrap; text-align: right; font-weight: 600; user-select: none; }
-    th:first-child { text-align: left; }
-    th:hover { background: #e0e0e0; }
-    td { border: 1px solid #e0e0e0; padding: 4px 8px; text-align: right; white-space: nowrap; }
-    td:first-child { text-align: left; }
-    tr:hover { background: rgba(0,0,0,0.03); }
-    .table-wrap { overflow-x: auto; background: white; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 12px; }
+    thead th { background: #1a1f2e; color: #c8d0e0; padding: 7px 9px; text-align: right; font-weight: 600; white-space: nowrap; border-right: 1px solid #2d3748; cursor: pointer; user-select: none; }
+    thead th:first-child { text-align: left; }
+    thead th:hover { background: #263150; }
+    .sort-arrow { margin-left: 4px; font-size: 9px; opacity: 0.5; }
+    thead th.sort-asc .sort-arrow::after { content: '\25b2'; opacity: 1; }
+    thead th.sort-desc .sort-arrow::after { content: '\25bc'; opacity: 1; }
+    thead th:not(.sort-asc):not(.sort-desc) .sort-arrow::after { content: '\21c5'; }
+    td { padding: 5px 9px; text-align: right; border-bottom: 1px solid #f0f0f0; white-space: nowrap; }
+    td:first-child { text-align: left; font-weight: 500; }
+    tr:hover td { filter: brightness(0.96); }
+    .table-footer { font-size: 10px; color: #888; padding: 4px 10px; text-align: right; font-style: italic; }
 
-    .sample-high       { color: #1a7a2e; font-weight: 600; }
-    .sample-medium     { color: #555; }
-    .sample-thin       { color: #b06000; }
-    .sample-very-thin  { color: #c0392b; font-style: italic; }
-    .legend { font-size: 10px; color: #666; margin: 4px 0 12px; }
-    .trend-up      { color: #1a7a2e; font-weight: bold; }
-    .trend-down    { color: #c0392b; font-weight: bold; }
-    .trend-neutral { color: #888; }
+    .team-header { font-size: 13px; font-weight: 700; margin: 18px 0 6px; padding: 7px 12px; background: #1a1f2e; color: #e2e8f0; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; }
+    .export-btn { font-size: 10px; padding: 2px 8px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); border-radius: 3px; cursor: pointer; color: white; }
+    .export-btn:hover { background: rgba(255,255,255,0.25); }
 
-    .pitcher-cards { display: flex; gap: 12px; margin: 8px 0 16px; flex-wrap: wrap; }
-    .pitcher-card { background: white; border: 1px solid #ddd; border-radius: 4px; padding: 10px; flex: 1; min-width: 280px; }
-    .pitcher-card-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
-    .pitcher-card-sub  { font-size: 11px; color: #666; margin-bottom: 8px; }
-    .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; font-size: 11px; }
-    .stat-item { text-align: center; }
-    .stat-val { font-size: 16px; font-weight: 700; color: #333; }
-    .stat-lbl { font-size: 9px; color: #888; text-transform: uppercase; }
+    .badge { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 9px; font-weight: 700; vertical-align: middle; }
+    .badge-live { background: #ef5350; color: white; }
+    .live-strip { background: #fff3cd; border: 1px solid #f59e0b; border-radius: 4px; padding: 5px 10px; margin-bottom: 10px; font-size: 11px; color: #92400e; }
 
-    .zone-section { display: flex; gap: 20px; flex-wrap: wrap; margin: 8px 0 16px; }
-    .zone-map { text-align: center; }
-    .zone-title { font-size: 12px; font-weight: 600; margin-bottom: 6px; color: #444; }
-    .zone-na { color: #999; font-size: 11px; padding: 20px; border: 1px dashed #ccc; border-radius: 4px; }
+    .zone-grid { display: inline-grid; grid-template-columns: repeat(3, 36px); grid-template-rows: repeat(3, 36px); gap: 2px; }
+    .zone-cell { width: 36px; height: 36px; border: 1px solid #ccc; font-size: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700; border-radius: 2px; }
+    .zone-label { font-size: 10px; color: #666; margin-bottom: 4px; text-transform: uppercase; font-weight: 600; }
+    .arsenal-table td, .arsenal-table th { padding: 4px 8px; }
 
-    .batter-selector { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
-    .batter-btn { background: white; border: 1px solid #ccc; border-radius: 3px; padding: 3px 10px; cursor: pointer; font-size: 11px; }
-    .batter-btn.active { background: #495057; color: white; border-color: #495057; }
-
-    .exports-area { background: white; border: 1px solid #ddd; border-radius: 4px; padding: 10px; }
-    .exports-area textarea { width: 100%; height: 300px; font-family: monospace; font-size: 11px; border: 1px solid #ddd; padding: 6px; resize: vertical; }
-    .copy-btn { margin-top: 8px; padding: 6px 16px; background: #495057; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; }
-
-    .error-msg { background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 16px; text-align: center; color: #856404; }
-
-    .card-sub-tabs { display: flex; gap: 3px; margin: 8px 0 6px; }
-    .card-sub-tab { background: #f5f5f5; border: 1px solid #ddd; border-radius: 3px; padding: 3px 10px; cursor: pointer; font-size: 10px; }
-    .card-sub-tab.active { background: #495057; color: white; border-color: #495057; }
-
-    .sort-indicator { margin-left: 4px; font-size: 9px; }
-    .zone-legend { display: flex; gap: 8px; align-items: center; font-size: 10px; margin-top: 6px; flex-wrap: wrap; }
-    .zone-legend-item { display: flex; align-items: center; gap: 3px; }
-    .zone-legend-swatch { width: 14px; height: 14px; border: 1px solid #ccc; display: inline-block; }
-    .rolling-note { font-size: 10px; color: #888; font-style: italic; margin-bottom: 8px; }
-
-    /* ── Weather tab ── */
+    .trend-up { color: #166534; font-weight: 600; }
+    .trend-down { color: #991b1b; font-weight: 600; }
     .weather-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 14px; padding: 2px; }
     .weather-card { background: white; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
     .weather-card-hdr { background: #343a40; color: white; padding: 8px 12px; }
@@ -106,1019 +84,530 @@
     .ws-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
     .ws-lbl { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
     .ws-val { font-size: 14px; font-weight: 700; color: #333; }
-    .ws-val.hot     { color: #c0392b; }
-    .ws-val.cold    { color: #1565c0; }
-    .ws-val.wind-strong   { color: #e65100; }
+    .ws-val.hot { color: #c0392b; }
+    .ws-val.cold { color: #1565c0; }
+    .ws-val.wind-strong { color: #e65100; }
     .ws-val.wind-moderate { color: #f57f17; }
     .weather-card-badges { padding: 6px 12px 8px; display: flex; gap: 6px; flex-wrap: wrap; border-top: 1px solid #f0f0f0; background: #fafafa; min-height: 30px; align-items: center; }
-    .weather-updated { font-size: 10px; color: #bbb; padding: 3px 12px 6px; }
     .weather-no-data { padding: 18px; text-align: center; color: #aaa; font-size: 11px; }
+    .badge-wind { background: #d4edda; color: #155724; }
+    .badge-dome { background: #e2e3e5; color: #383d41; }
+    .badge-hot  { background: #f8d7da; color: #721c24; }
+    .badge-cold { background: #cce5ff; color: #004085; }
 
-    /* ── Dark theme ── */
-    body.dark { background: #1a1a2e; color: #e0e0e0; }
-    body.dark header { background: #0d0d1a; }
-    body.dark #tab-bar { background: #16213e; border-color: #333; }
-    body.dark .tab { background: #1a1a2e; border-color: #444; color: #ccc; }
-    body.dark .tab:hover { background: #243b55; }
-    body.dark .tab.active { background: #495057; color: white; }
-    body.dark .tab.tab-weather.active { background: #1565c0; }
-    body.dark #main-content { background: #1a1a2e; }
-    body.dark .section-title { color: #ddd; }
-    body.dark .section-divider { border-color: #333; }
-    body.dark .table-wrap { background: #16213e; border-color: #333; }
-    body.dark table th { background: #243b55; border-color: #444; color: #ccc; }
-    body.dark table td { border-color: #333; color: #ddd; }
-    body.dark tr:hover { background: rgba(255,255,255,0.05); }
-    body.dark .game-header { background: #16213e; border-color: #333; color: #ddd; }
-    body.dark .sub-tab { background: #1a1a2e; border-color: #444; color: #ccc; }
-    body.dark .pitcher-card { background: #16213e; border-color: #333; }
-    body.dark .pitcher-card-name { color: #eee; }
-    body.dark .stat-val { color: #ddd; }
-    body.dark .exports-area { background: #16213e; border-color: #333; }
-    body.dark .exports-area textarea { background: #0d0d1a; color: #ccc; border-color: #444; }
-    body.dark .batter-btn { background: #1a1a2e; border-color: #444; color: #ccc; }
-    body.dark .card-sub-tab { background: #243b55; border-color: #444; color: #ccc; }
+    .tip { position: relative; cursor: help; }
+    .tip::after { content: attr(data-tip); position: absolute; bottom: 125%; left: 50%; transform: translateX(-50%); white-space: nowrap; background: #1a1f2e; color: white; padding: 3px 7px; border-radius: 3px; font-size: 10px; visibility: hidden; opacity: 0; transition: opacity 0.15s; z-index: 999; pointer-events: none; }
+    .tip:hover::after { visibility: visible; opacity: 1; }
+
+    body.dark { background: #0d1117; color: #c9d1d9; }
+    body.dark .card { background: #161b22; border-color: #30363d; }
+    body.dark .stat-item { background: #21262d; border-color: #30363d; }
+    body.dark thead th { background: #21262d; color: #8b949e; border-right-color: #30363d; }
+    body.dark td { border-bottom-color: #21262d; }
+    body.dark tr:hover td { filter: brightness(1.2); }
+    body.dark .section-title { color: #c9d1d9; }
     body.dark .weather-card { background: #16213e; border-color: #333; }
     body.dark .weather-card-hdr { background: #0d0d1a; }
     body.dark .weather-field-wrap { background: #1a1a2e; border-color: #333; }
     body.dark .weather-stats .ws-val { color: #ddd; }
     body.dark .weather-card-badges { background: #16213e; border-color: #333; }
+    body.dark .zone-cell { border-color: #30363d; }
+    body.dark .table-footer { color: #555; }
+
+    @media (max-width: 600px) {
+      .cards-grid { flex-direction: column; }
+      .card { max-width: 100%; }
+    }
   </style>
 </head>
 <body>
-  <div id="app">
-    <header>
-      <div class="header-logo">&#9918; GHOST MATCHUPS</div>
-      <div class="header-date" id="header-date"></div>
-      <div class="header-nav">
-        <span id="weather-status"></span>
-        <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">&#9728; Light</button>
-        <a href="parlays.html" style="color:rgba(255,255,255,0.7);text-decoration:none;font-size:11px">HR Picks &#8594;</a>
-      </div>
-    </header>
-    <div id="tab-bar"></div>
-    <div id="main-content"></div>
-  </div>
+<div id="app">
+  <header>
+    <div>
+      <div class="header-logo">&#9918; MLB HR MATCHUPS</div>
+      <div class="header-date" id="header-date">Loading&#8230;</div>
+    </div>
+    <div class="header-right">
+      <span id="weather-status"></span>
+      <button class="theme-btn" onclick="toggleTheme()">&#9680; Theme</button>
+    </div>
+  </header>
+  <div id="tab-bar"></div>
+  <div id="main-content"></div>
+</div>
 
-  <script src="matchups_data.js"></script>
-  <script>
-  // ── State ──────────────────────────────────────────────────────────────────
-  var state = {
-    currentTab: 'weather',   // 'weather' | 'slate' | number (game index)
-    subTab: 'matchup',
-    selectedAwayBatter: 0,
-    selectedHomeBatter: 0,
-    sortCol: 'pitcher_score',
-    sortDir: 'desc',
-    slateSort: 'matchup_score',
-    slateSortDir: 'desc',
-    awayBatterSort: 'matchup_score',
-    awayBatterDir: 'desc',
-    homeBatterSort: 'matchup_score',
-    homeBatterDir: 'desc',
-    pitcherCardTab: {},
-    darkMode: false,
-    liveWeather: {}   // gamePk -> {temp_f, wind_mph, wind_dir, condition, humidity, live:true}
-  };
+<script src="matchups_data.js"></script>
+<script>
+var activeTab = 'slate';
+var pitcherCardTabs = {};
+var sortState = {};
 
-  // ── Team → city lookup for live weather ────────────────────────────────────
-  var TEAM_CITY = {
-    ARI:'Phoenix',ATL:'Atlanta',BAL:'Baltimore',BOS:'Boston',
-    CHC:'Chicago',CWS:'Chicago',CIN:'Cincinnati',CLE:'Cleveland',
-    COL:'Denver',DET:'Detroit',HOU:'Houston',KC:'Kansas City',
-    LAA:'Anaheim',LAD:'Los Angeles',MIA:'Miami',MIL:'Milwaukee',
-    MIN:'Minneapolis',NYM:'New York',NYY:'New York',OAK:'Oakland',
-    PHI:'Philadelphia',PIT:'Pittsburgh',SD:'San Diego',SF:'San Francisco',
-    SEA:'Seattle',STL:'St Louis',TB:'St. Petersburg',TEX:'Arlington',
-    TOR:'Toronto',WSH:'Washington'
-  };
+function gamesData() { return (typeof MATCHUPS_GAMES !== 'undefined') ? MATCHUPS_GAMES : []; }
+function pitchersData() { return (typeof MATCHUPS_PITCHERS_SLATE !== 'undefined') ? MATCHUPS_PITCHERS_SLATE : []; }
 
-  // ── Theme ──────────────────────────────────────────────────────────────────
-  function toggleTheme() {
-    state.darkMode = !state.darkMode;
-    document.body.classList.toggle('dark', state.darkMode);
-    document.getElementById('theme-btn').textContent = state.darkMode ? '☽ Dark' : '☀ Light';
-  }
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmt(v, d) {
+  if (v === null || v === undefined || v === '' || (typeof v === 'number' && isNaN(v))) return '—';
+  var f = parseFloat(v);
+  if (isNaN(f)) return '—';
+  return f.toFixed(d);
+}
+function fmtPct(v) {
+  if (v === null || v === undefined || v === '' || isNaN(v)) return '—';
+  return parseFloat(v).toFixed(1) + '%';
+}
+function fmtTime(s) {
+  if (!s || s === 'TBD') return 'TBD';
+  try {
+    var d = new Date(s);
+    return d.toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',hour12:true});
+  } catch(e) { return s; }
+}
+function isWindOut(dir) {
+  if (!dir) return false;
+  var lo = dir.toLowerCase();
+  return ['out','lf','cf','rf','center','left','right'].some(function(w){ return lo.indexOf(w) !== -1; });
+}
+function isGameLive(g) {
+  if (!g.gameTime) return false;
+  try {
+    var elapsed = (Date.now() - new Date(g.gameTime)) / 60000;
+    return elapsed >= 0 && elapsed <= 220;
+  } catch(e) { return false; }
+}
 
-  // ── Format helpers ─────────────────────────────────────────────────────────
-  function fmtPct(v)  { if (v == null || isNaN(v)) return '—'; return v.toFixed(1) + '%'; }
-  function fmtDec(v,d){ if (v == null || isNaN(v)) return '—'; return v.toFixed(d); }
-  function fmtOdds(v) { if (v == null || isNaN(v)) return '—'; return '.' + v.toFixed(3).split('.')[1]; }
-  function fmtInt(v)  { if (v == null || isNaN(v)) return '—'; return Math.round(v).toString(); }
-  function safe(v)    { return (v == null) ? '—' : v; }
+var BATTER_COLS = [
+  {key:'matchup_score',label:'MSCORE',  d:1,  invert:false,min:0,    max:100,  tip:'Composite matchup score (0-100)'},
+  {key:'khr',          label:'KHR',     d:1,  invert:false,min:30,   max:90,   tip:'xwOBA x 170, hand-split adjusted'},
+  {key:'ceiling',      label:'CEIL',    d:1,  invert:false,min:0,    max:100,  tip:'Power ceiling (barrel/EV/ISO)'},
+  {key:'zone_fit',     label:'ZNFIT',   d:3,  invert:false,min:0.04, max:0.20, tip:'Pitcher zone x batter zone dot product'},
+  {key:'xwobac',       label:'xwOBAvP', d:3,  invert:false,min:0.200,max:0.450,tip:'xwOBA vs pitcher hand'},
+  {key:'iso',          label:'ISO',     d:3,  invert:false,min:0.050,max:0.350,tip:'Isolated power'},
+  {key:'hh_pct',       label:'HH%',     d:1,  pct:true, invert:false,min:25,max:60,   tip:'Hard-hit rate >= 95mph EV'},
+  {key:'brl_bip_pct',  label:'BRL%',    d:1,  pct:true, invert:false,min:2, max:18,   tip:'Barrel % per BIP'},
+  {key:'pull_brl_pct', label:'PBRL%',   d:1,  pct:true, invert:false,min:0, max:12,   tip:'Pulled barrel %'},
+  {key:'fb_pct',       label:'FB%',     d:1,  pct:true, invert:false,min:20,max:50,   tip:'Fly ball %'},
+  {key:'swstr_pct',    label:'SwStr%',  d:1,  pct:true, invert:true, min:5, max:18,   tip:'Swing-and-miss % (lower = better)'},
+  {key:'la',           label:'LA',      d:1,  invert:false,min:5,    max:22,   tip:'Avg launch angle'},
+  {key:'likely',       label:'LIKELY',  d:0,  invert:false,min:5,    max:40,   tip:'Projected HR pace per 162 G'},
+];
+var PITCHER_COLS = [
+  {key:'pitcher_score',label:'PSCORE',  d:1,  invert:false,min:0,    max:100,  tip:'Pitcher dominance (higher=harder to HR off)'},
+  {key:'era',          label:'ERA',     d:2,  invert:true, min:2.0,  max:6.5,  tip:'Earned Run Average'},
+  {key:'whip',         label:'WHIP',    d:2,  invert:true, min:0.85, max:1.75, tip:'Walks+Hits per IP'},
+  {key:'k9',           label:'K/9',     d:1,  invert:false,min:4,    max:14,   tip:'Strikeouts per 9 IP'},
+  {key:'bb9',          label:'BB/9',    d:1,  invert:true, min:1,    max:5,    tip:'Walks per 9 IP'},
+  {key:'fip',          label:'FIP',     d:2,  invert:true, min:2.0,  max:5.5,  tip:'Fielding Independent Pitching'},
+  {key:'ip',           label:'IP',      d:1,  invert:false,min:10,   max:120,  tip:'Innings pitched (season)'},
+  {key:'xwoba',        label:'xwOBA',   d:3,  invert:true, min:0.250,max:0.400,tip:'Expected wOBA allowed (Savant)'},
+  {key:'csw_pct',      label:'CSW%',    d:1,  pct:true, invert:false,min:22,max:38,   tip:'Called Strike + Whiff %'},
+  {key:'swstr_pct',    label:'SwStr%',  d:1,  pct:true, invert:false,min:5, max:18,   tip:'Swinging strike %'},
+  {key:'hard_hit_pct', label:'HH%',     d:1,  pct:true, invert:true, min:28,max:52,   tip:'Hard-hit % allowed (lower=better)'},
+  {key:'fb_pct',       label:'FB%',     d:1,  pct:true, invert:true, min:25,max:50,   tip:'Fly ball % allowed'},
+];
 
-  function esc(s) {
-    if (s == null) return '';
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
+function heatBg(value, col) {
+  if (value === null || value === undefined || value === '') return '';
+  var v = parseFloat(value);
+  if (isNaN(v)) return '';
+  var t = Math.max(0, Math.min(1, (v - col.min) / (col.max - col.min)));
+  if (col.invert) t = 1 - t;
+  var r, g, b = 60;
+  if (t < 0.5) { r = 235; g = Math.round(80 + t * 2 * 155); }
+  else { r = Math.round(235 - (t - 0.5) * 2 * 185); g = 210; }
+  return 'background:rgba(' + r + ',' + g + ',' + b + ',0.55)';
+}
 
-  // ── Color helpers ──────────────────────────────────────────────────────────
-  function percentileColor(value, allValues, hiGood) {
-    if (value == null || isNaN(value)) return '';
-    var sorted = allValues.filter(function(v){ return v != null && !isNaN(v); }).slice().sort(function(a,b){return a-b;});
-    if (!sorted.length) return '';
-    var p25 = sorted[Math.floor(sorted.length * 0.25)];
-    var p75 = sorted[Math.floor(sorted.length * 0.75)];
-    if (hiGood) {
-      if (value >= p75) return 'background:#c8f5c8';
-      if (value <= p25) return 'background:#ffc8c8';
-    } else {
-      if (value <= p25) return 'background:#c8f5c8';
-      if (value >= p75) return 'background:#ffc8c8';
-    }
-    return '';
-  }
+function thClass(tbl, key) {
+  var s = sortState[tbl];
+  if (!s || s.col !== key) return '';
+  return s.dir === 'asc' ? 'sort-asc' : 'sort-desc';
+}
+function sortClick(tbl, key) {
+  var s = sortState[tbl];
+  if (s && s.col === key) { s.dir = s.dir === 'asc' ? 'desc' : 'asc'; }
+  else { sortState[tbl] = {col:key, dir:'desc'}; }
+  renderMain();
+}
+function sortedRows(rows, tbl, defKey) {
+  var s = sortState[tbl] || {col:defKey, dir:'desc'};
+  return rows.slice().sort(function(a,b) {
+    var av = a[s.col], bv = b[s.col];
+    if (av == null) return 1; if (bv == null) return -1;
+    var af = parseFloat(av), bf = parseFloat(bv);
+    if (!isNaN(af) && !isNaN(bf)) return s.dir === 'asc' ? af - bf : bf - af;
+    return s.dir === 'asc' ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+  });
+}
 
-  function getColumnColor(value, col) {
-    var ranges = {
-      matchup_score:   {lo:50,  hi:85,   hiGood:true},
-      ceiling:         {lo:50,  hi:90,   hiGood:true},
-      zone_fit:        {lo:0.06,hi:0.13, hiGood:true},
-      khr:             {lo:55,  hi:75,   hiGood:true},
-      iso:             {lo:0.130,hi:0.230,hiGood:true},
-      xwoba:           {lo:0.290,hi:0.390,hiGood:true},
-      xwobac:          {lo:0.290,hi:0.400,hiGood:true},
-      swstr_pct:       {lo:8,   hi:16,   hiGood:false},
-      pull_brl_pct:    {lo:3,   hi:9,    hiGood:true},
-      brl_bip_pct:     {lo:6,   hi:16,   hiGood:true},
-      fb_pct:          {lo:25,  hi:42,   hiGood:true},
-      hh_pct:          {lo:35,  hi:55,   hiGood:true},
-      la:              {lo:5,   hi:22,   hiGood:true},
-      likely:          {lo:18,  hi:38,   hiGood:true},
-      pitcher_score:   {lo:45,  hi:70,   hiGood:true},
-      strikeout_score: {lo:40,  hi:65,   hiGood:true},
-      xwoba_pitcher:   {lo:0.270,hi:0.360,hiGood:false},
-      hard_hit_pct:    {lo:35,  hi:48,   hiGood:false},
-      csw_pct:         {lo:26,  hi:34,   hiGood:true},
-      swstr_pct_p:     {lo:9,   hi:16,   hiGood:true},
-      fb_pct_p:        {lo:28,  hi:45,   hiGood:true},
-      ball_pct:        {lo:8,   hi:16,   hiGood:false},
-      pulled_barrel_pct:{lo:3,  hi:9,    hiGood:false},
-      oppo_pct:        {lo:15,  hi:30,   hiGood:false}
-    };
-    var r = ranges[col];
-    if (!r || value == null || isNaN(value)) return '';
-    var mid = (r.lo + r.hi) / 2;
-    if (r.hiGood) {
-      if (value >= r.hi)  return 'background:#c8f5c8';
-      if (value <= r.lo)  return 'background:#ffc8c8';
-      if (value >= mid)   return 'background:#e8f8e8';
-    } else {
-      if (value <= r.lo)  return 'background:#c8f5c8';
-      if (value >= r.hi)  return 'background:#ffc8c8';
-      if (value <= mid)   return 'background:#e8f8e8';
-    }
-    return '';
-  }
+function colTh(tbl, col) {
+  var cls = thClass(tbl, col.key);
+  return '<th class="' + cls + '" onclick="sortClick(\'' + tbl + '\',\'' + col.key + '\')">'
+    + '<span class="tip" data-tip="' + esc(col.tip||col.label) + '">' + col.label + '</span>'
+    + '<span class="sort-arrow"></span></th>';
+}
 
-  function tdStyle(style, left) {
-    var s = (left ? 'text-align:left;' : '') + (style ? style.replace('background:','background-color:') : '');
-    return s ? ' style="' + s.replace('background-color:','background:') + '"' : (left ? ' style="text-align:left"' : '');
-  }
-
-  // ── Sort helper ────────────────────────────────────────────────────────────
-  function sortBy(arr, key, dir) {
-    return arr.slice().sort(function(a,b){
-      var av = a[key], bv = b[key];
-      if (av == null) av = -Infinity;
-      if (bv == null) bv = -Infinity;
-      return dir === 'asc' ? (av > bv ? 1 : av < bv ? -1 : 0) : (av < bv ? 1 : av > bv ? -1 : 0);
+function batterTable(batters, tbl) {
+  if (!batters || !batters.length) return '<p style="color:#999;padding:8px">No batter data.</p>';
+  var rows = sortedRows(batters, tbl, 'matchup_score');
+  var h = '<div class="table-wrap"><table><thead><tr>';
+  h += '<th class="' + thClass(tbl,'name') + '" onclick="sortClick(\'' + tbl + '\',\'name\')">BATTER <span class="sort-arrow"></span></th>';
+  h += '<th class="' + thClass(tbl,'stands') + '" onclick="sortClick(\'' + tbl + '\',\'stands\')">B <span class="sort-arrow"></span></th>';
+  BATTER_COLS.forEach(function(c){ h += colTh(tbl, c); });
+  h += '<th>HR FORM</th></tr></thead><tbody>';
+  rows.forEach(function(b) {
+    h += '<tr><td>' + esc(b.name||'?') + '</td><td style="text-align:center">' + esc(b.stands||'R') + '</td>';
+    BATTER_COLS.forEach(function(c) {
+      var v = b[c.key];
+      var bg = heatBg(v, c);
+      var disp = (v === null || v === undefined || v === '') ? '—' : (c.pct ? fmtPct(v) : fmt(v, c.d));
+      h += '<td style="' + bg + '">' + disp + '</td>';
     });
-  }
+    var tc = b.hr_form_trend === 'up' ? 'trend-up' : b.hr_form_trend === 'down' ? 'trend-down' : '';
+    h += '<td class="' + tc + '">' + esc(b.hr_form||'') + '</td></tr>';
+  });
+  h += '</tbody></table><div class="table-footer">' + rows.length + ' batters</div></div>';
+  return h;
+}
 
-  function fmtTime(t) {
-    if (!t) return '';
-    try {
-      var d = new Date(t);
-      if (isNaN(d.getTime())) return '';
-      return d.toLocaleTimeString('en-US', {
-        timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit'
-      }) + ' ET';
-    } catch(e){ return ''; }
-  }
-
-  // ── Wind direction helpers ─────────────────────────────────────────────────
-  function windDirFromDeg(dir) {
-    if (dir == null) return null;
-    dir = String(dir).trim().toUpperCase();
-    var map = {N:0,NNE:22.5,NE:45,ENE:67.5,E:90,ESE:112.5,SE:135,SSE:157.5,
-               S:180,SSW:202.5,SW:225,WSW:247.5,W:270,WNW:292.5,NW:315,NNW:337.5};
-    if (map[dir] !== undefined) return map[dir];
-    var n = parseFloat(dir);
-    if (!isNaN(n)) return n;
-    if (dir.indexOf('OUT')>=0 && dir.indexOf('CF')>=0) return 180; // FROM home = coming from S in baseball
-    if (dir.indexOf('IN')>=0  && dir.indexOf('CF')>=0) return 0;
-    if (dir.indexOf('OUT')>=0 && dir.indexOf('LF')>=0) return 135;
-    if (dir.indexOf('OUT')>=0 && dir.indexOf('RF')>=0) return 225;
-    return null;
-  }
-
-  // Returns SVG arrow group pointing in direction wind is blowing TO
-  function renderWindArrowSVG(windDir, windMph) {
-    var fromDeg = windDirFromDeg(windDir);
-    if (fromDeg === null || !windMph) return '';
-    var toDeg = (fromDeg + 180) % 360;
-    var color = windMph >= 12 ? '#e65100' : windMph >= 7 ? '#f57f17' : '#78909c';
-    var cx = 75, cy = 60;
-    var len = 22;
-    return [
-      '<g transform="rotate(' + toDeg + ',' + cx + ',' + cy + ')" opacity="0.9">',
-      '<line x1="' + cx + '" y1="' + (cy+len/2) + '" x2="' + cx + '" y2="' + (cy-len/2) + '"',
-      ' stroke="' + color + '" stroke-width="3" stroke-linecap="round"/>',
-      '<polygon points="' + cx + ',' + (cy-len/2-7) + ' ' + (cx-5) + ',' + (cy-len/2+2) + ' ' + (cx+5) + ',' + (cy-len/2+2) + '"',
-      ' fill="' + color + '"/>',
-      '</g>'
-    ].join('');
-  }
-
-  // ── Baseball field SVG ─────────────────────────────────────────────────────
-  function renderFieldSVG(windDir, windMph) {
-    var arrow = renderWindArrowSVG(windDir, windMph);
-    return [
-      '<svg width="150" height="130" viewBox="0 0 150 130" style="display:block">',
-      // Outfield grass
-      '<path d="M 75,112 L 10,52 Q 75,4 140,52 Z" fill="#2e7d32" opacity="0.75"/>',
-      // Warning track
-      '<path d="M 75,112 L 14,55 Q 75,7 136,55 Z" fill="none" stroke="#c4954a" stroke-width="4" opacity="0.4"/>',
-      // Infield dirt
-      '<polygon points="75,110 23,70 75,30 127,70" fill="#c4954a" opacity="0.85"/>',
-      // Infield grass
-      '<polygon points="75,96 40,70 75,44 110,70" fill="#388e3c" opacity="0.9"/>',
-      // Pitcher mound
-      '<circle cx="75" cy="70" r="5" fill="#b8863c" stroke="#8a6028" stroke-width="1"/>',
-      // Baselines
-      '<line x1="75" y1="110" x2="23" y2="70" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>',
-      '<line x1="75" y1="110" x2="127" y2="70" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>',
-      // Bases
-      '<rect x="72" y="107" width="6" height="6" fill="white" stroke="#555" stroke-width="0.5"/>',
-      '<rect x="72" y="27" width="6" height="6" fill="white" stroke="#555" stroke-width="0.5"/>',
-      '<rect x="19" y="67" width="6" height="6" fill="white" stroke="#555" stroke-width="0.5" transform="rotate(45,22,70)"/>',
-      '<rect x="123" y="67" width="6" height="6" fill="white" stroke="#555" stroke-width="0.5" transform="rotate(45,126,70)"/>',
-      // Wind arrow
-      arrow,
-      // CF / Home labels
-      '<text x="75" y="19" text-anchor="middle" font-size="9" fill="white" opacity="0.7" font-family="monospace">CF</text>',
-      '<text x="75" y="126" text-anchor="middle" font-size="9" fill="#666" font-family="monospace">HOME</text>',
-      '</svg>'
-    ].join('');
-  }
-
-  // ── Weather card for one game ──────────────────────────────────────────────
-  function renderWeatherCard(g, liveW) {
-    var w = liveW || g.weather || {};
-    var hasData = w.temp_f != null || w.wind_mph != null || w.condition;
-    var isDome = w.roof && /dome|closed|retract/i.test(w.roof);
-
-    var tempVal = w.temp_f != null ? w.temp_f + '&#176;F' : '—';
-    var tempClass = w.temp_f >= 85 ? 'hot' : w.temp_f <= 52 ? 'cold' : '';
-    var windVal = w.wind_mph != null ? (w.wind_mph + ' mph' + (w.wind_dir ? ' ' + w.wind_dir : '')) : '—';
-    var windClass = w.wind_mph >= 12 ? 'wind-strong' : w.wind_mph >= 7 ? 'wind-moderate' : '';
-    var humidity = w.humidity != null ? (w.humidity + '%') : '—';
-
-    var badges = '';
-    if (isDome) badges += '<span class="badge badge-dome">&#127968; DOME — No Weather</span>';
-    else {
-      if (w.wind_mph >= 12) badges += '<span class="badge badge-wind">&#128168; WIND FACTOR</span>';
-      if (w.temp_f >= 85)   badges += '<span class="badge badge-hot">&#x1F525; HOT</span>';
-      if (w.temp_f <= 52)   badges += '<span class="badge badge-cold">&#x1F9CA; COLD</span>';
-    }
-    if (liveW && liveW.live) badges += '<span style="font-size:10px;color:#1565c0;margin-left:4px">&#x25CF; LIVE</span>';
-
-    var gameLabel = esc(g.awayTeam) + ' @ ' + esc(g.homeTeam);
-    var venueLabel = esc(g.venueName || g.park || '');
-    var gameTime = g.gameTime ? (' &nbsp;&#183;&nbsp; ' + fmtTime(g.gameTime)) : '';
-
-    var fieldSvg = isDome
-      ? '<div style="width:150px;height:130px;display:flex;align-items:center;justify-content:center;background:#e8e8e8;border-radius:4px;font-size:10px;color:#888;text-align:center">DOME<br>No Wind</div>'
-      : renderFieldSVG(w.wind_dir, w.wind_mph);
-
-    var html = '<div class="weather-card">';
-    html += '<div class="weather-card-hdr">';
-    html += '<div class="weather-card-game">' + gameLabel + gameTime + '</div>';
-    if (venueLabel) html += '<div class="weather-card-venue">' + venueLabel + '</div>';
-    html += '</div>';
-
-    if (!hasData) {
-      html += '<div class="weather-no-data">Weather data unavailable</div>';
-    } else {
-      html += '<div class="weather-card-body">';
-      html += '<div class="weather-field-wrap">' + fieldSvg + '</div>';
-      html += '<div class="weather-stats">';
-      html += '<div class="ws-row"><span class="ws-lbl">TEMP</span><span class="ws-val ' + tempClass + '">' + tempVal + '</span></div>';
-      html += '<div class="ws-row"><span class="ws-lbl">WIND</span><span class="ws-val ' + windClass + '">' + windVal + '</span></div>';
-      html += '<div class="ws-row"><span class="ws-lbl">HUMIDITY</span><span class="ws-val">' + humidity + '</span></div>';
-      if (w.condition) html += '<div class="ws-row"><span class="ws-lbl">COND</span><span class="ws-val" style="font-size:11px">' + esc(w.condition) + '</span></div>';
-      html += '</div>'; // weather-stats
-      html += '</div>'; // weather-card-body
-    }
-
-    if (badges) html += '<div class="weather-card-badges">' + badges + '</div>';
-    html += '</div>'; // weather-card
-    return html;
-  }
-
-  // ── Weather Tab ────────────────────────────────────────────────────────────
-  function renderWeatherTab() {
-    var mc = document.getElementById('main-content');
-    if (typeof MATCHUPS_GAMES === 'undefined' || !MATCHUPS_GAMES.length) {
-      mc.innerHTML = '<div class="error-msg">No game data available.</div>';
-      return;
-    }
-    var html = '<div class="section-title" style="margin-top:2px">Park Weather — ' + esc(typeof MATCHUPS_LABEL !== 'undefined' ? MATCHUPS_LABEL : '') + '</div>';
-    html += '<div class="weather-grid">';
-    MATCHUPS_GAMES.forEach(function(g) {
-      var liveW = g.gamePk ? state.liveWeather[g.gamePk] : null;
-      html += renderWeatherCard(g, liveW);
+function pitcherTable(pitchers, tbl) {
+  if (!pitchers || !pitchers.length) return '<p style="color:#999;padding:8px">No pitcher data.</p>';
+  var rows = sortedRows(pitchers, tbl, 'pitcher_score');
+  var h = '<div class="table-wrap"><table><thead><tr>';
+  h += '<th class="' + thClass(tbl,'name') + '" onclick="sortClick(\'' + tbl + '\',\'name\')">PITCHER <span class="sort-arrow"></span></th>';
+  h += '<th class="' + thClass(tbl,'team') + '" onclick="sortClick(\'' + tbl + '\',\'team\')">TEAM <span class="sort-arrow"></span></th>';
+  h += '<th class="' + thClass(tbl,'opponentTeam') + '" onclick="sortClick(\'' + tbl + '\',\'opponentTeam\')">OPP <span class="sort-arrow"></span></th>';
+  h += '<th class="' + thClass(tbl,'throws') + '" onclick="sortClick(\'' + tbl + '\',\'throws\')">T <span class="sort-arrow"></span></th>';
+  PITCHER_COLS.forEach(function(c){ h += colTh(tbl, c); });
+  h += '</tr></thead><tbody>';
+  rows.forEach(function(p) {
+    h += '<tr><td>' + esc(p.name||'TBD') + '</td><td>' + esc(p.team||'') + '</td><td>' + esc(p.opponentTeam||'') + '</td><td>' + esc(p.throws||'R') + '</td>';
+    PITCHER_COLS.forEach(function(c) {
+      var v = p[c.key];
+      var bg = heatBg(v, c);
+      var disp = (v === null || v === undefined || v === '') ? '—' : (c.pct ? fmtPct(v) : fmt(v, c.d));
+      h += '<td style="' + bg + '">' + disp + '</td>';
     });
-    html += '</div>';
-    mc.innerHTML = html;
-  }
+    h += '</tr>';
+  });
+  h += '</tbody></table><div class="table-footer">' + rows.length + ' pitchers</div></div>';
+  return h;
+}
 
-  // ── Init & live weather fetch ──────────────────────────────────────────────
-  function init() {
-    var dateEl = document.getElementById('header-date');
-    if (typeof MATCHUPS_LABEL !== 'undefined') dateEl.textContent = MATCHUPS_LABEL;
-    else if (typeof MATCHUPS_DATE !== 'undefined') dateEl.textContent = MATCHUPS_DATE;
+function pitcherCard(pd, key) {
+  var cur = pitcherCardTabs[key] || 'summary';
+  var h = '<div class="card-sub-tabs">';
+  [{id:'summary',lbl:'Summary'},{id:'arsenal',lbl:'Arsenal'},{id:'zones',lbl:'Zones'}].forEach(function(t){
+    h += '<div class="card-sub-tab' + (cur===t.id?' active':'') + '" onclick="setPTab(\'' + key + '\',\'' + t.id + '\')">'+t.lbl+'</div>';
+  });
+  h += '</div>';
 
-    if (typeof MATCHUPS_GAMES === 'undefined' || !MATCHUPS_GAMES || !MATCHUPS_GAMES.length) {
-      document.getElementById('main-content').innerHTML = '<div class="error-msg">No matchup data available. Check that matchups_data.js is loaded.</div>';
-      return;
-    }
-
-    renderTabBar();
-    renderMain();
-    fetchLiveWeather();
-  }
-
-  function fetchLiveWeather() {
-    if (typeof MATCHUPS_GAMES === 'undefined') return;
-    var statusEl = document.getElementById('weather-status');
-    statusEl.textContent = '⟳ weather...';
-    var pending = 0, fetched = 0;
-    MATCHUPS_GAMES.forEach(function(g) {
-      var location = TEAM_CITY[g.homeTeam] || g.venueName || g.homeTeam;
-      if (!location) return;
-      pending++;
-      fetch('https://wttr.in/' + encodeURIComponent(location) + '?format=j1')
-        .then(function(r){ return r.json(); })
-        .then(function(data){
-          var c = data && data.current_condition && data.current_condition[0];
-          if (c) {
-            state.liveWeather[g.gamePk || g.homeTeam] = {
-              temp_f:    parseInt(c.temp_F),
-              wind_mph:  parseInt(c.windspeedMiles),
-              wind_dir:  c.winddir16Point,
-              condition: c.weatherDesc && c.weatherDesc[0] && c.weatherDesc[0].value,
-              humidity:  parseInt(c.humidity),
-              roof:      (g.weather && g.weather.roof) || null,
-              live:      true
-            };
-            fetched++;
-          }
-          if (--pending === 0) finishWeatherFetch(fetched);
-        })
-        .catch(function(){
-          if (--pending === 0) finishWeatherFetch(fetched);
-        });
-    });
-    if (!pending) statusEl.textContent = '';
-  }
-
-  function finishWeatherFetch(count) {
-    var statusEl = document.getElementById('weather-status');
-    statusEl.textContent = count > 0 ? ('&#x25CF; ' + count + ' live') : '';
-    if (state.currentTab === 'weather') renderMain();
-  }
-
-  // ── Tab Bar ────────────────────────────────────────────────────────────────
-  function renderTabBar() {
-    var html = '';
-    html += '<div class="tab tab-weather' + (state.currentTab === 'weather' ? ' active' : '') + '" onclick="selectTab(\'weather\')"><div class="tab-teams">&#127783; Weather</div></div>';
-    html += '<div class="tab' + (state.currentTab === 'slate' ? ' active' : '') + '" onclick="selectTab(\'slate\')"><div class="tab-teams">Slate Summary</div></div>';
-    MATCHUPS_GAMES.forEach(function(g, i) {
-      var t = fmtTime(g.gameTime);
-      html += '<div class="tab' + (state.currentTab === i ? ' active' : '') + '" onclick="selectTab(' + i + ')">';
-      html += '<div class="tab-teams">' + esc(g.awayTeam) + ' @ ' + esc(g.homeTeam) + '</div>';
-      if (t) html += '<div class="tab-time">' + t + '</div>';
-      html += '</div>';
-    });
-    document.getElementById('tab-bar').innerHTML = html;
-  }
-
-  function selectTab(id) {
-    state.currentTab = id;
-    state.subTab = 'matchup';
-    state.selectedAwayBatter = 0;
-    state.selectedHomeBatter = 0;
-    renderTabBar();
-    renderMain();
-  }
-
-  function renderMain() {
-    if (state.currentTab === 'weather') renderWeatherTab();
-    else if (state.currentTab === 'slate') renderSlateSummary();
-    else renderGameView(state.currentTab);
-  }
-
-  // ── Slate Summary ──────────────────────────────────────────────────────────
-  function renderSlateSummary() {
-    var mc = document.getElementById('main-content');
-    var html = '<div class="section-title">Top Arms Across The Slate</div>';
-    html += renderPitcherSlateTable();
-    html += '<div class="section-title">Top Slate Hitters</div>';
-    html += renderTopHittersTable();
-    mc.innerHTML = html;
-  }
-
-  function renderPitcherSlateTable() {
-    if (typeof PITCHERS_SLATE === 'undefined' || !PITCHERS_SLATE || !PITCHERS_SLATE.length)
-      return '<div class="error-msg">No pitcher slate data.</div>';
-
-    var data = sortBy(PITCHERS_SLATE, state.sortCol, state.sortDir);
-    var cols = ['pitcher_score','strikeout_score','xwoba','csw_pct','swstr_pct','ball_pct','pulled_barrel_pct','fb_pct','hard_hit_pct','oppo_pct'];
-    var hiGoodMap = {pitcher_score:true,strikeout_score:true,csw_pct:true,swstr_pct:true,fb_pct:true,xwoba:false,ball_pct:false,pulled_barrel_pct:false,hard_hit_pct:false,oppo_pct:false};
-    var colVals = {};
-    cols.forEach(function(c){ colVals[c] = PITCHERS_SLATE.map(function(p){ return p[c]; }); });
-
-    var defs = [
-      {k:'game',            lbl:'GAME',           s:'game',            fmt:function(p){ return getGameLabel(p); }, left:true},
-      {k:'name',            lbl:'PITCHER',         s:'name',            fmt:function(p){ return esc(p.name); }, left:true},
-      {k:'throws',          lbl:'HAND',            s:'throws',          fmt:function(p){ return esc(p.throws); }},
-      {k:'pitcher_score',   lbl:'P.SCORE',         s:'pitcher_score',   fmt:function(p){ return fmtDec(p.pitcher_score,3); }, col:'pitcher_score'},
-      {k:'strikeout_score', lbl:'K.SCORE',         s:'strikeout_score', fmt:function(p){ return fmtDec(p.strikeout_score,3); }, col:'strikeout_score'},
-      {k:'xwoba',           lbl:'xWOBA',           s:'xwoba',           fmt:function(p){ return fmtOdds(p.xwoba); }, col:'xwoba'},
-      {k:'csw_pct',         lbl:'CSW%',            s:'csw_pct',         fmt:function(p){ return fmtPct(p.csw_pct); }, col:'csw_pct'},
-      {k:'swstr_pct',       lbl:'SWSTR%',          s:'swstr_pct',       fmt:function(p){ return fmtPct(p.swstr_pct); }, col:'swstr_pct'},
-      {k:'ball_pct',        lbl:'BALL%',           s:'ball_pct',        fmt:function(p){ return fmtPct(p.ball_pct); }, col:'ball_pct'},
-      {k:'pulled_barrel_pct',lbl:'PULL.BRL%',      s:'pulled_barrel_pct',fmt:function(p){ return fmtPct(p.pulled_barrel_pct); }, col:'pulled_barrel_pct'},
-      {k:'fb_pct',          lbl:'FB%',             s:'fb_pct',          fmt:function(p){ return fmtPct(p.fb_pct); }, col:'fb_pct'},
-      {k:'hard_hit_pct',    lbl:'HARD.HIT%',       s:'hard_hit_pct',    fmt:function(p){ return fmtPct(p.hard_hit_pct); }, col:'hard_hit_pct'},
-      {k:'oppo_pct',        lbl:'OPPO%',           s:'oppo_pct',        fmt:function(p){ return fmtPct(p.oppo_pct); }, col:'oppo_pct'}
+  if (cur === 'summary') {
+    var sc = [
+      {l:'ERA', v:pd?fmt(pd.era,2):'—'},
+      {l:'WHIP',v:pd?fmt(pd.whip,2):'—'},
+      {l:'K/9', v:pd?fmt(pd.k9,1):'—'},
+      {l:'BB/9',v:pd?fmt(pd.bb9,1):'—'},
+      {l:'FIP', v:pd?fmt(pd.fip,2):'—'},
+      {l:'IP',  v:pd?fmt(pd.ip,1):'—'},
     ];
-
-    var html = '<div class="table-wrap"><table><thead><tr>';
-    defs.forEach(function(cd) {
-      var arrow = state.sortCol===cd.s ? (state.sortDir==='desc'?' ▼':' ▲') : '';
-      html += '<th' + (cd.left?' style="text-align:left"':'') + ' onclick="sortPitcherTable(\'' + cd.s + '\')">' + cd.lbl + '<span class="sort-indicator">' + arrow + '</span></th>';
-    });
-    html += '</tr></thead><tbody>';
-    data.forEach(function(p) {
-      html += '<tr>';
-      defs.forEach(function(cd) {
-        var style = cd.col ? percentileColor(p[cd.col], colVals[cd.col], hiGoodMap[cd.col]) : '';
-        html += '<td' + tdStyle(style, cd.left) + '>' + cd.fmt(p) + '</td>';
-      });
-      html += '</tr>';
-    });
-    html += '</tbody></table></div>';
-    return html;
-  }
-
-  function getGameLabel(p) {
-    if (!p.gameKey && !p.team) return '—';
-    var game = MATCHUPS_GAMES.find(function(g){ return g.gamePk==p.gameKey || g.awayTeam===p.team || g.homeTeam===p.team; });
-    return game ? esc(game.awayTeam)+'@'+esc(game.homeTeam) : esc(p.team||'')+'vs'+esc(p.opponentTeam||'');
-  }
-
-  function sortPitcherTable(col) {
-    state.sortDir = state.sortCol===col ? (state.sortDir==='desc'?'asc':'desc') : 'desc';
-    state.sortCol = col;
-    renderMain();
-  }
-
-  function renderTopHittersTable() {
-    var all = [];
-    MATCHUPS_GAMES.forEach(function(g, gi) {
-      (g.awayMatchups||[]).forEach(function(b){ all.push(Object.assign({},b,{vsPitcher:g.homePitcherName,_gl:g.awayTeam+'@'+g.homeTeam})); });
-      (g.homeMatchups||[]).forEach(function(b){ all.push(Object.assign({},b,{vsPitcher:g.awayPitcherName,_gl:g.awayTeam+'@'+g.homeTeam})); });
-    });
-    var sorted = sortBy(all, state.slateSort, state.slateSortDir).slice(0,10);
-
-    var defs = [
-      {k:'name',         lbl:'HITTER',      s:'name',         fmt:function(b){return esc(b.name);}, left:true},
-      {k:'team',         lbl:'TEAM',         s:'team',         fmt:function(b){return esc(b.team);}, left:true},
-      {k:'vsPitcher',    lbl:'VS PITCHER',   s:'vsPitcher',    fmt:function(b){return esc(b.vsPitcher);}, left:true},
-      {k:'matchup_score',lbl:'MATCHUP',      s:'matchup_score',fmt:function(b){return fmtDec(b.matchup_score,3);}, col:'matchup_score', hiGood:true},
-      {k:'ceiling',      lbl:'CEILING',      s:'ceiling',      fmt:function(b){return fmtDec(b.ceiling,3);}, col:'ceiling', hiGood:true},
-      {k:'zone_fit',     lbl:'ZONE FIT',     s:'zone_fit',     fmt:function(b){return fmtDec(b.zone_fit,3);}, col:'zone_fit', hiGood:true},
-      {k:'khr',          lbl:'KHR',          s:'khr',          fmt:function(b){return fmtDec(b.khr,3);}, col:'khr', hiGood:true},
-      {k:'iso',          lbl:'ISO',          s:'iso',          fmt:function(b){return fmtDec(b.iso,3);}, col:'iso', hiGood:true},
-      {k:'xwoba',        lbl:'xWOBA',        s:'xwoba',        fmt:function(b){return fmtOdds(b.xwoba);}, col:'xwoba', hiGood:true},
-      {k:'brl_bip_pct',  lbl:'BRL%',         s:'brl_bip_pct',  fmt:function(b){return fmtPct(b.brl_bip_pct);}, col:'brl_bip_pct', hiGood:true},
-      {k:'hh_pct',       lbl:'HH%',          s:'hh_pct',       fmt:function(b){return fmtPct(b.hh_pct);}, col:'hh_pct', hiGood:true},
-      {k:'likely',       lbl:'LIKELY',       s:'likely',       fmt:function(b){return fmtInt(b.likely);}, col:'likely', hiGood:true}
-    ];
-
-    var allVals = {};
-    defs.forEach(function(cd){ if (cd.col) allVals[cd.col] = all.map(function(b){ return b[cd.col]; }); });
-
-    var html = '<div class="table-wrap"><table><thead><tr>';
-    defs.forEach(function(cd) {
-      var arrow = state.slateSort===cd.s ? (state.slateSortDir==='desc'?' ▼':' ▲') : '';
-      html += '<th' + (cd.left?' style="text-align:left"':'') + ' onclick="sortTopHitters(\'' + cd.s + '\')">' + cd.lbl + '<span class="sort-indicator">' + arrow + '</span></th>';
-    });
-    html += '</tr></thead><tbody>';
-    sorted.forEach(function(b) {
-      html += '<tr>';
-      defs.forEach(function(cd) {
-        var style = (cd.col && allVals[cd.col]) ? percentileColor(b[cd.col], allVals[cd.col], cd.hiGood) : '';
-        html += '<td' + tdStyle(style, cd.left) + '>' + cd.fmt(b) + '</td>';
-      });
-      html += '</tr>';
-    });
-    html += '</tbody></table></div>';
-    return html;
-  }
-
-  function sortTopHitters(col) {
-    state.slateSortDir = state.slateSort===col ? (state.slateSortDir==='desc'?'asc':'desc') : 'desc';
-    state.slateSort = col;
-    renderMain();
-  }
-
-  // ── Game View ──────────────────────────────────────────────────────────────
-  function renderGameView(gameIdx) {
-    var g = MATCHUPS_GAMES[gameIdx];
-    if (!g) { document.getElementById('main-content').innerHTML = '<div class="error-msg">Game not found.</div>'; return; }
-
-    var t = fmtTime(g.gameTime);
-    var html = '';
-
-    html += '<div class="game-header"><div>';
-    html += '<strong>' + esc(g.awayTeam) + ' @ ' + esc(g.homeTeam) + '</strong>';
-    if (t)         html += ' &nbsp;|&nbsp; ' + esc(t);
-    if (g.park)    html += ' &nbsp;|&nbsp; ' + esc(g.park);
-    if (g.parkHrRank) html += ' (HR Park Rank: ' + esc(g.parkHrRank) + ')';
-    html += '</div><div style="font-size:11px;color:#888">';
-    html += esc(g.awayTeam) + ': <strong>' + esc(g.awayPitcherName||'TBD') + '</strong>';
-    html += ' &nbsp;|&nbsp; ';
-    html += esc(g.homeTeam) + ': <strong>' + esc(g.homePitcherName||'TBD') + '</strong>';
-    html += '</div></div>';
-
-    if (g.weather) {
-      var w = g.weather;
-      html += '<div class="weather-line">';
-      if (w.temp_f != null) html += '<span>' + w.temp_f + '&#176;F</span>';
-      if (w.wind_mph != null) {
-        html += '<span>' + w.wind_mph + ' mph ' + esc(w.wind_dir||'') + '</span>';
-        if (w.wind_mph >= 10) html += '<span class="badge badge-wind">&#128168; Wind Factor</span>';
-      }
-      if (w.condition) html += '<span>' + esc(w.condition) + '</span>';
-      if (w.roof && /dome|closed|retract/i.test(w.roof)) html += '<span class="badge badge-dome">&#127968; ' + esc(w.roof) + '</span>';
-      html += '</div>';
+    h += '<div class="stat-grid">';
+    sc.forEach(function(s){ h += '<div class="stat-item"><div class="stat-val">'+s.v+'</div><div class="stat-lbl">'+s.l+'</div></div>'; });
+    h += '</div>';
+    if (pd) {
+      h += '<div class="pitch-detail">';
+      if (pd.pitcher_score!=null) h += '<div>P.Score: <strong>'+fmt(pd.pitcher_score,1)+'</strong></div>';
+      if (pd.xwoba!=null)         h += '<div>xwOBA: <strong>'+fmt(pd.xwoba,3)+'</strong></div>';
+      if (pd.csw_pct!=null)       h += '<div>CSW%: <strong>'+fmtPct(pd.csw_pct)+'</strong></div>';
+      if (pd.swstr_pct!=null)     h += '<div>SwStr%: <strong>'+fmtPct(pd.swstr_pct)+'</strong></div>';
+      if (pd.hard_hit_pct!=null)  h += '<div>HH%: <strong>'+fmtPct(pd.hard_hit_pct)+'</strong></div>';
+      h += '</div>';
     }
-
-    var subTabs = [{id:'matchup',label:'Matchup'},{id:'rolling',label:'Rolling'},{id:'pitcher-zones',label:'Pitcher Zones'},{id:'hitter-zones',label:'Hitter Zones'},{id:'exports',label:'Exports'}];
-    html += '<div class="sub-tab-bar">';
-    subTabs.forEach(function(st) {
-      html += '<div class="sub-tab' + (state.subTab===st.id?' active':'') + '" onclick="selectSubTab(\'' + st.id + '\',' + gameIdx + ')">' + st.label + '</div>';
-    });
-    html += '</div>';
-
-    if      (state.subTab === 'matchup')       html += renderMatchupSubTab(g, gameIdx);
-    else if (state.subTab === 'rolling')       html += renderRollingSubTab(g, gameIdx);
-    else if (state.subTab === 'pitcher-zones') html += renderPitcherZonesSubTab(g, gameIdx);
-    else if (state.subTab === 'hitter-zones')  html += renderHitterZonesSubTab(g, gameIdx);
-    else if (state.subTab === 'exports')       html += renderExportsSubTab(g, gameIdx);
-
-    document.getElementById('main-content').innerHTML = html;
-  }
-
-  function selectSubTab(tabId, gameIdx) {
-    state.subTab = tabId;
-    state.selectedAwayBatter = 0;
-    state.selectedHomeBatter = 0;
-    renderGameView(gameIdx);
-  }
-
-  // ── Matchup Sub-tab (both teams on same page) ──────────────────────────────
-  function renderMatchupSubTab(g, gameIdx) {
-    var awayMatchups = g.awayMatchups || [];
-    var homeMatchups = g.homeMatchups || [];
-    var html = '';
-
-    // Best Matchups — combined top 6
-    var combined = [];
-    awayMatchups.forEach(function(b){ combined.push(Object.assign({},b,{_side:'away',_vsp:g.homePitcherName})); });
-    homeMatchups.forEach(function(b){ combined.push(Object.assign({},b,{_side:'home',_vsp:g.awayPitcherName})); });
-    var top6 = sortBy(combined, 'matchup_score', 'desc').slice(0, 6);
-
-    html += '<div class="section-title">&#9733; Best Matchups — Combined</div>';
-    html += renderBatterTable(top6, 'best', gameIdx, true);
-
-    html += '<div class="legend">';
-    html += '<span class="sample-high">&#9679; High PA (&gt;300)</span> &nbsp;';
-    html += '<span class="sample-medium">&#9679; Medium (150-300)</span> &nbsp;';
-    html += '<span class="sample-thin">&#9679; Thin (75-150)</span> &nbsp;';
-    html += '<span class="sample-very-thin">&#9679; Very Thin (&lt;75)</span>';
-    html += '</div>';
-
-    // Pitcher cards
-    html += '<div class="section-title">Pitchers</div>';
-    html += '<div class="pitcher-cards">';
-    html += renderPitcherCard(g.awayPitcherId, g.awayPitcherName, g.awayTeam, g.awayThrows);
-    html += renderPitcherCard(g.homePitcherId, g.homePitcherName, g.homeTeam, g.homeThrows);
-    html += '</div>';
-
-    html += '<hr class="section-divider">';
-
-    // Away batters section
-    html += '<div class="section-title">' + esc(g.awayTeam) + ' Batters &mdash; vs ' + esc(g.homePitcherName||g.homeTeam+' P') + '</div>';
-    if (!awayMatchups.length) {
-      html += '<div class="error-msg">No away batter data.</div>';
+  } else if (cur === 'arsenal') {
+    var ars = (pd && pd.arsenal) ? pd.arsenal : [];
+    if (!ars.length) {
+      h += '<div style="color:#999;font-size:11px;padding:8px 0">No arsenal data.</div>';
     } else {
-      html += renderBatterTable(awayMatchups, 'away', gameIdx, false);
-    }
-
-    html += '<hr class="section-divider">';
-
-    // Home batters section
-    html += '<div class="section-title">' + esc(g.homeTeam) + ' Batters &mdash; vs ' + esc(g.awayPitcherName||g.awayTeam+' P') + '</div>';
-    if (!homeMatchups.length) {
-      html += '<div class="error-msg">No home batter data.</div>';
-    } else {
-      html += renderBatterTable(homeMatchups, 'home', gameIdx, false);
-    }
-
-    return html;
-  }
-
-  function renderBatterTable(matchups, side, gameIdx, showTeam) {
-    if (!matchups || !matchups.length) return '<div class="error-msg">No data.</div>';
-
-    var mVals  = matchups.map(function(b){ return b.matchup_score; });
-    var cVals  = matchups.map(function(b){ return b.ceiling; });
-    var pbVals = matchups.map(function(b){ return b.pull_brl_pct; });
-    var bbVals = matchups.map(function(b){ return b.brl_bip_pct; });
-    var fbVals = matchups.map(function(b){ return b.fb_pct; });
-    var hhVals = matchups.map(function(b){ return b.hh_pct; });
-    var khrVals= matchups.map(function(b){ return b.khr; });
-    var isoVals= matchups.map(function(b){ return b.iso; });
-    var xwVals = matchups.map(function(b){ return b.xwoba; });
-
-    var sortKey = side === 'away' ? state.awayBatterSort : (side === 'home' ? state.homeBatterSort : 'matchup_score');
-    var sortDir = side === 'away' ? state.awayBatterDir  : (side === 'home' ? state.homeBatterDir  : 'desc');
-    var sorted  = (side === 'best') ? matchups : sortBy(matchups, sortKey, sortDir);
-
-    var headers = ['HITTER'];
-    if (showTeam) headers.push('TEAM');
-    headers = headers.concat(['MATCHUP','CEILING','ZONE FIT','KHR','HR FORM','PIT','BIP','ISO','xWOBA','xWOBAC','SWSTR%','PULLBRL%','BRL%','FB%','HH%','LA','LIKELY']);
-    var sortKeys = ['name'];
-    if (showTeam) sortKeys.push('team');
-    sortKeys = sortKeys.concat(['matchup_score','ceiling','zone_fit','khr','hr_form','pit','bip','iso','xwoba','xwobac','swstr_pct','pull_brl_pct','brl_bip_pct','fb_pct','hh_pct','la','likely']);
-
-    var html = '<div class="table-wrap"><table><thead><tr>';
-    headers.forEach(function(h, i) {
-      var sk = sortKeys[i];
-      var isActive = (side!=='best') && (sortKey===sk);
-      var arrow = isActive ? (sortDir==='desc'?' ▼':' ▲') : '';
-      var onclick = (side!=='best' && sk!=='pit' && sk!=='bip') ? ' onclick="sortBatterTable(\'' + side + '\',\'' + sk + '\',' + gameIdx + ')"' : '';
-      var align = (i===0||(showTeam&&i===1)) ? ' style="text-align:left"' : '';
-      html += '<th' + align + onclick + '>' + h + '<span class="sort-indicator">' + arrow + '</span></th>';
-    });
-    html += '</tr></thead><tbody>';
-
-    sorted.forEach(function(b) {
-      var bip = b.bip || 0;
-      var nameClass = bip>300?'sample-high':bip>=150?'sample-medium':bip>=75?'sample-thin':'sample-very-thin';
-      var trendIcon='', trendClass='trend-neutral';
-      if (b.hr_form_trend==='up'){trendIcon=' &#8679;';trendClass='trend-up';}
-      else if (b.hr_form_trend==='down'){trendIcon=' &#8681;';trendClass='trend-down';}
-      else {trendIcon=' &#8594;';}
-      var hrFormCell = (b.hr_form!=null?b.hr_form:'—') + '<span class="' + trendClass + '">' + trendIcon + '</span>';
-
-      var mStyle  = percentileColor(b.matchup_score, mVals,  true);
-      var cStyle  = percentileColor(b.ceiling,       cVals,  true);
-      var zStyle  = b.zone_fit > 0.12 ? 'background:#c8f5c8' : b.zone_fit < 0.06 ? 'background:#ffc8c8' : '';
-      var kStyle  = percentileColor(b.khr,           khrVals,true);
-      var iStyle  = percentileColor(b.iso,           isoVals,true);
-      var xwStyle = percentileColor(b.xwoba,         xwVals, true);
-      var xcStyle = getColumnColor(b.xwobac, 'xwobac');
-      var swStyle = getColumnColor(b.swstr_pct, 'swstr_pct');
-      var pbStyle = percentileColor(b.pull_brl_pct, pbVals, true);
-      var bbStyle = percentileColor(b.brl_bip_pct, bbVals, true);
-      var fbStyle = percentileColor(b.fb_pct,      fbVals, true);
-      var hhStyle = percentileColor(b.hh_pct,      hhVals, true);
-      var laStyle = (b.la>=10&&b.la<=22)?'background:#c8f5c8':(b.la<5||b.la>28)?'background:#ffc8c8':'';
-      var liStyle = getColumnColor(b.likely, 'likely');
-
-      html += '<tr>';
-      html += '<td style="text-align:left"><span class="' + nameClass + '">' + esc(b.name) + '</span></td>';
-      if (showTeam) html += '<td style="text-align:left">' + esc(b.team||b._side||'') + '</td>';
-      html += '<td' + (mStyle  ? ' style="'+mStyle+'"'  : '') + '>' + fmtDec(b.matchup_score,3) + '</td>';
-      html += '<td' + (cStyle  ? ' style="'+cStyle+'"'  : '') + '>' + fmtDec(b.ceiling,3) + '</td>';
-      html += '<td' + (zStyle  ? ' style="'+zStyle+'"'  : '') + '>' + fmtDec(b.zone_fit,3) + '</td>';
-      html += '<td' + (kStyle  ? ' style="'+kStyle+'"'  : '') + '>' + fmtDec(b.khr,3) + '</td>';
-      html += '<td>' + hrFormCell + '</td>';
-      html += '<td>' + fmtInt(b.pit)  + '</td>';
-      html += '<td>' + fmtInt(b.bip)  + '</td>';
-      html += '<td' + (iStyle  ? ' style="'+iStyle+'"'  : '') + '>' + fmtDec(b.iso,3) + '</td>';
-      html += '<td' + (xwStyle ? ' style="'+xwStyle+'"' : '') + '>' + fmtOdds(b.xwoba) + '</td>';
-      html += '<td' + (xcStyle ? ' style="'+xcStyle+'"' : '') + '>' + fmtOdds(b.xwobac) + '</td>';
-      html += '<td' + (swStyle ? ' style="'+swStyle+'"' : '') + '>' + fmtPct(b.swstr_pct) + '</td>';
-      html += '<td' + (pbStyle ? ' style="'+pbStyle+'"' : '') + '>' + fmtPct(b.pull_brl_pct) + '</td>';
-      html += '<td' + (bbStyle ? ' style="'+bbStyle+'"' : '') + '>' + fmtPct(b.brl_bip_pct) + '</td>';
-      html += '<td' + (fbStyle ? ' style="'+fbStyle+'"' : '') + '>' + fmtPct(b.fb_pct) + '</td>';
-      html += '<td' + (hhStyle ? ' style="'+hhStyle+'"' : '') + '>' + fmtPct(b.hh_pct) + '</td>';
-      html += '<td' + (laStyle ? ' style="'+laStyle+'"' : '') + '>' + (b.la!=null ? fmtDec(b.la,1)+'&#176;' : '—') + '</td>';
-      html += '<td' + (liStyle ? ' style="'+liStyle+'"' : '') + '>' + fmtInt(b.likely) + '</td>';
-      html += '</tr>';
-    });
-
-    html += '</tbody></table></div>';
-    return html;
-  }
-
-  function sortBatterTable(side, col, gameIdx) {
-    if (side === 'away') {
-      state.awayBatterDir = state.awayBatterSort===col ? (state.awayBatterDir==='desc'?'asc':'desc') : 'desc';
-      state.awayBatterSort = col;
-    } else {
-      state.homeBatterDir = state.homeBatterSort===col ? (state.homeBatterDir==='desc'?'asc':'desc') : 'desc';
-      state.homeBatterSort = col;
-    }
-    renderGameView(gameIdx);
-  }
-
-  // ── Pitcher Card ───────────────────────────────────────────────────────────
-  function renderPitcherCard(pitcherId, pitcherName, team, throws) {
-    var pid = String(pitcherId||'');
-    var pd  = (typeof PITCHERS_BY_ID !== 'undefined' && PITCHERS_BY_ID && pid) ? PITCHERS_BY_ID[pid] : null;
-    var tabKey = 'pc-' + pid;
-    if (!state.pitcherCardTab[tabKey]) state.pitcherCardTab[tabKey] = 'summary';
-    var activeTab = state.pitcherCardTab[tabKey];
-
-    var html = '<div class="pitcher-card">';
-    html += '<div class="pitcher-card-name">' + esc(pitcherName||(pd&&pd.name)||'TBD') + '</div>';
-    html += '<div class="pitcher-card-sub">' + esc(team||(pd&&pd.team)||'') + ' &nbsp;|&nbsp; THROWS: ' + esc(throws||(pd&&pd.throws)||'—') + '</div>';
-
-    html += '<div class="card-sub-tabs">';
-    html += '<div class="card-sub-tab' + (activeTab==='summary'?' active':'') + '" onclick="selectPitcherCardTab(\'' + tabKey + '\',\'summary\')">Summary</div>';
-    html += '<div class="card-sub-tab' + (activeTab==='arsenal'?' active':'') + '" onclick="selectPitcherCardTab(\'' + tabKey + '\',\'arsenal\')">Arsenal</div>';
-    html += '</div>';
-
-    if (activeTab === 'summary') {
-      var stats = [{lbl:'ERA',val:pd?safe(pd.era):'—'},{lbl:'WHIP',val:pd?safe(pd.whip):'—'},{lbl:'K/9',val:pd?safe(pd.k9):'—'},{lbl:'BB/9',val:pd?safe(pd.bb9):'—'},{lbl:'FIP',val:pd?safe(pd.fip):'—'},{lbl:'xFIP',val:pd?safe(pd.xfip):'—'}];
-      html += '<div class="stat-grid">';
-      stats.forEach(function(s){ html += '<div class="stat-item"><div class="stat-val">' + esc(String(s.val)) + '</div><div class="stat-lbl">' + s.lbl + '</div></div>'; });
-      html += '</div>';
-      if (pd) {
-        html += '<div style="margin-top:8px;font-size:11px;">';
-        if (pd.pitcher_score != null) html += '<div>P.Score: <strong>' + fmtDec(pd.pitcher_score,3) + '</strong></div>';
-        if (pd.xwoba != null)         html += '<div>xWOBA: <strong>' + fmtOdds(pd.xwoba) + '</strong></div>';
-        if (pd.csw_pct != null)       html += '<div>CSW%: <strong>' + fmtPct(pd.csw_pct) + '</strong></div>';
-        if (pd.swstr_pct != null)     html += '<div>SwStr%: <strong>' + fmtPct(pd.swstr_pct) + '</strong></div>';
-        if (pd.hard_hit_pct != null)  html += '<div>Hard Hit%: <strong>' + fmtPct(pd.hard_hit_pct) + '</strong></div>';
-        html += '</div>';
-      }
-    } else {
-      var arsenal = (pd && pd.arsenal) ? pd.arsenal : [];
-      if (!arsenal.length) {
-        html += '<div style="color:#999;font-size:11px;padding:8px 0">No arsenal data available.</div>';
-      } else {
-        html += '<div class="table-wrap" style="margin:0"><table><thead><tr>';
-        ['PITCH TYPE','USAGE%','VELO','SPIN','RV/100','WHIFF%','xWOBA'].forEach(function(h, i){ html += '<th' + (i===0?' style="text-align:left"':'') + '>' + h + '</th>'; });
-        html += '</tr></thead><tbody>';
-        arsenal.forEach(function(p) {
-          var rvStyle = p.run_value != null ? (p.run_value < 0 ? ' style="background:#c8f5c8"' : p.run_value > 0 ? ' style="background:#ffc8c8"' : '') : '';
-          html += '<tr>';
-          html += '<td style="text-align:left">' + esc(p.pitch_name||p.abbrev||'?') + '</td>';
-          html += '<td>' + fmtPct(p.pct) + '</td>';
-          html += '<td>' + (p.velo!=null?fmtDec(p.velo,1):'—') + '</td>';
-          html += '<td>' + (p.spin!=null?fmtInt(p.spin):'—') + '</td>';
-          html += '<td' + rvStyle + '>' + (p.run_value!=null?fmtDec(p.run_value,1):'—') + '</td>';
-          html += '<td>' + fmtPct(p.whiff_pct) + '</td>';
-          html += '<td>' + fmtOdds(p.xwoba) + '</td>';
-          html += '</tr>';
-        });
-        html += '</tbody></table></div>';
-      }
-    }
-
-    html += '</div>';
-    return html;
-  }
-
-  function selectPitcherCardTab(tabKey, tab) {
-    state.pitcherCardTab[tabKey] = tab;
-    renderMain();
-  }
-
-  // ── Rolling Sub-tab ────────────────────────────────────────────────────────
-  function renderRollingSubTab(g, gameIdx) {
-    var html = '<div class="rolling-note">Season stats — L30 requires separate API query.</div>';
-
-    var renderSide = function(matchups, label) {
-      if (!matchups || !matchups.length) return '<div class="error-msg">No data for ' + label + '</div>';
-      var top3 = sortBy(matchups, 'matchup_score', 'desc').slice(0,3);
-      var out = '<div class="section-title">' + esc(label) + '</div>';
-      out += '<div class="table-wrap"><table><thead><tr>';
-      ['PLAYER','PA','ISO','xWOBA','BARREL%','HARD HIT%','FB%','PULL%'].forEach(function(h,i){ out += '<th' + (i===0?' style="text-align:left"':'') + '>' + h + '</th>'; });
-      out += '</tr></thead><tbody>';
-      top3.forEach(function(b) {
-        var bd = (typeof BATTERS_BY_ID!=='undefined'&&BATTERS_BY_ID) ? BATTERS_BY_ID[String(b.batterId||'')] : null;
-        out += '<tr>';
-        out += '<td style="text-align:left"><strong>' + esc(b.name) + '</strong></td>';
-        out += '<td>' + fmtInt(b.bip||(bd&&bd.pa)) + '</td>';
-        out += '<td>' + fmtDec(b.iso,3) + '</td>';
-        out += '<td>' + fmtOdds(b.xwoba) + '</td>';
-        out += '<td>' + fmtPct(b.brl_bip_pct) + '</td>';
-        out += '<td>' + fmtPct(b.hh_pct) + '</td>';
-        out += '<td>' + fmtPct(b.fb_pct) + '</td>';
-        out += '<td>' + (bd&&bd.pull_pct?fmtPct(bd.pull_pct):'—') + '</td>';
-        out += '</tr>';
+      h += '<div class="table-wrap" style="margin:0"><table class="arsenal-table"><thead><tr>';
+      ['PITCH','USE%','VELO','SPIN','RV/100','WHIFF%','xwOBA'].forEach(function(lbl,i){
+        h += '<th'+(i===0?' style="text-align:left"':'')+'>'+lbl+'</th>';
       });
-      out += '</tbody></table></div>';
-      return out;
-    };
-
-    html += renderSide(g.awayMatchups, esc(g.awayTeam) + ' Batters (vs ' + esc(g.homePitcherName||'TBD') + ')');
-    html += renderSide(g.homeMatchups, esc(g.homeTeam) + ' Batters (vs ' + esc(g.awayPitcherName||'TBD') + ')');
-    return html;
-  }
-
-  // ── Zone Heat Map ──────────────────────────────────────────────────────────
-  function renderZoneHeatMap(zones, type, title) {
-    var allZero = !zones || zones.every(function(v){ return !v || v===0; });
-    var html = '<div class="zone-map"><div class="zone-title">' + esc(title) + '</div>';
-    if (allZero) {
-      html += '<div class="zone-na">Zone data unavailable</div></div>';
-      return html;
-    }
-
-    var cellSize = 72, shadow = 36;
-    var W = cellSize*3 + shadow*2, H = cellSize*3 + shadow*2;
-    var maxVal = type==='pitcher' ? Math.max.apply(null, zones.filter(function(v){return v;})) : 1;
-
-    function cellColor(val) {
-      if (val==null||isNaN(val)) return '#f5f5f5';
-      if (type==='pitcher') {
-        var r = maxVal>0 ? val/maxVal : 0;
-        return 'rgb('+Math.round(21+(227-21)*(1-r))+','+Math.round(101+(242-101)*(1-r))+','+Math.round(192+(253-192)*(1-r))+')';
-      }
-      if (val < 0.200) return '#2196f3';
-      if (val < 0.300) return '#64b5f6';
-      if (val < 0.380) return '#fff9c4';
-      if (val < 0.450) return '#ff9800';
-      return '#f44336';
-    }
-
-    function fmtVal(val) {
-      if (val==null||isNaN(val)||val===0) return '';
-      return type==='pitcher' ? fmtPct(val) : fmtOdds(val);
-    }
-
-    html += '<svg width="' + W + '" height="' + H + '" style="border:1px solid #ccc;background:#fafafa">';
-
-    // Shadow cells
-    for (var sc=0;sc<3;sc++) {
-      var sx=shadow+sc*cellSize;
-      html += '<rect x="'+sx+'" y="0" width="'+cellSize+'" height="'+shadow+'" fill="#f0f0f0" stroke="#ddd"/>';
-      html += '<rect x="'+sx+'" y="'+(shadow+3*cellSize)+'" width="'+cellSize+'" height="'+shadow+'" fill="#f0f0f0" stroke="#ddd"/>';
-    }
-    for (var sr=0;sr<3;sr++) {
-      var sy=shadow+sr*cellSize;
-      html += '<rect x="0" y="'+sy+'" width="'+shadow+'" height="'+cellSize+'" fill="#f0f0f0" stroke="#ddd"/>';
-      html += '<rect x="'+(shadow+3*cellSize)+'" y="'+sy+'" width="'+shadow+'" height="'+cellSize+'" fill="#f0f0f0" stroke="#ddd"/>';
-    }
-    // Corners
-    [[0,0],[shadow+3*cellSize,0],[0,shadow+3*cellSize],[shadow+3*cellSize,shadow+3*cellSize]].forEach(function(pt){
-      html += '<rect x="'+pt[0]+'" y="'+pt[1]+'" width="'+shadow+'" height="'+shadow+'" fill="#e8e8e8" stroke="#ddd"/>';
-    });
-
-    // Strike zone 3×3
-    for (var row=0;row<3;row++) {
-      for (var col=0;col<3;col++) {
-        var zi = row*3+col;
-        var val = zones && zones[zi]!=null ? zones[zi] : null;
-        var cx2 = shadow+col*cellSize, cy2 = shadow+row*cellSize;
-        var color = cellColor(val);
-        var textColor = (type==='batter'&&val>=0.380)?'#fff':'#333';
-        html += '<rect x="'+cx2+'" y="'+cy2+'" width="'+cellSize+'" height="'+cellSize+'" fill="'+color+'" stroke="#999"/>';
-        html += '<text x="'+(cx2+4)+'" y="'+(cy2+12)+'" font-size="9" fill="'+textColor+'" opacity="0.45">'+(zi+1)+'</text>';
-        if (val!=null&&val!==0) {
-          html += '<text x="'+(cx2+cellSize/2)+'" y="'+(cy2+cellSize/2+5)+'" text-anchor="middle" font-size="12" font-weight="600" fill="'+textColor+'">'+fmtVal(val)+'</text>';
-        }
-      }
-    }
-
-    html += '</svg>';
-
-    if (type==='batter') {
-      html += '<div class="zone-legend">';
-      [['#2196f3','<.200'],['#64b5f6','.200-.300'],['#fff9c4','.300-.380'],['#ff9800','.380-.450'],['#f44336','>.450']].forEach(function(pair){
-        html += '<div class="zone-legend-item"><div class="zone-legend-swatch" style="background:'+pair[0]+'"></div><span>'+pair[1]+'</span></div>';
+      h += '</tr></thead><tbody>';
+      ars.forEach(function(p) {
+        var rvbg = p.run_value!=null ? (p.run_value<0?'background:rgba(80,200,80,0.45)':p.run_value>0?'background:rgba(240,80,80,0.45)':'') : '';
+        h += '<tr><td style="text-align:left">'+esc(p.pitch_name||p.abbrev||'?')+'</td>';
+        h += '<td>'+(p.usage_pct!=null?parseFloat(p.usage_pct).toFixed(1)+'%':'—')+'</td>';
+        h += '<td>'+(p.avg_speed!=null?parseFloat(p.avg_speed).toFixed(1):'—')+'</td>';
+        h += '<td>'+(p.avg_spin!=null?Math.round(p.avg_spin):p.spin!=null?Math.round(p.spin):'—')+'</td>';
+        h += '<td style="'+rvbg+'">'+(p.run_value!=null?parseFloat(p.run_value).toFixed(1):'—')+'</td>';
+        h += '<td>'+(p.whiff_pct!=null&&p.whiff_pct!==0?parseFloat(p.whiff_pct).toFixed(1)+'%':'—')+'</td>';
+        h += '<td>'+(p.xwoba!=null&&p.xwoba!==0?parseFloat(p.xwoba).toFixed(3):'—')+'</td>';
+        h += '</tr>';
       });
-      html += '</div>';
-    } else {
-      html += '<div class="zone-legend">';
-      html += '<div class="zone-legend-item"><div class="zone-legend-swatch" style="background:#e3f2fd"></div><span>Low%</span></div>';
-      html += '<div class="zone-legend-item"><div class="zone-legend-swatch" style="background:#1565c0"></div><span>High%</span></div>';
-      html += '</div>';
+      h += '</tbody></table></div>';
     }
+  } else {
+    var zones = (pd && pd.zones) ? pd.zones : [];
+    h += zoneGrid(zones, pd ? pd.name+' (pitcher)' : 'Pitcher Zone');
+  }
+  return h;
+}
 
-    html += '</div>';
-    return html;
+function setPTab(key, tab) { pitcherCardTabs[key] = tab; renderMain(); }
+
+function zoneGrid(zones, label) {
+  if (!zones || zones.every(function(v){ return !v; })) return '<div style="color:#999;font-size:11px">No zone data</div>';
+  var valid = zones.filter(function(v){ return v>0; });
+  var mn = Math.min.apply(null, valid), mx = Math.max.apply(null, valid);
+  var h = '<div><div class="zone-label">'+esc(label)+'</div><div class="zone-grid">';
+  for (var i = 0; i < 9; i++) {
+    var v = zones[i] || 0;
+    var t = (mx > mn && v > 0) ? (v - mn) / (mx - mn) : 0;
+    var bg = v > 0 ? heatBg(t, {min:0,max:1,invert:false}) : 'background:#f5f5f5';
+    h += '<div class="zone-cell" style="'+bg+'">'+(v > 0 ? parseFloat(v).toFixed(2) : '')+'</div>';
+  }
+  h += '</div></div>';
+  return h;
+}
+
+function exportCSV(batters, gameKey) {
+  var hdr = ['Name','Stands','MScore','KHR','Ceiling','ZoneFit','xwOBAvP','ISO','HH%','BRL%','PullBRL%','FB%','SwStr%','LA','Likely','HRForm'];
+  var rows = batters.map(function(b) {
+    return [
+      '"'+(b.name||'')+'"', b.stands||'R',
+      b.matchup_score!=null?parseFloat(b.matchup_score).toFixed(2):'',
+      b.khr!=null?parseFloat(b.khr).toFixed(1):'',
+      b.ceiling!=null?parseFloat(b.ceiling).toFixed(1):'',
+      b.zone_fit!=null?parseFloat(b.zone_fit).toFixed(3):'',
+      b.xwobac!=null?parseFloat(b.xwobac).toFixed(3):'',
+      b.iso!=null?parseFloat(b.iso).toFixed(3):'',
+      b.hh_pct!=null?parseFloat(b.hh_pct).toFixed(1)+'%':'',
+      b.brl_bip_pct!=null?parseFloat(b.brl_bip_pct).toFixed(1)+'%':'',
+      b.pull_brl_pct!=null?parseFloat(b.pull_brl_pct).toFixed(1)+'%':'',
+      b.fb_pct!=null?parseFloat(b.fb_pct).toFixed(1)+'%':'',
+      b.swstr_pct!=null?parseFloat(b.swstr_pct).toFixed(1)+'%':'',
+      b.la!=null?parseFloat(b.la).toFixed(1):'',
+      b.likely!=null?parseInt(b.likely):'',
+      b.hr_form||'',
+    ].join(',');
+  });
+  var csv = [hdr.join(',')].concat(rows).join('\n');
+  var blob = new Blob([csv],{type:'text/csv'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href=url; a.download='matchups-'+gameKey+'.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function buildTabBar() {
+  var games = gamesData();
+  var h = '';
+  h += '<div class="tab'+(activeTab==='slate'?' active':'')+'", onclick="setTab(\'slate\')">';
+  h += '<div class="tab-teams">&#128202; Slate Summary</div></div>';
+  games.forEach(function(g,i) {
+    var id = 'game-'+i;
+    var live = isGameLive(g);
+    var liveBadge = live ? ' <span class="badge badge-live">LIVE</span>' : '';
+    h += '<div class="tab'+(activeTab===id?' active':'')+(live?' tab-live':'')+'", onclick="setTab(\''+id+'\')">';
+    h += '<div class="tab-teams">'+esc(g.awayTeam)+' @ '+esc(g.homeTeam)+liveBadge+'</div>';
+    h += '<div class="tab-time">'+fmtTime(g.gameTime)+'</div></div>';
+  });
+  h += '<div class="tab'+(activeTab==='weather'?' active':'')+'", onclick="setTab(\'weather\')">'
+  h += '<div class="tab-teams">&#127780; Weather</div></div>';
+  document.getElementById('tab-bar').innerHTML = h;
+}
+
+function setTab(id) { activeTab = id; buildTabBar(); renderMain(); }
+
+function slateView() {
+  var ps = pitchersData();
+  var games = gamesData();
+  var allBatters = [];
+  games.forEach(function(g){ (g.awayMatchups||[]).concat(g.homeMatchups||[]).forEach(function(b){ allBatters.push(b); }); });
+  var h = '';
+  h += '<h2 class="section-title">Top Slate Pitchers <span class="row-count">'+ps.length+' pitchers</span></h2>';
+  h += pitcherTable(ps, 'slate-pitchers');
+  h += '<h2 class="section-title">Top Slate Hitters <span class="row-count">'+allBatters.length+' rows</span></h2>';
+  h += batterTable(allBatters, 'slate-batters');
+  return h;
+}
+
+function windDirFromStr(dir) {
+  if (!dir) return null;
+  dir = String(dir).trim().toUpperCase();
+  var map = {N:0,NNE:22.5,NE:45,ENE:67.5,E:90,ESE:112.5,SE:135,SSE:157.5,
+             S:180,SSW:202.5,SW:225,WSW:247.5,W:270,WNW:292.5,NW:315,NNW:337.5};
+  if (map[dir] !== undefined) return map[dir];
+  var n = parseFloat(dir);
+  if (!isNaN(n)) return n;
+  if (dir.indexOf('OUT')>=0 && dir.indexOf('CF')>=0) return 180;
+  if (dir.indexOf('IN')>=0  && dir.indexOf('CF')>=0) return 0;
+  if (dir.indexOf('OUT')>=0 && dir.indexOf('LF')>=0) return 135;
+  if (dir.indexOf('OUT')>=0 && dir.indexOf('RF')>=0) return 225;
+  return null;
+}
+
+function renderWindArrow(windDir, windMph) {
+  var fromDeg = windDirFromStr(windDir);
+  if (fromDeg === null || !windMph) return '';
+  var toDeg = (fromDeg + 180) % 360;
+  var color = windMph >= 12 ? '#e65100' : windMph >= 7 ? '#f57f17' : '#78909c';
+  var cx = 75, cy = 60, len = 22;
+  return [
+    '<g transform="rotate('+toDeg+','+cx+','+cy+')" opacity="0.9">',
+    '<line x1="'+cx+'" y1="'+(cy+len/2)+'" x2="'+cx+'" y2="'+(cy-len/2)+'" stroke="'+color+'" stroke-width="3" stroke-linecap="round"/>',
+    '<polygon points="'+cx+','+(cy-len/2-7)+' '+(cx-5)+','+(cy-len/2+2)+' '+(cx+5)+','+(cy-len/2+2)+'" fill="'+color+'"/>',
+    '</g>'
+  ].join('');
+}
+
+function renderFieldSVG(windDir, windMph) {
+  var arrow = renderWindArrow(windDir, windMph);
+  return [
+    '<svg width="150" height="130" viewBox="0 0 150 130" style="display:block">',
+    '<path d="M 75,112 L 10,52 Q 75,4 140,52 Z" fill="#2e7d32" opacity="0.75"/>',
+    '<path d="M 75,112 L 14,55 Q 75,7 136,55 Z" fill="none" stroke="#c4954a" stroke-width="4" opacity="0.4"/>',
+    '<polygon points="75,110 23,70 75,30 127,70" fill="#c4954a" opacity="0.85"/>',
+    '<polygon points="75,96 40,70 75,44 110,70" fill="#388e3c" opacity="0.9"/>',
+    '<circle cx="75" cy="70" r="5" fill="#b8863c" stroke="#8a6028" stroke-width="1"/>',
+    '<line x1="75" y1="110" x2="23" y2="70" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>',
+    '<line x1="75" y1="110" x2="127" y2="70" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>',
+    '<rect x="72" y="107" width="6" height="6" fill="white" stroke="#555" stroke-width="0.5"/>',
+    '<rect x="72" y="27" width="6" height="6" fill="white" stroke="#555" stroke-width="0.5"/>',
+    '<rect x="19" y="67" width="6" height="6" fill="white" stroke="#555" stroke-width="0.5" transform="rotate(45,22,70)"/>',
+    '<rect x="123" y="67" width="6" height="6" fill="white" stroke="#555" stroke-width="0.5" transform="rotate(45,126,70)"/>',
+    arrow,
+    '<text x="75" y="19" text-anchor="middle" font-size="9" fill="white" opacity="0.7" font-family="monospace">CF</text>',
+    '<text x="75" y="126" text-anchor="middle" font-size="9" fill="#666" font-family="monospace">HOME</text>',
+    '</svg>'
+  ].join('');
+}
+
+function renderWeatherCard(g) {
+  var w = g.weather || {};
+  var hasData = w.temp_f != null || w.wind_mph != null || w.condition;
+  var isDome = !!w.roof;
+
+  var tempVal = w.temp_f != null ? w.temp_f + '&#176;F' : '—';
+  var tempClass = w.temp_f >= 85 ? 'hot' : w.temp_f <= 52 ? 'cold' : '';
+  var windVal = w.wind_mph != null ? (w.wind_mph + ' mph' + (w.wind_dir ? ' ' + esc(w.wind_dir) : '')) : '—';
+  var windClass = w.wind_mph >= 12 ? 'wind-strong' : w.wind_mph >= 7 ? 'wind-moderate' : '';
+
+  var badges = '';
+  if (isDome) badges += '<span class="badge badge-dome">&#127968; DOME — No Weather</span>';
+  else {
+    if (w.wind_mph >= 12) badges += '<span class="badge badge-wind">&#128168; WIND FACTOR</span>';
+    if (w.temp_f >= 85)   badges += '<span class="badge badge-hot">&#x1F525; HOT</span>';
+    if (w.temp_f <= 52)   badges += '<span class="badge badge-cold">&#x1F9CA; COLD</span>';
   }
 
-  // ── Pitcher Zones Sub-tab ──────────────────────────────────────────────────
-  function renderPitcherZonesSubTab(g, gameIdx) {
-    var html = '<div class="section-title">Pitcher Zones — Pitch Location % (Season)</div>';
-    html += '<div class="zone-section">';
-    [[g.awayPitcherId, g.awayPitcherName, g.awayTeam],[g.homePitcherId, g.homePitcherName, g.homeTeam]].forEach(function(row) {
-      var pid = row[0], pname = row[1], team = row[2];
-      var pd = (typeof PITCHERS_BY_ID!=='undefined'&&PITCHERS_BY_ID&&pid) ? PITCHERS_BY_ID[String(pid)] : null;
-      var zones = pd && pd.zones ? pd.zones : null;
-      html += renderZoneHeatMap(zones, 'pitcher', esc(pname||'—')+' ('+esc(team)+') — Pitch Location %');
-    });
-    html += '</div>';
-    return html;
+  var gameLabel = esc(g.awayTeam) + ' @ ' + esc(g.homeTeam);
+  var venueLabel = esc(g.park || g.venueName || '');
+  var gameTime = g.gameTime ? (' &nbsp;&middot;&nbsp; ' + fmtTime(g.gameTime)) : '';
+
+  var fieldSvg = isDome
+    ? '<div style="width:150px;height:130px;display:flex;align-items:center;justify-content:center;background:#e8e8e8;border-radius:4px;font-size:10px;color:#888;text-align:center">DOME<br>No Wind</div>'
+    : renderFieldSVG(w.wind_dir, w.wind_mph);
+
+  var h = '<div class="weather-card">';
+  h += '<div class="weather-card-hdr">';
+  h += '<div class="weather-card-game">' + gameLabel + gameTime + '</div>';
+  if (venueLabel) h += '<div class="weather-card-venue">' + venueLabel + '</div>';
+  h += '</div>';
+  if (!hasData) {
+    h += '<div class="weather-no-data">Weather data unavailable</div>';
+  } else {
+    h += '<div class="weather-card-body">';
+    h += '<div class="weather-field-wrap">' + fieldSvg + '</div>';
+    h += '<div class="weather-stats">';
+    h += '<div class="ws-row"><span class="ws-lbl">TEMP</span><span class="ws-val ' + tempClass + '">' + tempVal + '</span></div>';
+    h += '<div class="ws-row"><span class="ws-lbl">WIND</span><span class="ws-val ' + windClass + '">' + windVal + '</span></div>';
+    if (w.condition) h += '<div class="ws-row"><span class="ws-lbl">COND</span><span class="ws-val" style="font-size:11px">' + esc(w.condition) + '</span></div>';
+    h += '</div>';
+    h += '</div>';
   }
+  if (badges) h += '<div class="weather-card-badges">' + badges + '</div>';
+  h += '</div>';
+  return h;
+}
 
-  // ── Hitter Zones Sub-tab (both teams, no toggle) ───────────────────────────
-  function renderHitterZonesSubTab(g, gameIdx) {
-    var html = '';
+function weatherView() {
+  var games = gamesData();
+  var h = '<h2 class="section-title">&#127780; Park Weather</h2>';
+  if (!games.length) return h + '<p style="color:#999">No games.</p>';
+  h += '<div class="weather-grid">';
+  games.forEach(function(g){ h += renderWeatherCard(g); });
+  h += '</div>';
+  return h;
+}
 
-    var renderSideZones = function(matchups, label, side) {
-      if (!matchups || !matchups.length) return '<div class="error-msg">No batter data for '+label+'</div>';
-      var selIdx = side==='away' ? state.selectedAwayBatter : state.selectedHomeBatter;
-      if (selIdx >= matchups.length) selIdx = 0;
+function gameView(idx) {
+  var games = gamesData();
+  if (idx < 0 || idx >= games.length) return '<p style="color:red">Game not found.</p>';
+  var g = games[idx];
+  var gk = g.awayTeam+'@'+g.homeTeam;
+  var live = isGameLive(g);
+  var ps = pitchersData();
+  var h = '';
+  if (live) h += '<div class="live-strip">&#128308; GAME IN PROGRESS &mdash; data reflects pre-game projections</div>';
 
-      var out = '<div class="section-title">' + label + '</div>';
-      out += '<div class="batter-selector">';
-      matchups.forEach(function(b, i) {
-        out += '<div class="batter-btn' + (selIdx===i?' active':'') + '" onclick="selectBatter(\'' + side + '\',' + i + ',' + gameIdx + ')">' + esc(b.name) + '</div>';
-      });
-      out += '</div>';
+  h += '<h2 class="section-title">Pitcher Cards</h2><div class="cards-grid">';
+  [{key:'away',pid:g.awayPitcherId,name:g.awayPitcherName,team:g.awayTeam},
+   {key:'home',pid:g.homePitcherId,name:g.homePitcherName,team:g.homeTeam}].forEach(function(pi) {
+    var pd = ps.find(function(p){ return p.pitcherId===pi.pid && p.team===pi.team; });
+    var tk = gk+'-'+pi.key;
+    h += '<div class="card"><div class="card-title">'+esc(pi.name||'TBD')+' ('+esc(pi.team)+')';
+    if (pd && pd.throws) h += ' ['+esc(pd.throws)+']';
+    h += '</div>'+pitcherCard(pd, tk)+'</div>';
+  });
+  h += '</div>';
 
-      var batter = matchups[selIdx];
-      var bd = (typeof BATTERS_BY_ID!=='undefined'&&BATTERS_BY_ID&&batter) ? BATTERS_BY_ID[String(batter.batterId||'')] : null;
-      var zones = (bd&&bd.zones) ? bd.zones : (batter&&batter.zones ? batter.zones : null);
-      var title = batter ? esc(batter.name)+' — xwOBA by Zone (Season)' : 'Select a batter';
-      out += renderZoneHeatMap(zones, 'batter', title);
-      return out;
-    };
+  var awayTbl = 'g'+idx+'-away';
+  h += '<div class="team-header"><span>'+esc(g.awayTeam)+' Batters vs '+esc(g.homePitcherName||'TBD')+(g.homeThrows?' ['+g.homeThrows+']':'')+' </span>';
+  h += '<button class="export-btn" onclick="exportCSV(gamesData()['+idx+'].awayMatchups,\''+esc(gk)+'-away\')">&#11015; CSV</button></div>';
+  h += batterTable(g.awayMatchups||[], awayTbl);
 
-    html += renderSideZones(g.awayMatchups, esc(g.awayTeam)+' Batters vs '+esc(g.homePitcherName||'TBD'), 'away');
-    html += '<hr class="section-divider">';
-    html += renderSideZones(g.homeMatchups, esc(g.homeTeam)+' Batters vs '+esc(g.awayPitcherName||'TBD'), 'home');
-    return html;
+  var homeTbl = 'g'+idx+'-home';
+  h += '<div class="team-header"><span>'+esc(g.homeTeam)+' Batters vs '+esc(g.awayPitcherName||'TBD')+(g.awayThrows?' ['+g.awayThrows+']':'')+' </span>';
+  h += '<button class="export-btn" onclick="exportCSV(gamesData()['+idx+'].homeMatchups,\''+esc(gk)+'-home\')">&#11015; CSV</button></div>';
+  h += batterTable(g.homeMatchups||[], homeTbl);
+  return h;
+}
+
+function renderMain() {
+  var el = document.getElementById('main-content');
+  if (activeTab === 'slate') { el.innerHTML = slateView(); }
+  else if (activeTab === 'weather') { el.innerHTML = weatherView(); }
+  else {
+    var idx = parseInt(activeTab.replace('game-',''), 10);
+    el.innerHTML = gameView(isNaN(idx) ? 0 : idx);
   }
+}
 
-  function selectBatter(side, idx, gameIdx) {
-    if (side === 'away') state.selectedAwayBatter = idx;
-    else                 state.selectedHomeBatter = idx;
-    renderGameView(gameIdx);
+function updateWeatherBar() {
+  var games = gamesData();
+  var el = document.getElementById('weather-status');
+  if (!el) return;
+  el.textContent = games.slice(0,4).map(function(g) {
+    var w = g.weather||{};
+    return w.roof ? g.homeTeam+':DOME' : g.homeTeam+':'+(w.temp_f||'--')+'F '+(w.wind_mph||0)+'mph';
+  }).join('  ·  ');
+}
+
+function toggleTheme() { document.body.classList.toggle('dark'); }
+
+(function(){
+  if (typeof MATCHUPS_DATE !== 'undefined') {
+    document.getElementById('header-date').textContent =
+      (typeof MATCHUPS_LABEL !== 'undefined' ? MATCHUPS_LABEL + '  ·  ' : '') + MATCHUPS_DATE;
   }
-
-  // ── Exports Sub-tab ────────────────────────────────────────────────────────
-  function renderExportsSubTab(g, gameIdx) {
-    var all = [];
-    (g.awayMatchups||[]).forEach(function(b){ all.push(b); });
-    (g.homeMatchups||[]).forEach(function(b){ all.push(b); });
-
-    var hdr = 'Name,Team,Stands,Matchup,Ceiling,ZoneFit,KHR,HRForm,ISO,xWOBA,xWOBAC,SWSTR%,PullBrl%,BrlBIP%,FB%,HH%,LA,Likely';
-    var rows = [hdr];
-    all.forEach(function(b){
-      rows.push([
-        csvEsc(b.name),csvEsc(b.team),csvEsc(b.stands),
-        fmt3(b.matchup_score),fmt3(b.ceiling),fmt3(b.zone_fit),fmt3(b.khr),
-        (b.hr_form!=null?b.hr_form:''),
-        fmt3(b.iso),fmt3(b.xwoba),fmt3(b.xwobac),
-        fmtPctRaw(b.swstr_pct),fmtPctRaw(b.pull_brl_pct),fmtPctRaw(b.brl_bip_pct),
-        fmtPctRaw(b.fb_pct),fmtPctRaw(b.hh_pct),
-        (b.la!=null?b.la.toFixed(1):''),
-        (b.likely!=null?Math.round(b.likely):'')
-      ].join(','));
-    });
-
-    var html = '<div class="section-title">CSV Export</div>';
-    html += '<div class="exports-area">';
-    html += '<textarea id="csv-output" readonly>' + esc(rows.join('\n')) + '</textarea>';
-    html += '<button class="copy-btn" onclick="copyCSV()">Copy CSV</button>';
-    html += '</div>';
-    return html;
-  }
-
-  function csvEsc(s) {
-    if (s==null) return '';
-    var str = String(s);
-    return (str.indexOf(',')>=0||str.indexOf('"')>=0||str.indexOf('\n')>=0) ? '"'+str.replace(/"/g,'""')+'"' : str;
-  }
-  function fmt3(v)      { return (v==null||isNaN(v))?'':v.toFixed(3); }
-  function fmtPctRaw(v) { return (v==null||isNaN(v))?'':v.toFixed(1)+'%'; }
-
-  function copyCSV() {
-    var ta = document.getElementById('csv-output');
-    if (!ta) return;
-    ta.select();
-    try { document.execCommand('copy'); } catch(e) { navigator.clipboard&&navigator.clipboard.writeText(ta.value); }
-    var btn = document.querySelector('.copy-btn');
-    if (btn) { btn.textContent='Copied!'; setTimeout(function(){ btn.textContent='Copy CSV'; },2000); }
-  }
-
-  // ── Boot ───────────────────────────────────────────────────────────────────
-  window.addEventListener('DOMContentLoaded', init);
-  </script>
+  buildTabBar();
+  renderMain();
+  updateWeatherBar();
+})();
+</script>
 </body>
 </html>

@@ -67,7 +67,6 @@ except Exception as exc:
     HAS_SAVANT = False
     print(f"⚠ Could not parse savant_data.json ({exc}) — using fallback scoring")
 
-# Savant sub-dicts (may be absent even if the file exists)
 savant_pitchers = savant.get("pitchers", {})
 savant_batters  = savant.get("batters", {})
 
@@ -82,18 +81,16 @@ weather_map      = slate.get("weather", {})
 park_hr_ranks    = slate.get("park_hr_ranks", {})
 
 # ---------------------------------------------------------------------------
-# Batter handedness cache — avoid repeated statsapi calls
+# Batter handedness cache
 # ---------------------------------------------------------------------------
 
 _stands_cache: dict = {}
 
 def get_batter_stands(pid: int) -> str:
-    """Return 'L', 'R', or 'S' (switch) for a batter, using savant then statsapi."""
     pid_str = str(pid)
     if pid_str in _stands_cache:
         return _stands_cache[pid_str]
 
-    # 1. Try savant first
     if pid_str in savant_batters:
         sv = savant_batters[pid_str]
         stands = sv.get("stands") or sv.get("bat_side") or sv.get("batSide")
@@ -101,7 +98,6 @@ def get_batter_stands(pid: int) -> str:
             _stands_cache[pid_str] = stands[0].upper()
             return _stands_cache[pid_str]
 
-    # 2. Try statsapi
     if HAS_STATSAPI:
         try:
             info = statsapi.player_stat_data(pid, group="hitting", type="season")
@@ -131,7 +127,6 @@ def is_wind_out(wind_dir: str) -> bool:
 # ---------------------------------------------------------------------------
 
 def _fb(v, default=0.0):
-    """Safe float conversion. None always returns default."""
     try:
         return float(v) if v not in (None, "", "-", "---", ".---") else default
     except (TypeError, ValueError):
@@ -151,7 +146,6 @@ def _sv(d: dict, key: str):
 
 
 def get_pitcher_throws(pid: int) -> str:
-    """Return 'R' or 'L' for pitcher hand."""
     pid_str = str(pid)
     if pid_str in savant_pitchers:
         sv = savant_pitchers[pid_str]
@@ -170,19 +164,14 @@ def get_pitcher_throws(pid: int) -> str:
 
 
 def build_pitcher_savant(pid: int) -> dict:
-    """Return savant pitcher dict (or {}) for a given pitcher id."""
     pid_str = str(pid)
     return savant_pitchers.get(pid_str, {})
 
 
 def pitcher_score_from_savant(sv: dict) -> float:
-    """
-    Compute pitcher_score (0-100, higher = harder to HR off) from savant data.
-    Higher values = better / harder pitcher.
-    """
-    xwoba       = _fb(sv.get("xwoba"), 0.318)
-    swstr_pct   = _fb(sv.get("swstr_pct"), 10.0)
-    barrel_pct  = _fb(sv.get("barrel_pct"), 7.0)
+    xwoba        = _fb(sv.get("xwoba"), 0.318)
+    swstr_pct    = _fb(sv.get("swstr_pct"), 10.0)
+    barrel_pct   = _fb(sv.get("barrel_pct"), 7.0)
     hard_hit_pct = _fb(sv.get("hard_hit_pct"), 38.0)
 
     score = (
@@ -195,14 +184,12 @@ def pitcher_score_from_savant(sv: dict) -> float:
 
 
 def pitcher_score_from_raw(raw: dict) -> float:
-    """Fallback pitcher_score using raw ERA/WHIP/K9."""
     era  = _fb(raw.get("era"), 4.50)
     k9   = _fb(raw.get("k9"), 7.0)
 
-    # Approximate savant-like metrics
-    xwoba       = max(0.220, min(0.420, era * 0.052 + 0.215))
-    swstr_pct   = max(5.0, k9 / 9.0 * 100.0 * 0.45)
-    barrel_pct  = max(4.0, (era - 3.0) * 1.5 + 7.0)
+    xwoba        = max(0.220, min(0.420, era * 0.052 + 0.215))
+    swstr_pct    = max(5.0, k9 / 9.0 * 100.0 * 0.45)
+    barrel_pct   = max(4.0, (era - 3.0) * 1.5 + 7.0)
     hard_hit_pct = max(30.0, era * 4.0 + 22.0)
 
     score = (
@@ -215,10 +202,9 @@ def pitcher_score_from_raw(raw: dict) -> float:
 
 
 def strikeout_score_from_savant(sv: dict) -> float:
-    """Compute strikeout_score (0-100) from savant pitcher data."""
-    k_pct    = _fb(sv.get("k_pct"), 22.0)
+    k_pct     = _fb(sv.get("k_pct"), 22.0)
     swstr_pct = _fb(sv.get("swstr_pct"), 10.0)
-    csw_pct  = _fb(sv.get("csw_pct"), 28.0)
+    csw_pct   = _fb(sv.get("csw_pct"), 28.0)
 
     score = (
         max(0.0, min(45.0, k_pct / 38.0 * 45.0)) +
@@ -229,13 +215,12 @@ def strikeout_score_from_savant(sv: dict) -> float:
 
 
 def strikeout_score_from_raw(raw: dict) -> float:
-    """Fallback strikeout_score using raw K9."""
-    k9   = _fb(raw.get("k9"), 7.0)
-    era  = _fb(raw.get("era"), 4.50)
+    k9  = _fb(raw.get("k9"), 7.0)
+    era = _fb(raw.get("era"), 4.50)
 
-    k_pct    = min(38.0, k9 / 9.0 * 100.0 * 0.275)
+    k_pct     = min(38.0, k9 / 9.0 * 100.0 * 0.275)
     swstr_pct = max(5.0, k9 / 9.0 * 100.0 * 0.45)
-    csw_pct  = max(22.0, k9 / 9.0 * 100.0 * 0.35 + 20.0)
+    csw_pct   = max(22.0, k9 / 9.0 * 100.0 * 0.35 + 20.0)
 
     score = (
         max(0.0, min(45.0, k_pct / 38.0 * 45.0)) +
@@ -255,31 +240,22 @@ def get_batter_savant(pid: int) -> dict:
 
 
 def compute_khr(batter_sv: dict, batter_raw: dict, pitcher_throws: str) -> float:
-    """KHR = xwoba_vs_pitcher_hand * 170.
-    Priority: Savant hand split → Savant overall → MLB Stats hand split → MLB Stats overall OPS.
-    """
-    # 1. Savant hand split
     split_key = "xwoba_vs_lhp" if pitcher_throws == "L" else "xwoba_vs_rhp"
     xwoba = _sv(batter_sv, split_key) or _sv(batter_sv, "xwoba")
     if xwoba:
         return round(xwoba * 170.0, 2)
 
-    # 2. MLB Stats API hand split (primary fallback)
     splits = batter_raw.get("splits", {})
     split = splits.get("vs_lhp" if pitcher_throws == "L" else "vs_rhp", {})
     ops_split = _fb(split.get("ops"), 0.0)
     if ops_split > 0:
         return round(ops_split * 0.38 * 170.0, 2)
 
-    # 3. MLB Stats overall OPS
     ops = _fb(batter_raw.get("ops"), 0.700)
     return round(ops * 0.38 * 170.0, 2)
 
 
 def compute_xwobac(batter_sv: dict, batter_raw: dict, pitcher_throws: str) -> float:
-    """xwOBA vs pitcher hand.
-    Priority: Savant hand split → Savant overall → MLB Stats hand split → MLB Stats overall OPS.
-    """
     split_key = "xwoba_vs_lhp" if pitcher_throws == "L" else "xwoba_vs_rhp"
     xwoba = _sv(batter_sv, split_key) or _sv(batter_sv, "xwoba")
     if xwoba:
@@ -296,9 +272,6 @@ def compute_xwobac(batter_sv: dict, batter_raw: dict, pitcher_throws: str) -> fl
 
 
 def compute_ceiling(batter_sv: dict, batter_raw: dict) -> float:
-    """Ceiling score (0-100).
-    Uses Savant contact metrics when available; always falls back to MLB Stats ISO/OPS.
-    """
     barrel_pct   = _sv(batter_sv, "barrel_pct")
     hard_hit_pct = _sv(batter_sv, "hard_hit_pct")
     exit_velo    = _sv(batter_sv, "exit_velo") or _sv(batter_sv, "avg_exit_velo")
@@ -313,18 +286,13 @@ def compute_ceiling(batter_sv: dict, batter_raw: dict) -> float:
         )
         return round(min(100.0, ceiling), 1)
 
-    # MLB Stats primary: ISO + OPS
     iso = _fb(batter_raw.get("iso"), 0.0) or (iso or 0.0)
     ops = _fb(batter_raw.get("ops"), 0.700)
     ceiling = iso / 0.30 * 40.0 + ops / 1.10 * 60.0
     return round(min(100.0, max(0.0, ceiling)), 1)
 
 
-def compute_zone_fit(pitcher_sv: dict, batter_sv: dict,
-                     batter_raw: dict) -> float:
-    """
-    Zone fit from pitcher/batter zone vectors, or pull_pct proxy.
-    """
+def compute_zone_fit(pitcher_sv: dict, batter_sv: dict, batter_raw: dict) -> float:
     p_zones = pitcher_sv.get("zones") if pitcher_sv else None
     b_zones = batter_sv.get("zones")  if batter_sv  else None
 
@@ -334,7 +302,6 @@ def compute_zone_fit(pitcher_sv: dict, batter_sv: dict,
         fit = sum(p * b for p, b in zip(p_zones, b_zones))
         return round(fit, 3)
 
-    # Proxy via pull_pct
     pull_pct = 0.0
     if batter_sv:
         pull_pct = _fb(batter_sv.get("pull_pct"), 0.0)
@@ -345,7 +312,6 @@ def compute_zone_fit(pitcher_sv: dict, batter_sv: dict,
 
 def compute_matchup_score(khr: float, zone_fit: float, park_rank: int,
                            weather: dict, ceiling: float) -> float:
-    """Matchup score (0-100)."""
     khr_norm      = min(40.0, khr / 90.0 * 40.0)
     zone_fit_norm = min(20.0, zone_fit / 0.20 * 20.0)
     park_bonus    = max(0.0, min(10.0, (16.0 - park_rank) / 15.0 * 10.0))
@@ -424,7 +390,6 @@ def get_pull_brl_pct(batter_sv: dict, batter_raw: dict) -> float:
     pull_pct   = _sv(batter_sv, "pull_pct")
     if barrel_pct and pull_pct:
         return round(barrel_pct * pull_pct / 100.0, 2)
-    # MLB Stats: ISO is a proxy for power contact
     iso = _fb(batter_raw.get("iso"), 0.0)
     return round(iso * 20.0, 2)
 
@@ -441,7 +406,6 @@ def get_la(batter_sv: dict, batter_raw: dict = None) -> float:
     v = _sv(batter_sv, "la_avg") or _sv(batter_sv, "la")
     if v:
         return round(v, 1)
-    # No reliable MLB Stats equivalent — return None so UI shows dash
     return None
 
 
@@ -449,7 +413,6 @@ def get_fb_pct(batter_sv: dict, batter_raw: dict) -> float:
     v = _sv(batter_sv, "fb_pct") or _sv(batter_sv, "flyball_pct")
     if v:
         return round(v, 1)
-    # Estimate from ISO: higher ISO correlates with more fly balls
     iso = _fb(batter_raw.get("iso"), 0.0)
     if iso > 0:
         return round(min(50.0, max(20.0, iso * 120.0 + 22.0)), 1)
@@ -460,7 +423,6 @@ def get_hh_pct(batter_sv: dict, batter_raw: dict) -> float:
     v = _sv(batter_sv, "hard_hit_pct") or _sv(batter_sv, "hh_pct")
     if v:
         return round(v, 1)
-    # Estimate from OPS: stronger hitters make harder contact
     ops = _fb(batter_raw.get("ops"), 0.0)
     if ops > 0:
         return round(min(65.0, ops * 45.0), 1)
@@ -471,7 +433,6 @@ def get_swstr_pct_batter(batter_sv: dict, batter_raw: dict = None) -> float:
     v = _sv(batter_sv, "swstr_pct")
     if v:
         return round(v, 1)
-    # Derive from MLB Stats K% (swinging strikes ≈ 42% of strikeout rate)
     if batter_raw:
         k_pct = _fb(batter_raw.get("k_pct"), 0.0)
         if k_pct > 0:
@@ -483,7 +444,6 @@ def get_exit_velo(batter_sv: dict, batter_raw: dict = None) -> float:
     v = _sv(batter_sv, "exit_velo") or _sv(batter_sv, "avg_exit_velo")
     if v:
         return round(v, 1)
-    # No MLB Stats equivalent — return None so UI shows dash
     return None
 
 
@@ -497,32 +457,53 @@ def build_pitcher_entry(pid: int, name: str, team: str, opp_team: str,
     sv      = savant_pitchers.get(pid_str, {}) if pid_str else {}
     raw     = pitcher_stats_raw.get(pid_str, {}) if pid_str else {}
 
-    if sv:
+    has_real_savant = bool(sv) and sv.get("pa", 0) > 0
+
+    if has_real_savant:
         p_score  = pitcher_score_from_savant(sv)
         so_score = strikeout_score_from_savant(sv)
-        xwoba        = round(_fb(sv.get("xwoba"), 0.318), 3)
-        csw_pct      = round(_fb(sv.get("csw_pct"), 28.0), 1)
-        swstr_pct_p  = round(_fb(sv.get("swstr_pct"), 10.0), 1)
-        ball_pct     = round(_fb(sv.get("ball_pct"), 34.0), 1)
-        pulled_brl   = round(_fb(sv.get("pull_brl_pct") or sv.get("pulled_barrel_pct"), 3.0), 2)
-        fb_pct_p     = round(_fb(sv.get("fb_pct") or sv.get("flyball_pct"), 38.0), 1)
-        hard_hit_p   = round(_fb(sv.get("hard_hit_pct"), 38.0), 1)
-        oppo_pct_p   = round(_fb(sv.get("oppo_pct") or sv.get("opposite_field_pct"), 20.0), 1)
+        xwoba       = _sv(sv, "xwoba")
+        csw_pct     = _sv(sv, "csw_pct")
+        swstr_pct_p = _sv(sv, "swstr_pct")
+        ball_pct    = _sv(sv, "ball_pct")
+        pulled_brl  = _sv(sv, "pull_brl_pct") or _sv(sv, "pulled_barrel_pct")
+        fb_pct_p    = _sv(sv, "fb_pct") or _sv(sv, "flyball_pct")
+        hard_hit_p  = _sv(sv, "hard_hit_pct")
+        oppo_pct_p  = _sv(sv, "oppo_pct") or _sv(sv, "opposite_field_pct")
     else:
         p_score  = pitcher_score_from_raw(raw) if raw else 50.0
         so_score = strikeout_score_from_raw(raw) if raw else 40.0
-        era      = _fb(raw.get("era"), 4.50)
-        k9       = _fb(raw.get("k9"), 7.0)
-        xwoba        = round(max(0.220, min(0.420, era * 0.052 + 0.215)), 3)
-        swstr_pct_p  = round(max(5.0, k9 / 9.0 * 100.0 * 0.45), 1)
-        csw_pct      = round(max(22.0, k9 / 9.0 * 100.0 * 0.35 + 20.0), 1)
-        ball_pct     = 34.0
-        pulled_brl   = 3.0
-        fb_pct_p     = 38.0
-        hard_hit_p   = round(max(30.0, era * 4.0 + 22.0), 1)
-        oppo_pct_p   = 20.0
+        xwoba       = _sv(sv, "xwoba") if sv else None
+        csw_pct     = None
+        swstr_pct_p = None
+        ball_pct    = None
+        pulled_brl  = None
+        fb_pct_p    = _sv(sv, "fb_pct") if sv else None
+        hard_hit_p  = _sv(sv, "hard_hit_pct") if sv else None
+        oppo_pct_p  = _sv(sv, "oppo_pct") if sv else None
 
     throws = get_pitcher_throws(pid) if pid else "R"
+
+    era  = raw.get("era")  if raw else None
+    whip = raw.get("whip") if raw else None
+    k9   = raw.get("k9")   if raw else None
+    bb9  = raw.get("bb9")  if raw else None
+    fip  = raw.get("fip")  if raw else None
+    ip   = raw.get("ip")   if raw else None
+    try: era  = round(float(era), 2)  if era  not in (None, "", "-") else None
+    except Exception: era  = None
+    try: whip = round(float(whip), 2) if whip not in (None, "", "-") else None
+    except Exception: whip = None
+    try: k9   = round(float(k9), 1)   if k9   not in (None, "", "-") else None
+    except Exception: k9   = None
+    try: bb9  = round(float(bb9), 1)  if bb9  not in (None, "", "-") else None
+    except Exception: bb9  = None
+    try: fip  = round(float(fip), 2)  if fip  not in (None, "", "-") else None
+    except Exception: fip  = None
+    try: ip   = round(float(ip), 1)   if ip   not in (None, "", "-") else None
+    except Exception: ip   = None
+
+    arsenal = (sv.get("arsenal") or [] if sv else []) or (raw.get("arsenal", []) if raw else [])
 
     return {
         "pitcherId":          pid or 0,
@@ -533,6 +514,12 @@ def build_pitcher_entry(pid: int, name: str, team: str, opp_team: str,
         "gameKey":            game_key,
         "pitcher_score":      p_score,
         "strikeout_score":    so_score,
+        "era":                era,
+        "whip":               whip,
+        "k9":                 k9,
+        "bb9":                bb9,
+        "fip":                fip,
+        "ip":                 ip,
         "xwoba":              xwoba,
         "csw_pct":            csw_pct,
         "swstr_pct":          swstr_pct_p,
@@ -541,8 +528,8 @@ def build_pitcher_entry(pid: int, name: str, team: str, opp_team: str,
         "fb_pct":             fb_pct_p,
         "hard_hit_pct":       hard_hit_p,
         "oppo_pct":           oppo_pct_p,
-        "arsenal":            (sv.get("arsenal") or []) or raw.get("arsenal", []),
-        "zones":              sv.get("zones", [0.0] * 9),
+        "arsenal":            arsenal,
+        "zones":              sv.get("zones", [0.0] * 9) if sv else [0.0] * 9,
     }
 
 
@@ -573,7 +560,6 @@ def build_batter_matchup(batter_raw: dict, team: str,
     pit_val   = compute_pit(psv, pitcher_stats_raw.get(str(pitcher_pid), {}))
     bip_val   = compute_bip(bsv, batter_raw)
 
-    # xwoba for the batter: Savant if available and non-zero, else MLB Stats ops estimate
     xwoba_b = round(_sv(bsv, "xwoba") or (ops * 0.38), 3)
 
     pull_brl  = get_pull_brl_pct(bsv, batter_raw)
@@ -637,7 +623,6 @@ for game_idx, g in enumerate(games_raw):
         "temp_f": 72, "wind_mph": 5, "wind_dir": "E",
         "condition": "Unknown", "roof": False
     })
-    # Normalize weather dict (add "condition" if missing)
     game_weather.setdefault("condition", "Unknown")
 
     park_rank = park_hr_ranks.get(venue, 20)
@@ -645,7 +630,6 @@ for game_idx, g in enumerate(games_raw):
     away_throws = get_pitcher_throws(away_pid) if away_pid else "R"
     home_throws = get_pitcher_throws(home_pid) if home_pid else "R"
 
-    # ── Build pitcher slate entries ───────────────────────────────────────────────────────
     for pid, pname, team, opp in [
         (away_pid, away_pname, away_team, home_team),
         (home_pid, home_pname, home_team, away_team),
@@ -656,7 +640,6 @@ for game_idx, g in enumerate(games_raw):
             )
             seen_pitcher_ids.add(pid)
 
-    # ── Away batters face HOME pitcher ──────────────────────────────────────────────────────
     away_batters_raw = players_by_team.get(away_team, [])
     away_matchups = []
     for braw in away_batters_raw:
@@ -671,9 +654,8 @@ for game_idx, g in enumerate(games_raw):
             print(f"  ⚠ Error scoring {name} ({away_team}): {exc}")
 
     away_matchups.sort(key=lambda x: -x["matchup_score"])
-    away_matchups = away_matchups[:8]
+    away_matchups = away_matchups[:12]
 
-    # ── Home batters face AWAY pitcher ──────────────────────────────────────────────────────
     home_batters_raw = players_by_team.get(home_team, [])
     home_matchups = []
     for braw in home_batters_raw:
@@ -688,9 +670,8 @@ for game_idx, g in enumerate(games_raw):
             print(f"  ⚠ Error scoring {name} ({home_team}): {exc}")
 
     home_matchups.sort(key=lambda x: -x["matchup_score"])
-    home_matchups = home_matchups[:8]
+    home_matchups = home_matchups[:12]
 
-    # ── Assemble game time (raw_slate may not carry it) ──────────────────────────────────
     game_time = g.get("gameTime") or g.get("time") or "TBD"
 
     output_games.append({
