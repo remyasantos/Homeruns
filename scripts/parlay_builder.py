@@ -183,10 +183,22 @@ parlays.append(make_parlay(
 # ── 5B: THE EV SPECIAL ────────────────────────────────────────────────────────
 # Deliberately different from 5A: exclude 5A's players so we surface the NEXT
 # best Statcast credentials rather than collapsing to the same list.
+# Sorts by real exit velocity + barrel% (Baseball Savant) when a player has
+# real Savant data -- these players are ranked ahead of anyone without a real
+# sample, who fall back to composite score/ISO. Matches what this parlay's
+# description actually claims, rather than approximating it via batterScore.
+def _ev_sort_key(p):
+    bsv = p.get("batterSavant") or {}
+    ev  = bsv.get("exit_velo")
+    brl = bsv.get("barrel_pct")
+    if ev is not None and brl is not None:
+        return (0, -(ev + brl), -p.get("batterScore", 0))
+    return (1, -p.get("batterScore", 0), -p.get("iso", 0))
+
 hi5_ids = frozenset(ids(hi5))
 ev5 = pad_to(
     one_per_game(sorted([p for p in players if p["id"] not in hi5_ids],
-                        key=lambda x: (-x["batterScore"], -x["iso"])))[:5],
+                        key=_ev_sort_key))[:5],
     5, exclude(SAB_pool, hi5_ids), B_pool
 )
 top_ev = ev5[0] if ev5 else {"playerName": "?", "batterScore": 0, "hr": 0}

@@ -64,18 +64,50 @@ same codebase but run on different schedules and commit different files.
 ## System 1: Daily HR Parlay Picks
 
 ### What it does
-Fetches today's MLB schedule and pitchers via MLB Stats API, scores 50
-hitters by park factor + weather + matchup, builds 15 parlays, writes
-`public/data.js`, validates it, and commits.
+Fetches today's MLB schedule and pitchers via MLB Stats API, fetches real
+Baseball Savant Statcast data for the same slate, scores 50 hitters by
+real season stats + real Savant quality-of-contact metrics + park factor +
+weather, builds 15 parlays, writes `public/data.js`, validates it, and
+commits.
 
 ### Pipeline scripts
 ```
-scripts/fetch_slate.py       MLB Stats API + wttr.in  → scripts/raw_slate.json
-scripts/tier_engine.py       Score/tier 50 players    → scripts/scored_players.json
+scripts/fetch_slate.py       MLB Stats API + wttr.in   → scripts/raw_slate.json
+scripts/fetch_savant.py      Baseball Savant CSV API   → scripts/savant_data.json
+scripts/tier_engine.py       Score/tier 50 players     → scripts/scored_players.json
 scripts/parlay_builder.py    Build 15 parlays          → scripts/parlays.json
 scripts/generate_data_js.py  Deterministic notes       → public/data.js
 validate-data.js             Schema validation
 ```
+
+### Scoring model — real stats only, no fabrication
+Same policy as the Statcast Matchups pipeline: every input is either a real
+MLB Stats API / Baseball Savant number or it's absent from that player's
+score — never an estimated stand-in.
+
+- **Batter Power**: real season HR-pace/OPS/ISO blended with real Savant
+  barrel%, hard-hit%, exit velocity, pull%×FB% (pulled-fly-ball profile),
+  and xwOBA — weighted 55% Savant / 45% season stats when a batter has a
+  real Savant sample, since contact-quality metrics strip out the park/luck
+  noise raw HR totals carry. Falls back to season-stats-only (the original
+  formula) when Savant has nothing on that player (e.g. a September
+  call-up) — never an estimated Savant value standing in for a real one.
+- **Pitcher Disaster**: real ERA/WHIP/HR9/FIP blended 45% with real Savant
+  barrel%/hard-hit%/xwOBA/FB% *allowed*, same 55/45 weighting and same
+  season-only fallback when a pitcher has no real Savant sample.
+- **Weather**: `fetch_slate.py`'s real per-game weather (see System 2 below)
+  is shared by this pipeline too. `temp_f`/`wind_mph`/`roof` can legitimately
+  be `None` (roof state unconfirmed, or the live feed hasn't posted yet) —
+  `tier_engine.py`/`generate_data_js.py` treat that as a neutral weather
+  contribution (no boost, no penalty, no fabricated 72°F/calm-wind number
+  in either the score or the generated text), not a default to assume.
+- Wind direction can be a 16-point compass code (wttr.in fallback) or an
+  MLB live-feed phrase ("Out To LF", "R To L" crosswind) — both pipelines'
+  `classify_wind()` helper handles either form.
+- Park factor scoring still uses the static `PARK_HR_RANKS` table in
+  `fetch_slate.py` (deliberately not switched to the real daily
+  BallparkPal/VSiN source used by System 2 — out of scope for this
+  pipeline by design, not an oversight).
 
 ### How to access
 Open `public/parlays.html` in a browser, or visit the GitHub Pages URL for
@@ -223,7 +255,13 @@ becomes `0` (no bonus), never a guessed rank-based number.
 | 9:30 AM | Daily quality-check agent (Claude Code) | Enhanced `public/data.js` copy + tier fixes |
 
 The slate pipeline runs first so today's starters are known when the matchups
-pipeline fetches Savant data two hours later.
+pipeline fetches Savant data two hours later. Note: `daily-slate.yml` now
+also fetches its own real Savant data (for accurate batter/pitcher tiering,
+independent of the matchups pipeline) via `fetch_savant.py`, which adds
+~15–30 minutes of real runtime on top of the "completes by ~9:00 AM ET"
+estimate in the workflow's own comments — if the quality-check agent at
+9:30 AM ET ever finds a stale/missing `data.js`, check whether the slate
+run is still in progress before assuming failure.
 
 ---
 

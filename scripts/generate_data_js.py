@@ -9,6 +9,7 @@ No external API calls required.
 """
 
 import json
+import re
 import sys
 
 # ── Load data ─────────────────────────────────────────────────────────────────
@@ -47,7 +48,28 @@ COLORS = {
     "suppressive": "#78909c",
 }
 
-OUT_DIRS = {"S", "SW", "SSW", "SSE", "SE", "W", "WSW", "WNW"}
+# weather["wind_dir"] can be a 16-point compass code (wttr.in fallback) OR a
+# phrase from MLB's live feed ("Out To LF", "In From CF", "R To L" crosswind).
+# A compass-only set never matches the phrase form, so wind-based labels
+# silently never fired for any game using live-feed weather (the primary
+# source as of this pipeline's latest fix).
+_COMPASS_OUT = {"S", "SW", "SSW", "SSE", "SE", "W", "WSW", "WNW"}
+_COMPASS_IN  = {"N", "NE", "NNE", "NNW", "NW"}
+
+def classify_wind(wind_dir):
+    """Returns 'out', 'in', or None (crosswind / unrecognized / unknown)."""
+    if not wind_dir:
+        return None
+    d = str(wind_dir).strip().upper()
+    if d in _COMPASS_OUT:
+        return "out"
+    if d in _COMPASS_IN:
+        return "in"
+    if "OUT" in d:
+        return "out"
+    if re.search(r"\bIN\b", d):
+        return "in"
+    return None
 
 
 def park_label_and_color(venue, rank, w):
@@ -55,13 +77,21 @@ def park_label_and_color(venue, rank, w):
     if is_dome:
         return "🏟️ Dome/Roof Closed", COLORS["dome"]
 
-    wind = w.get("wind_mph", 0) or 0
-    temp = w.get("temp_f", 72) or 72
-    wdir = (w.get("wind_dir", "") or "").upper()
+    wind = w.get("wind_mph")
+    temp = w.get("temp_f")
+    wind_class = classify_wind(w.get("wind_dir"))
+
+    # Genuinely unknown weather (roof state unconfirmed, or the live feed
+    # hasn't posted yet) -- describe the park without inventing a specific
+    # temp/wind reading.
+    if wind is None or temp is None:
+        color = COLORS["neutral"] if rank <= 20 else COLORS["suppressive"]
+        label = f"⚾ #{rank} HR Park" if rank <= 5 else "⚾ Outdoor Park"
+        return label, color
 
     if rank <= 2:
         color = COLORS["elite"]
-        if wind >= 10 and wdir in OUT_DIRS:
+        if wind >= 10 and wind_class == "out":
             label = f"🔥 #{rank} HR Park + {wind}mph Wind Out"
         elif temp >= 82:
             label = f"🔥 #{rank} HR Park — {temp}°F Warm"
@@ -69,14 +99,14 @@ def park_label_and_color(venue, rank, w):
             label = f"🔥 #{rank} HR Park"
     elif rank <= 5:
         color = COLORS["good"]
-        if wind >= 10 and wdir in OUT_DIRS:
+        if wind >= 10 and wind_class == "out":
             label = f"💨 Wind Out {wind}mph — #{rank} HR Context"
         else:
             label = f"⚾ #{rank} Hitter Friendly"
-    elif wind >= 12 and wdir in OUT_DIRS:
+    elif wind >= 12 and wind_class == "out":
         color = COLORS["wind_boost"]
         label = f"💨 Wind Out {wind}mph"
-    elif wind >= 10 and wdir not in OUT_DIRS and wdir != "":
+    elif wind >= 10 and wind_class == "in":
         color = COLORS["suppressive"]
         label = f"🌬️ Wind In — Avoid"
     else:
@@ -154,10 +184,9 @@ def make_player_note(p: dict, w: dict) -> str:
     hr9     = float(ps.get("hr9", 1.0)  or 1.0)
     tier    = p["tier"]
     is_dome = venue in roof_parks
-    wind    = w.get("wind_mph", 0) or 0
-    wdir    = (w.get("wind_dir", "") or "").upper()
-    temp    = w.get("temp_f", 72) or 72
-    wind_out = wind >= 10 and wdir in OUT_DIRS
+    wind    = w.get("wind_mph")
+    temp    = w.get("temp_f")
+    wind_out = wind is not None and wind >= 10 and classify_wind(w.get("wind_dir")) == "out"
 
     # Sentence 1: hook stat — leading metric by tier
     if iso >= 0.230 or tier == "S":
@@ -190,8 +219,11 @@ def make_player_note(p: dict, w: dict) -> str:
     elif park_rank <= 3:
         s2 = (f"{venue} is the #{park_rank} HR park on today's slate — "
               f"{name}'s power profile in this environment against {pitcher} ({era:.2f} ERA) is a strong HR context.")
-    else:
+    elif temp is not None:
         s2 = (f"Against {pitcher} ({era:.2f} ERA, {whip:.2f} WHIP) in a {temp}°F outdoor game, "
+              f"{name}'s {hr}-HR pace gives this prop real probability floor.")
+    else:
+        s2 = (f"Against {pitcher} ({era:.2f} ERA, {whip:.2f} WHIP), "
               f"{name}'s {hr}-HR pace gives this prop real probability floor.")
 
     return f"{s1} {s2}"
@@ -206,10 +238,9 @@ def make_context_cards() -> list:
         venue = g["venueName"]
         w     = weather.get(venue, {})
         is_dome = venue in roof_parks
-        wind  = w.get("wind_mph", 0) or 0
-        wdir  = (w.get("wind_dir", "") or "").upper()
-        temp  = w.get("temp_f", 72) or 72
-        wind_out = wind >= 10 and wdir in OUT_DIRS
+        wind  = w.get("wind_mph")
+        temp  = w.get("temp_f")
+        wind_out = wind is not None and wind >= 10 and classify_wind(w.get("wind_dir")) == "out"
 
         for side, pitcher_key in [("away", "homePitcherName"), ("home", "awayPitcherName"),
                                    ("home", "homePitcherName"), ("away", "awayPitcherName")]:
@@ -241,7 +272,7 @@ def make_context_cards() -> list:
                 "hr9":        opp_ps.get("hr9", "?"),
                 "is_dome":    is_dome,
                 "wind":       wind,
-                "wdir":       wdir,
+                "wdir":       w.get("wind_dir"),
                 "temp":       temp,
                 "wind_out":   wind_out,
                 "park_rank":  park_rank,
@@ -281,24 +312,31 @@ def make_context_cards() -> list:
     outdoor_venues.sort(key=lambda x: x[1])
     if outdoor_venues:
         v, rank, w = outdoor_venues[0]
-        wind  = w.get("wind_mph", 0) or 0
-        wdir  = (w.get("wind_dir", "") or "").upper()
-        temp  = w.get("temp_f", 72) or 72
-        wind_out = wind >= 10 and wdir in OUT_DIRS
+        wind  = w.get("wind_mph")
+        temp  = w.get("temp_f")
+        wind_out = wind is not None and wind >= 10 and classify_wind(w.get("wind_dir")) == "out"
         park_players = [p for p in players if p["venue"] == v][:2]
         names = " and ".join(p["playerName"].split()[0] for p in park_players)
         slate_rank = park_factors.get(v, {}).get("rank", rank)
         if wind_out:
             icon = "💨"
-            note = f"#{slate_rank} HR Park — {wind}mph Wind Out — {temp}°F"
-            sub  = (f"{v} sits #{slate_rank} on today's park chart with {wind}mph wind blowing out at {temp}°F — "
+            temp_suffix = f" — {temp}°F" if temp is not None else ""
+            note = f"#{slate_rank} HR Park — {wind}mph Wind Out{temp_suffix}"
+            sub  = (f"{v} sits #{slate_rank} on today's park chart with {wind}mph wind blowing out"
+                    + (f" at {temp}°F" if temp is not None else "") + " — "
                     f"natural pull power gets an extra 15–20 feet of carry. "
                     f"{names} are the top HR targets in this premium outdoor environment.")
-        else:
+        elif temp is not None:
             icon = "🔥"
             note = f"#{slate_rank} HR Park — {temp}°F Conditions"
             sub  = (f"{v} is the top-ranked outdoor HR park on today's slate at {temp}°F. "
                     f"Warm conditions and favorable dimensions amplify every hard contact swing. "
+                    f"{names} lead the HR targets here.")
+        else:
+            icon = "🔥"
+            note = f"#{slate_rank} HR Park"
+            sub  = (f"{v} is the top-ranked outdoor HR park on today's slate. "
+                    f"Favorable dimensions amplify every hard contact swing. "
                     f"{names} lead the HR targets here.")
         cards.append({"icon": icon, "label": v, "note": note, "sub": sub})
 
@@ -356,11 +394,18 @@ def make_context_cards() -> list:
         })
     elif len(outdoor_venues) > 1:
         v2, rank2, w2 = outdoor_venues[1]
-        temp2 = w2.get("temp_f", 72) or 72
+        temp2 = w2.get("temp_f")
+        slate_rank2 = park_factors.get(v2, {}).get("rank", rank2)
+        if temp2 is not None:
+            note2 = f"#{slate_rank2} HR Context — {temp2}°F"
+            sub2  = f"{v2} rounds out the day's top outdoor HR environments at {temp2}°F. Prioritize S and A-tier batters here."
+        else:
+            note2 = f"#{slate_rank2} HR Context"
+            sub2  = f"{v2} rounds out the day's top outdoor HR environments. Prioritize S and A-tier batters here."
         cards.append({
             "icon": "⚾", "label": v2,
-            "note": f"#{park_factors.get(v2,{}).get('rank',rank2)} HR Context — {temp2}°F",
-            "sub":  f"{v2} rounds out the day's top outdoor HR environments at {temp2}°F. Prioritize S and A-tier batters here.",
+            "note": note2,
+            "sub":  sub2,
         })
     else:
         cards.append({

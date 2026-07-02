@@ -2,12 +2,19 @@
 """
 tier_engine.py — scores and tiers every player on today's slate
 Reads:  scripts/raw_slate.json
+        scripts/savant_data.json  (optional; degrades to season-stats-only
+                                    scoring if missing, never fabricated)
 Writes: scripts/scored_players.json
 
 Scoring model (0–100 scale):
-  Pitcher Disaster  40%  — ERA, WHIP, HR/9, FIP
+  Pitcher Disaster  40%  — real ERA/WHIP/HR9/FIP blended with real Savant
+                           barrel%/hard-hit%/xwOBA/FB% allowed, when a
+                           pitcher has real Savant data. Season-stats-only
+                           when they don't -- never an estimated Savant value.
   Park Factor       30%  — HR rank + weather boost
-  Batter Power      30%  — HR pace, OPS, ISO
+  Batter Power      30%  — real HR pace/OPS/ISO blended with real Savant
+                           barrel%/hard-hit%/exit velo/pull+FB%/xwOBA, same
+                           real-or-season-only rule as pitchers.
 
 Tier thresholds:
   S  ≥ 72   (4–8 players)
@@ -17,8 +24,35 @@ Tier thresholds:
 """
 
 import json
+import os
+import re
 import sys
 import math
+
+# ── Real wind-direction classification ───────────────────────────────────────
+# weather["wind_dir"] can be a 16-point compass code (wttr.in fallback) OR a
+# phrase from MLB's live feed ("Out To LF", "In From CF", "R To L" crosswind).
+# The old out_dirs/in_dirs compass-only sets never matched the phrase form,
+# so wind-based scoring silently did nothing for any game using live-feed
+# weather (the primary source as of this pipeline's latest fix).
+
+_COMPASS_OUT = {"S", "SW", "SSW", "SSE", "SE", "W", "WSW", "WNW"}
+_COMPASS_IN  = {"N", "NE", "NNE", "NNW", "NW"}
+
+def classify_wind(wind_dir):
+    """Returns 'out', 'in', or None (crosswind / unrecognized / unknown)."""
+    if not wind_dir:
+        return None
+    d = str(wind_dir).strip().upper()
+    if d in _COMPASS_OUT:
+        return "out"
+    if d in _COMPASS_IN:
+        return "in"
+    if "OUT" in d:
+        return "out"
+    if re.search(r"\bIN\b", d):
+        return "in"
+    return None
 
 # ── Load raw slate ────────────────────────────────────────────────────────────
 
@@ -37,6 +71,39 @@ players_by_team = slate["players_by_team"]
 weather        = slate["weather"]
 park_hr_ranks  = slate["park_hr_ranks"]
 roof_parks     = set(slate.get("retractable_roof_parks", []))
+
+# ── Load real Savant data (optional) ─────────────────────────────────────────
+# Same source the Statcast Matchups dashboard uses. If it's missing, batter/
+# pitcher scoring falls back to season-stats-only -- never an estimated
+# Savant number standing in for a real one.
+try:
+    with open("scripts/savant_data.json") as f:
+        savant = json.load(f)
+    print(f"✓ Loaded savant_data.json")
+except FileNotFoundError:
+    savant = {}
+    print("⚠ savant_data.json not found — scoring will use season stats only")
+except Exception as exc:
+    savant = {}
+    print(f"⚠ Could not parse savant_data.json ({exc}) — scoring will use season stats only")
+
+savant_batters  = savant.get("batters", {})
+savant_pitchers = savant.get("pitchers", {})
+
+
+def _real(d: dict, key: str):
+    """Return a real, non-None, non-zero Savant value, or None. Savant's own
+    export convention uses 0.0/None interchangeably for 'not available' --
+    treating an exact 0.0 as real would risk showing a legitimate absence as
+    a suspiciously perfect stat, so both are treated as unknown."""
+    v = d.get(key)
+    if v is None:
+        return None
+    try:
+        f = float(v)
+        return f if f != 0.0 else None
+    except (TypeError, ValueError):
+        return None
 
 # ── Build game lookup ─────────────────────────────────────────────────────────
 
@@ -58,8 +125,11 @@ for g in games:
 
 # ── Scoring functions ─────────────────────────────────────────────────────────
 
-def score_pitcher_disaster(stats):
-    """0–100. Higher = worse pitcher = better for batters."""
+def score_pitcher_disaster(stats, pitcher_id=None):
+    """0–100. Higher = worse pitcher = better for batters. Blends real
+    ERA/WHIP/HR9/FIP with real Savant contact-quality-allowed metrics
+    (barrel%, hard-hit%, xwOBA, FB%) when the pitcher has real Savant data;
+    falls back to season-stats-only when they don't."""
     if not stats:
         return 35  # unknown TBD arm — slight positive
     era  = stats.get("era", 4.5)
@@ -80,7 +150,33 @@ def score_pitcher_disaster(stats):
     # Low innings pitched = less reliable sample, slight penalty
     ip_confidence = min(1.0, ip / 30.0)
 
-    raw = (era_s * 0.35 + whip_s * 0.25 + hr9_s * 0.25 + fip_s * 0.15)
+    season_composite = era_s * 0.35 + whip_s * 0.25 + hr9_s * 0.25 + fip_s * 0.15
+
+    savant_composite = None
+    sv = savant_pitchers.get(str(pitcher_id), {}) if pitcher_id else {}
+    if sv and _real(sv, "pa"):
+        barrel_pct   = _real(sv, "barrel_pct")
+        hard_hit_pct = _real(sv, "hard_hit_pct")
+        xwoba        = _real(sv, "xwoba")
+        fb_pct       = _real(sv, "fb_pct")
+
+        parts = []
+        if barrel_pct is not None:
+            parts.append(min(100, max(0, barrel_pct / 16.0 * 100)))
+        if hard_hit_pct is not None:
+            parts.append(min(100, max(0, (hard_hit_pct - 30.0) / 25.0 * 100)))
+        if xwoba is not None:
+            parts.append(min(100, max(0, (xwoba - 0.250) / 0.200 * 100)))
+        if fb_pct is not None:
+            parts.append(min(100, max(0, (fb_pct - 30.0) / 25.0 * 100)))
+        if parts:
+            savant_composite = sum(parts) / len(parts)
+
+    if savant_composite is not None:
+        raw = savant_composite * 0.55 + season_composite * 0.45
+    else:
+        raw = season_composite
+
     return round(raw * (0.7 + 0.3 * ip_confidence), 1)
 
 
@@ -92,24 +188,27 @@ def score_park_and_weather(venue):
     park_s = max(0, (total_parks - rank) / total_parks * 100)
 
     w = weather.get(venue, {})
-    if w.get("roof"):
-        # Dome: neutral weather, no wind bonus or penalty
+    roof = w.get("roof")
+    temp = w.get("temp_f")
+    wind = w.get("wind_mph")
+    w_dir = w.get("wind_dir")
+
+    if roof is True:
+        # Confirmed closed dome: no weather variables apply.
+        weather_boost = 0
+    elif temp is None or wind is None:
+        # Genuinely unknown (roof state unconfirmed, or the live feed hasn't
+        # posted yet) -- apply no boost or penalty rather than assuming a
+        # fabricated 72°F/calm-wind baseline.
         weather_boost = 0
     else:
-        temp   = w.get("temp_f", 72) or 72
-        wind   = w.get("wind_mph", 0) or 0
-        w_dir  = (w.get("wind_dir", "") or "").upper()
-
         # Temperature: 85°F+ = +15, 55°F- = -15
         temp_boost = max(-15, min(15, (temp - 70) * 0.6))
 
-        # Wind: "out" directions (S, SW, SSW, SSE, SE, W, WSW, WNW)
-        # "in" directions (N, NE, NNE, NNW, NW)
-        out_dirs = {"S", "SW", "SSW", "SSE", "SE", "W", "WSW", "WNW"}
-        in_dirs  = {"N", "NE", "NNE", "NNW", "NW"}
-        if w_dir in out_dirs:
+        wind_class = classify_wind(w_dir)
+        if wind_class == "out":
             wind_boost = min(20, wind * 1.2)
-        elif w_dir in in_dirs:
+        elif wind_class == "in":
             wind_boost = max(-15, -wind * 0.8)
         else:
             wind_boost = 0
@@ -120,11 +219,16 @@ def score_park_and_weather(venue):
 
 
 def score_batter_power(batter):
-    """0–100 batter power score."""
+    """0–100 batter power score. Blends real season HR-pace/OPS/ISO with real
+    Savant quality-of-contact metrics (barrel%, hard-hit%, exit velocity,
+    pull%+FB% profile, xwOBA) when the batter has real Savant data; falls
+    back to season-stats-only when they don't. Savant metrics carry more
+    weight in the blend since they strip out park/luck noise that raw HR
+    totals don't -- a real predictor of repeatable power, not small-sample
+    fly-ball-that-happened-to-clear-the-fence variance."""
     hr   = batter.get("hr", 0)
     ops  = batter.get("ops", 0.700)
     iso  = batter.get("iso", 0.150)
-    ab   = batter.get("ab", 0)
     games = batter.get("games", 1) or 1
 
     # HR pace per 162 games
@@ -137,7 +241,38 @@ def score_batter_power(batter):
     # ISO: 0.300+ = 100, 0.100 = 0
     iso_s   = min(100, max(0, (iso - 0.100) / 0.200 * 100))
 
-    return round(hr_s * 0.45 + ops_s * 0.30 + iso_s * 0.25, 1)
+    season_composite = hr_s * 0.45 + ops_s * 0.30 + iso_s * 0.25
+
+    savant_composite = None
+    pid = batter.get("playerId")
+    sv = savant_batters.get(str(pid), {}) if pid else {}
+    if sv and _real(sv, "pa"):
+        barrel_pct   = _real(sv, "barrel_pct")
+        hard_hit_pct = _real(sv, "hard_hit_pct")
+        exit_velo    = _real(sv, "exit_velo")
+        pull_pct     = _real(sv, "pull_pct")
+        fb_pct       = _real(sv, "fb_pct")
+        xwoba        = _real(sv, "xwoba")
+
+        parts = []
+        if barrel_pct is not None:
+            parts.append(min(100, max(0, barrel_pct / 20.0 * 100)))
+        if hard_hit_pct is not None:
+            parts.append(min(100, max(0, hard_hit_pct / 55.0 * 100)))
+        if exit_velo is not None:
+            parts.append(min(100, max(0, (exit_velo - 85.0) / 10.0 * 100)))
+        if pull_pct is not None and fb_pct is not None:
+            # Pulled fly balls are the HR-optimized batted-ball profile --
+            # needs both a high pull rate AND a high fly-ball rate.
+            parts.append(min(100, (pull_pct / 100.0) * (fb_pct / 100.0) * 400.0))
+        if xwoba is not None:
+            parts.append(min(100, max(0, (xwoba - 0.250) / 0.200 * 100)))
+        if parts:
+            savant_composite = sum(parts) / len(parts)
+
+    if savant_composite is not None:
+        return round(savant_composite * 0.55 + season_composite * 0.45, 1)
+    return round(season_composite, 1)
 
 
 def assign_tier(composite_score, rank_in_pool):
@@ -170,12 +305,14 @@ def estimate_odds(tier, composite_score):
 
 def wind_tag(venue, weather_data):
     w = weather_data.get(venue, {})
-    if w.get("roof"):
+    if w.get("roof") is not False:
+        # Closed dome, or roof state/wind genuinely unknown -- don't claim a
+        # wind boost we can't confirm.
         return None
-    wind = w.get("wind_mph", 0) or 0
-    w_dir = (w.get("wind_dir", "") or "").upper()
-    out_dirs = {"S", "SW", "SSW", "SSE", "SE", "W", "WSW", "WNW"}
-    if wind >= 10 and w_dir in out_dirs:
+    wind = w.get("wind_mph")
+    if wind is None:
+        return None
+    if wind >= 10 and classify_wind(w.get("wind_dir")) == "out":
         return "💨 Wind Boost"
     return None
 
@@ -218,12 +355,29 @@ for team_abbr, batters in players_by_team.items():
     p_stats       = pitcher_stats.get(opp_pid, {}) if opp_pid else {}
     game_label    = game_info["game_label"]
 
-    p_score = score_pitcher_disaster(p_stats)
+    p_score = score_pitcher_disaster(p_stats, opp_pid)
     pk_score = score_park_and_weather(venue)
 
     for batter in batters:
         b_score    = score_batter_power(batter)
         composite  = round(p_score * 0.40 + pk_score * 0.30 + b_score * 0.30, 1)
+
+        # Real Savant metrics actually used in scoring above (None if this
+        # player has no real Savant sample) -- surfaced for transparency,
+        # not re-derived here.
+        bsv = savant_batters.get(str(batter.get("playerId")), {})
+        psv = savant_pitchers.get(str(opp_pid), {}) if opp_pid else {}
+        batter_savant = {
+            "barrel_pct":   _real(bsv, "barrel_pct"),
+            "hard_hit_pct": _real(bsv, "hard_hit_pct"),
+            "exit_velo":    _real(bsv, "exit_velo"),
+            "xwoba":        _real(bsv, "xwoba"),
+        } if bsv else None
+        pitcher_savant = {
+            "barrel_pct":   _real(psv, "barrel_pct"),
+            "hard_hit_pct": _real(psv, "hard_hit_pct"),
+            "xwoba":        _real(psv, "xwoba"),
+        } if psv else None
 
         tags = []
         # Tag logic
@@ -238,6 +392,8 @@ for team_abbr, batters in players_by_team.items():
             tags.append("🏔️ Coors Boost")
         if batter["iso"] >= 0.220:
             tags.append("📈 Breakout")
+        if batter_savant and (batter_savant.get("barrel_pct") or 0) >= 12:
+            tags.append("🎯 Elite Barrel%")
         if composite < 40:
             tags.append("🎰 Longshot")
         # Guarantee at least 2 tags — "if" only fires once, so use explicit fills
@@ -256,6 +412,8 @@ for team_abbr, batters in players_by_team.items():
             "oppPitcherName": opp_name,
             "oppPitcherId":   opp_pid,
             "pitcherStats":   p_stats,
+            "pitcherSavant":  pitcher_savant,
+            "batterSavant":   batter_savant,
             "pitcherScore":   p_score,
             "parkScore":      pk_score,
             "batterScore":    b_score,
