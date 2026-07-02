@@ -185,33 +185,41 @@ function isGameLive(g) {
 }
 
 var BATTER_COLS = [
-  {key:'matchup_score',label:'MSCORE',  d:1,  invert:false,min:0,    max:100,  tip:'Composite matchup score (0-100)'},
-  {key:'khr',          label:'KHR',     d:1,  invert:false,min:30,   max:90,   tip:'xwOBA x 170, hand-split adjusted'},
-  {key:'ceiling',      label:'CEIL',    d:1,  invert:false,min:0,    max:100,  tip:'Power ceiling (barrel/EV/ISO)'},
-  {key:'zone_fit',     label:'ZNFIT',   d:3,  invert:false,min:0.04, max:0.20, tip:'Pitcher zone x batter zone dot product'},
-  {key:'xwobac',       label:'xwOBAvP', d:3,  invert:false,min:0.200,max:0.450,tip:'xwOBA vs pitcher hand'},
-  {key:'iso',          label:'ISO',     d:3,  invert:false,min:0.050,max:0.350,tip:'Isolated power'},
-  {key:'hh_pct',       label:'HH%',     d:1,  pct:true, invert:false,min:25,max:60,   tip:'Hard-hit rate >= 95mph EV'},
-  {key:'brl_bip_pct',  label:'BRL%',    d:1,  pct:true, invert:false,min:2, max:18,   tip:'Barrel % per BIP'},
-  {key:'pull_brl_pct', label:'PBRL%',   d:1,  pct:true, invert:false,min:0, max:12,   tip:'Pulled barrel %'},
-  {key:'fb_pct',       label:'FB%',     d:1,  pct:true, invert:false,min:20,max:50,   tip:'Fly ball %'},
-  {key:'swstr_pct',    label:'SwStr%',  d:1,  pct:true, invert:true, min:5, max:18,   tip:'Swing-and-miss % (lower = better)'},
-  {key:'la',           label:'LA',      d:1,  invert:false,min:5,    max:22,   tip:'Avg launch angle'},
-  {key:'likely',       label:'LIKELY',  d:0,  invert:false,min:5,    max:40,   tip:'Projected HR pace per 162 G'},
+  {key:'matchup_score',label:'MSCORE',  d:1,  invert:false,min:0,    max:100,  tip:'Composite matchup score: blends KHR, zone fit, park factor, weather, and power ceiling into one 0-100 ranking for this specific matchup.'},
+  {key:'khr',          label:'KHR',     d:1,  invert:false,min:30,   max:90,   tip:'Matchup + recent form combined -- the batter’s real matchup-based production adjusted for how hot or cold they’ve been trending lately.'},
+  {key:'ceiling',      label:'CEIL',    d:1,  invert:false,min:0,    max:100,  tip:'Power ceiling: a 0-100 read on overall raw power from barrel rate, exit velocity, and ISO -- independent of today’s specific matchup.'},
+  {key:'zone_fit',     label:'ZNFIT',   d:3,  invert:false,min:0.04, max:0.20, tip:'How well this batter’s hot zones line up with the pitcher’s pitch-location tendencies (pitcher zone-frequency x batter zone-xwOBA).'},
+  {key:'pit',          label:'PIT',     d:0,  invert:false,min:200,  max:15000,tip:'Real total pitches seen this season -- sample-size context for the rest of this row.'},
+  {key:'bip',          label:'BIP',     d:0,  invert:false,min:100,  max:3000, tip:'Real total balls in play this season -- sample-size context for the batted-ball stats in this row.'},
+  {key:'iso',          label:'ISO',     d:3,  invert:false,min:0.050,max:0.350,tip:'Isolated power (SLG minus AVG) -- extra bases per at-bat, i.e. real extra-base-hit production.'},
+  {key:'xwoba',        label:'xwOBA',   d:3,  invert:false,min:0.200,max:0.450,tip:'Expected wOBA over all plate appearances (including strikeouts/walks) -- "expected damage" from exit velocity and launch angle.'},
+  {key:'xwoba_contact', label:'xwOBAC', d:3,  invert:false,min:0.280,max:0.600,tip:'Expected wOBA on contact only (balls actually put in play) -- excludes strikeouts/walks, so it runs higher than plain xwOBA.'},
+  {key:'xwobac',       label:'xwOBAvP', d:3,  invert:false,min:0.200,max:0.450,tip:'xwOBA specifically vs. today’s opposing pitcher’s throwing hand (falls back to overall xwOBA if the platoon-split sample is too small).'},
+  {key:'hh_pct',       label:'HH%',     d:1,  pct:true, invert:false,min:25,max:60,   tip:'Hard-hit rate: % of batted balls hit 95+ mph -- how often they hit it hard.'},
+  {key:'brl_bip_pct',  label:'BRL%',    d:1,  pct:true, invert:false,min:2, max:18,   tip:'Barrel %: one of the most sought-after batted-ball types, combining ideal exit velocity and launch angle.'},
+  {key:'pull_brl_pct', label:'PBRL%',   d:1,  pct:true, invert:false,min:0, max:12,   tip:'Pulled barrel %: how often their barrels are specifically pulled -- the shortest path to a home run.'},
+  {key:'sweet_spot_pct', label:'SWSP%', d:1,  pct:true, invert:false,min:20,max:45,   tip:'Sweet spot %: % of batted balls hit with a launch angle in the ideal lift range (8-32°).'},
+  {key:'fb_pct',       label:'FB%',     d:1,  pct:true, invert:false,min:20,max:50,   tip:'Fly ball %: how often they get the ball in the air.'},
+  {key:'swstr_pct',    label:'SwStr%',  d:1,  pct:true, invert:true, min:5, max:18,   tip:'Swinging-strike %: how often they swing and miss on the mix (lower = better).'},
+  {key:'la',           label:'LA',      d:1,  invert:false,min:5,    max:22,   tip:'Average launch angle.'},
+  {key:'likely',       label:'LIKELY',  d:0,  invert:false,min:5,    max:40,   tip:'Projected HR pace per 162 games, from real season HR rate.'},
 ];
 var PITCHER_COLS = [
-  {key:'pitcher_score',label:'PSCORE',  d:1,  invert:false,min:0,    max:100,  tip:'Pitcher dominance (higher=harder to HR off)'},
-  {key:'era',          label:'ERA',     d:2,  invert:true, min:2.0,  max:6.5,  tip:'Earned Run Average'},
-  {key:'whip',         label:'WHIP',    d:2,  invert:true, min:0.85, max:1.75, tip:'Walks+Hits per IP'},
-  {key:'k9',           label:'K/9',     d:1,  invert:false,min:4,    max:14,   tip:'Strikeouts per 9 IP'},
-  {key:'bb9',          label:'BB/9',    d:1,  invert:true, min:1,    max:5,    tip:'Walks per 9 IP'},
-  {key:'fip',          label:'FIP',     d:2,  invert:true, min:2.0,  max:5.5,  tip:'Fielding Independent Pitching'},
-  {key:'ip',           label:'IP',      d:1,  invert:false,min:10,   max:120,  tip:'Innings pitched (season)'},
-  {key:'xwoba',        label:'xwOBA',   d:3,  invert:true, min:0.250,max:0.400,tip:'Expected wOBA allowed (Savant)'},
-  {key:'csw_pct',      label:'CSW%',    d:1,  pct:true, invert:false,min:22,max:38,   tip:'Called Strike + Whiff %'},
-  {key:'swstr_pct',    label:'SwStr%',  d:1,  pct:true, invert:false,min:5, max:18,   tip:'Swinging strike %'},
-  {key:'hard_hit_pct', label:'HH%',     d:1,  pct:true, invert:true, min:28,max:52,   tip:'Hard-hit % allowed (lower=better)'},
-  {key:'fb_pct',       label:'FB%',     d:1,  pct:true, invert:true, min:25,max:50,   tip:'Fly ball % allowed'},
+  {key:'pitcher_score',label:'PSCORE',  d:1,  invert:false,min:0,    max:100,  tip:'Pitcher dominance (higher = harder to hit a HR off) -- blends real Statcast contact-quality-allowed metrics with ERA/WHIP/HR9/FIP.'},
+  {key:'strikeout_score', label:'K SCORE', d:1, invert:false,min:0,   max:100,  tip:'Strikeout-stuff score: how likely this pitcher is to miss bats, from real K%, SwStr%, and CSW%.'},
+  {key:'era',          label:'ERA',     d:2,  invert:true, min:2.0,  max:6.5,  tip:'Earned Run Average.'},
+  {key:'whip',         label:'WHIP',    d:2,  invert:true, min:0.85, max:1.75, tip:'Walks + Hits per Inning Pitched.'},
+  {key:'k9',           label:'K/9',     d:1,  invert:false,min:4,    max:14,   tip:'Strikeouts per 9 innings.'},
+  {key:'bb9',          label:'BB/9',    d:1,  invert:true, min:1,    max:5,    tip:'Walks per 9 innings.'},
+  {key:'fip',          label:'FIP',     d:2,  invert:true, min:2.0,  max:5.5,  tip:'Fielding Independent Pitching.'},
+  {key:'ip',           label:'IP',      d:1,  invert:false,min:10,   max:120,  tip:'Innings pitched this season.'},
+  {key:'xwoba',        label:'xwOBA',   d:3,  invert:true, min:0.250,max:0.400,tip:'Expected wOBA allowed (Savant) -- real "expected damage" allowed on contact.'},
+  {key:'csw_pct',      label:'CSW%',    d:1,  pct:true, invert:false,min:22,max:38,   tip:'Called Strike + Whiff %, computed from real per-pitch outcomes.'},
+  {key:'swstr_pct',    label:'SwStr%',  d:1,  pct:true, invert:false,min:5, max:18,   tip:'Swinging-strike %: real swinging strikes / total pitches thrown.'},
+  {key:'ball_pct',     label:'BALL%',   d:1,  pct:true, invert:true, min:25,max:42,   tip:'% of pitches called a ball -- command indicator (lower = better).'},
+  {key:'pulled_barrel_pct', label:'PBRL%', d:1, pct:true, invert:true, min:0, max:12, tip:'Pulled barrel % allowed -- the most dangerous contact type allowed (lower = better).'},
+  {key:'hard_hit_pct', label:'HH%',     d:1,  pct:true, invert:true, min:28,max:52,   tip:'Hard-hit % allowed (lower = better).'},
+  {key:'fb_pct',       label:'FB%',     d:1,  pct:true, invert:true, min:25,max:50,   tip:'Fly ball % allowed (lower = better -- fewer air outs turning into HRs).'},
 ];
 
 function heatBg(value, col) {
@@ -262,7 +270,7 @@ function batterTable(batters, tbl) {
   h += '<th class="' + thClass(tbl,'name') + '" onclick="sortClick(\'' + tbl + '\',\'name\')">BATTER <span class="sort-arrow"></span></th>';
   h += '<th class="' + thClass(tbl,'stands') + '" onclick="sortClick(\'' + tbl + '\',\'stands\')">B <span class="sort-arrow"></span></th>';
   BATTER_COLS.forEach(function(c){ h += colTh(tbl, c); });
-  h += '<th>HR FORM</th></tr></thead><tbody>';
+  h += '<th><span class="tip" data-tip="Recent form: real season HR rate vs. league average, trending up/down/neutral -- are they hot or cold right now?">HR FORM</span></th></tr></thead><tbody>';
   rows.forEach(function(b) {
     h += '<tr><td>' + esc(b.name||'?') + '</td><td style="text-align:center">' + esc(b.stands||'R') + '</td>';
     BATTER_COLS.forEach(function(c) {

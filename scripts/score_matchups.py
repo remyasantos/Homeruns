@@ -395,6 +395,13 @@ def get_la(batter_sv: dict, batter_raw: dict = None) -> float:
     return None
 
 
+def get_sweet_spot_pct(batter_sv: dict, batter_raw: dict = None) -> float:
+    v = _sv(batter_sv, "sweet_spot_pct")
+    if v:
+        return round(v, 1)
+    return None
+
+
 def get_fb_pct(batter_sv: dict, batter_raw: dict) -> float:
     v = _sv(batter_sv, "fb_pct") or _sv(batter_sv, "flyball_pct")
     if v:
@@ -542,14 +549,20 @@ def build_batter_matchup(batter_raw: dict, team: str,
 
     xwoba_sv = _sv(bsv, "xwoba")
     xwoba_b  = round(xwoba_sv, 3) if xwoba_sv is not None else None
+    # Real xwOBA on contact only (excludes Ks/BBs, so it's a different, higher
+    # number than plain xwoba) -- computed in fetch_savant.py's
+    # _aggregate_batter_rows, not re-derived here.
+    xwoba_contact_sv = _sv(bsv, "xwoba_contact")
+    xwoba_contact = round(xwoba_contact_sv, 3) if xwoba_contact_sv is not None else None
 
-    pull_brl  = get_pull_brl_pct(bsv, batter_raw)
-    brl_bip   = get_brl_bip_pct(bsv, batter_raw)
-    la        = get_la(bsv, batter_raw)
-    fb_pct    = get_fb_pct(bsv, batter_raw)
-    hh_pct    = get_hh_pct(bsv, batter_raw)
-    swstr_b   = get_swstr_pct_batter(bsv, batter_raw)
-    ev        = get_exit_velo(bsv, batter_raw)
+    pull_brl   = get_pull_brl_pct(bsv, batter_raw)
+    brl_bip    = get_brl_bip_pct(bsv, batter_raw)
+    la         = get_la(bsv, batter_raw)
+    fb_pct     = get_fb_pct(bsv, batter_raw)
+    hh_pct     = get_hh_pct(bsv, batter_raw)
+    sweet_spot = get_sweet_spot_pct(bsv, batter_raw)
+    swstr_b    = get_swstr_pct_batter(bsv, batter_raw)
+    ev         = get_exit_velo(bsv, batter_raw)
 
     return {
         "batterId":      pid,
@@ -566,12 +579,14 @@ def build_batter_matchup(batter_raw: dict, team: str,
         "bip":           bip_val,
         "iso":           iso,
         "xwoba":         xwoba_b,
+        "xwoba_contact": xwoba_contact,
         "xwobac":        xwobac,
         "swstr_pct":     swstr_b,
         "pull_brl_pct":  pull_brl,
         "brl_bip_pct":   brl_bip,
         "fb_pct":        fb_pct,
         "hh_pct":        hh_pct,
+        "sweet_spot_pct": sweet_spot,
         "la":            la,
         "likely":        likely,
         "zones":         bsv.get("zones", [0.0] * 9),
