@@ -352,29 +352,39 @@ def get_pitcher_stats(player_id, season=2026):
         if not sp:
             return {}
 
-        def f(key, default=0.0):
+        # Real value or None -- never a league-average placeholder standing
+        # in for a stat MLB Stats API didn't actually provide for this
+        # pitcher (e.g. a true 0-IP call-up, where ERA/WHIP are genuinely
+        # undefined, not "average").
+        def f(key):
             v = sp.get(key)
             try:
-                return float(v) if v not in (None, "", "-") else default
+                return float(v) if v not in (None, "", "-") else None
             except (TypeError, ValueError):
-                return default
+                return None
 
-        ip   = f("inningsPitched")
-        era  = f("era", 4.50)
-        whip = f("whip", 1.30)
-        bb9  = f("walksPer9Inn", 3.0)
-        k9   = f("strikeoutsPer9Inn", 7.0)
-        hr   = f("homeRuns")
-        bb   = f("baseOnBalls")
-        k    = f("strikeOuts")
+        ip   = f("inningsPitched") or 0.0
+        era  = f("era")
+        whip = f("whip")
+        bb9  = f("walksPer9Inn")
+        k9   = f("strikeoutsPer9Inn")
+        hr   = f("homeRuns") or 0.0
+        bb   = f("baseOnBalls") or 0.0
+        k    = f("strikeOuts") or 0.0
 
         hr9_direct = sp.get("homeRunsPer9")
         if hr9_direct not in (None, "", "-"):
             hr9 = float(hr9_direct)
+        elif ip > 0:
+            # Real hr/ip math, not a guess -- both are real season counts.
+            hr9 = round(hr / ip * 9, 2)
         else:
-            hr9 = round(hr / ip * 9, 2) if ip > 0 else 1.0
+            hr9 = None
 
-        fip = round((13 * hr + 3 * bb - 2 * k) / ip + 3.2, 2) if ip > 0 else era
+        # Real FIP formula (needs real ip > 0); never falls back to ERA,
+        # which would silently substitute a different real stat -- or a
+        # fabricated one, if ERA itself were ever missing -- as if it were FIP.
+        fip = round((13 * hr + 3 * bb - 2 * k) / ip + 3.2, 2) if ip > 0 else None
 
         return {"era": era, "whip": whip, "hr9": hr9, "bb9": bb9,
                 "k9": k9, "fip": fip, "ip": ip}

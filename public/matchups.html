@@ -185,8 +185,8 @@ function isGameLive(g) {
 }
 
 var BATTER_COLS = [
-  {key:'matchup_score',label:'MSCORE',  d:1,  invert:false,min:0,    max:100,  tip:'Composite matchup score: blends KHR, zone fit, park factor, weather, and power ceiling into one 0-100 ranking for this specific matchup.'},
-  {key:'khr',          label:'KHR',     d:1,  invert:false,min:30,   max:90,   tip:'Matchup + recent form combined -- the batter’s real matchup-based production adjusted for how hot or cold they’ve been trending lately.'},
+  {key:'matchup_score',label:'MSCORE',  d:1,  invert:false,min:0,    max:100,  tip:'Strictly historical hitter-vs-pitcher rating (zone fit + xwOBA vs. pitcher hand) -- no park/weather/recent-form input, so a good matchup batter can still be cold.'},
+  {key:'khr',          label:'KHR',     d:1,  invert:false,min:30,   max:90,   tip:'Matchup Score buffed/nerfed by recent HR form: 0.6×Matchup + 40×HR-rate -- identifies hot bats in good matchups, not just good matchups alone.'},
   {key:'ceiling',      label:'CEIL',    d:1,  invert:false,min:0,    max:100,  tip:'Power ceiling: a 0-100 read on overall raw power from barrel rate, exit velocity, and ISO -- independent of today’s specific matchup.'},
   {key:'zone_fit',     label:'ZNFIT',   d:3,  invert:false,min:0.04, max:0.20, tip:'How well this batter’s hot zones line up with the pitcher’s pitch-location tendencies (pitcher zone-frequency x batter zone-xwOBA).'},
   {key:'pit',          label:'PIT',     d:0,  invert:false,min:200,  max:15000,tip:'Real total pitches seen this season -- sample-size context for the rest of this row.'},

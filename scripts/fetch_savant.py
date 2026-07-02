@@ -368,7 +368,8 @@ def _pct(count, total, none_on_empty=False):
 def _aggregate_batter_rows(rows, include_meta=False):
     if not rows:
         d = {
-            "pa": 0, "xwoba": 0.0, "xwoba_contact": None, "xba": 0.0, "xslg": 0.0, "xiso": 0.0,
+            "pa": 0, "pitches_seen": 0, "bip_count": 0,
+            "xwoba": 0.0, "xwoba_contact": None, "xba": 0.0, "xslg": 0.0, "xiso": 0.0,
             "exit_velo": 0.0, "la_avg": 0.0, "barrel_pct": 0.0, "hard_hit_pct": 0.0,
             "sweet_spot_pct": 0.0, "swstr_pct": 0.0, "o_swing_pct": 0.0,
             "gb_pct": 0.0, "fb_pct": 0.0, "ld_pct": 0.0,
@@ -444,6 +445,13 @@ def _aggregate_batter_rows(rows, include_meta=False):
 
     d = {
         "pa":            pa,
+        # Real season totals -- reference dashboard's "Pit"/"BIP" columns
+        # confirmed (via that dashboard's own exported live data) to be
+        # exactly these two real counts for the batter themselves: total
+        # real pitches seen and total real batted-ball events, not any
+        # estimate or an opposing player's stat.
+        "pitches_seen":  total_pitches_faced,
+        "bip_count":     bip_count,
         "xwoba":         xwoba,
         "xwoba_contact": xwoba_contact,
         "xba":           xba_val,

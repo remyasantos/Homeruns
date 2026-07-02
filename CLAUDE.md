@@ -95,6 +95,16 @@ score — never an estimated stand-in.
 - **Pitcher Disaster**: real ERA/WHIP/HR9/FIP blended 45% with real Savant
   barrel%/hard-hit%/xwOBA/FB% *allowed*, same 55/45 weighting and same
   season-only fallback when a pitcher has no real Savant sample.
+- `fetch_slate.py`'s `get_pitcher_stats()` returns real `era`/`whip`/`hr9`/
+  `bb9`/`fip` or `None` — never a league-average placeholder (previously
+  defaulted missing fields to e.g. `era: 4.50`, `whip: 1.30`, which silently
+  faked stats for the rare genuine 0-IP edge case, like a call-up who
+  hasn't recorded an out yet). Every downstream consumer (`tier_engine.py`'s
+  scoring, `generate_data_js.py`'s generated text, `parlay_builder.py`'s
+  disaster-pitcher filters) is `None`-safe: missing stats are excluded from
+  weighted composites (re-normalized over what's real) rather than
+  defaulted, and generated text degrades to neutral phrasing instead of
+  printing a fabricated number.
 - **Weather**: `fetch_slate.py`'s real per-game weather (see System 2 below)
   is shared by this pipeline too. `temp_f`/`wind_mph`/`roof` can legitimately
   be `None` (roof state unconfirmed, or the live feed hasn't posted yet) —
@@ -232,11 +242,11 @@ BallparkPal's model. If both sources fail or their markup changes,
 becomes `0` (no bonus), never a guessed rank-based number.
 
 ### Scoring model (how to update)
-- **KHR score**: `xwoba_vs_pitcher_hand × 170` — edit in `scripts/score_matchups.py`, function `compute_khr()`
+- **Matchup score**: strictly historical hitter-vs-pitcher rating — `zone_fit_norm(0-50) + xwobac_norm(0-50)`, `None` if either input isn't real. Deliberately excludes park/weather/ceiling: a reference dashboard's own glossary describes this as the historical "hitter-vs-pitcher rating" with weather "never covered," and lists Ceiling as its own separate score. Our exact weighting here is our own real-data-driven design (not reverse-engineered) — see `compute_matchup_score()`'s docstring for why an exact match wasn't reachable.
+- **KHR score**: `0.6 × matchup_score + 40 × hr_per_game` — this one **is** a directly confirmed, exactly reverse-engineered formula (residual ~1e-13 via least-squares regression against 285 real player records exported from that reference dashboard's own live data, plus a second-day cross-check). `hr_per_game` is the same real stat already computed in `compute_hr_form()`. Edit in `compute_khr()`.
 - **Zone fit**: dot product of pitcher pitch-frequency-per-zone × batter xwOBA-per-zone (real Savant zone data only — `None` if either side lacks it)
-- **Park bonus**: BallparkPal's real per-game HR% factor, scaled and capped 0–10 — `0` if not available (see above)
-- **Matchup score**: weighted sum of khr_norm + zone_fit_norm + park_bonus + power_raw + weather_bonus — `None` if khr/zone_fit/ceiling aren't all real
-- Edit weights inline in `scripts/score_matchups.py`, function `compute_matchup_score()`
+- **Park bonus / weather bonus**: real, but no longer part of Matchup Score or KHR (see above) — still computed and stored per-game (`parkHrPct`, `weather`) for the Weather tab and other display, just not folded into these two scores anymore.
+- **PIT / BIP** (batter columns): real season totals for *that batter* — total real pitches seen and total real batted-ball-in-play events, computed in `fetch_savant.py`'s `_aggregate_batter_rows` from the same per-pitch data already fetched, confirmed against that reference dashboard's own real per-player export to be exactly its "Pit"/"BIP" definitions. Never an estimate, never the opposing pitcher's stat (a bug in an earlier version of this pipeline).
 - The dashboard UI layout is in `public/matchups.html` — all rendering is client-side JS, no build step
 
 ### What the matchups workflow does NOT touch

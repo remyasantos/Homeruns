@@ -142,32 +142,54 @@ for venue, pf in park_factors.items():
 def make_pitcher_note(ps: dict, name: str) -> str:
     if not ps or not name or name == "TBD":
         return f"TBD arm — rotation unannounced"
-    era  = float(ps.get("era",  99)  or 99)
-    whip = float(ps.get("whip", 9.9) or 9.9)
-    hr9  = float(ps.get("hr9",  0)   or 0)
-    bb9  = float(ps.get("bb9",  0)   or 0)
-    fip  = float(ps.get("fip",  era) or era)
+    # Real value or None -- MLB Stats API leaves these blank for a genuine
+    # 0-IP edge case (e.g. a call-up who hasn't recorded an out yet). Never
+    # backfilled with a plausible-looking placeholder (99 ERA, 9.9 WHIP,
+    # etc.) that would read as a real, damning stat when it's actually
+    # missing data.
+    era  = ps.get("era")
+    whip = ps.get("whip")
+    hr9  = ps.get("hr9")
+    bb9  = ps.get("bb9")
+    fip  = ps.get("fip")
 
-    # Pick the single most damning metric
-    if era >= 7.00:
+    if era is None and whip is None and hr9 is None and bb9 is None:
+        return "Limited MLB innings this season — season ERA/FIP not yet established"
+
+    # Pick the single most damning metric among whichever are real.
+    if era is not None and era >= 7.00:
         return f"{era:.2f} ERA — historically bad run, no reliable out pitch in 2026"
-    if era >= 6.00:
-        diff = round(era - fip, 2)
-        if fip < era - 0.5:
+    if era is not None and era >= 6.00:
+        if fip is not None and fip < era - 0.5:
             return f"{era:.2f} ERA, {fip:.2f} FIP — ERA is real, underlying metrics confirm collapse"
-        return f"{era:.2f} ERA, {whip:.2f} WHIP — elevated hard-contact rate throughout 2026"
-    if hr9 >= 1.80:
+        if whip is not None:
+            return f"{era:.2f} ERA, {whip:.2f} WHIP — elevated hard-contact rate throughout 2026"
+        return f"{era:.2f} ERA — elevated hard-contact rate throughout 2026"
+    if hr9 is not None and hr9 >= 1.80:
         return f"{hr9:.1f} HR/9 — fly-ball approach invites pull-power damage every outing"
-    if bb9 >= 4.50:
+    if bb9 is not None and bb9 >= 4.50:
         return f"{bb9:.1f} BB/9 — chronic command issues, pitching from behind in every count"
-    if whip >= 1.55:
+    if whip is not None and whip >= 1.55:
         return f"{whip:.2f} WHIP — baserunner inflation compounding, hitters getting looks in traffic"
-    if era >= 5.00:
+    if era is not None and era >= 5.00:
         return f"{era:.2f} ERA — soft-contact approach deteriorating vs power lineups"
-    return f"{era:.2f} ERA — solid arm, limited disaster upside in this context"
+    if era is not None:
+        return f"{era:.2f} ERA — solid arm, limited disaster upside in this context"
+    return "Solid underlying profile — limited disaster upside in this context"
 
 
 # ── Player note (2 sentences grounded in real stats) ─────────────────────────
+
+def _era_whip_phrase(era, whip) -> str:
+    """Real "(X.XX ERA, Y.YY WHIP)"-style parenthetical, gracefully degrading
+    to whatever subset is actually real, or empty if neither is -- never a
+    fabricated number filling the gap."""
+    if era is not None and whip is not None:
+        return f" ({era:.2f} ERA, {whip:.2f} WHIP)"
+    if era is not None:
+        return f" ({era:.2f} ERA)"
+    return ""
+
 
 def make_player_note(p: dict, w: dict) -> str:
     name    = p["playerName"].split()[0]  # first name for sentence flow
@@ -179,9 +201,10 @@ def make_player_note(p: dict, w: dict) -> str:
     venue   = p["venue"]
     pitcher = p["oppPitcherName"]
     ps      = p.get("pitcherStats", {})
-    era     = float(ps.get("era", 4.50) or 4.50)
-    whip    = float(ps.get("whip", 1.30) or 1.30)
-    hr9     = float(ps.get("hr9", 1.0)  or 1.0)
+    # Real value or None -- never a league-average placeholder (see
+    # fetch_slate.py's get_pitcher_stats).
+    era     = ps.get("era")
+    whip    = ps.get("whip")
     tier    = p["tier"]
     is_dome = venue in roof_parks
     wind    = w.get("wind_mph")
@@ -200,30 +223,31 @@ def make_player_note(p: dict, w: dict) -> str:
 
     # Sentence 2: why HR today — pitcher + park + weather context
     park_rank = park_factors.get(venue, {}).get("rank", 10)
+    stat_phrase = _era_whip_phrase(era, whip)
 
-    if era >= 6.50:
+    if era is not None and era >= 6.50:
         s2 = (f"{pitcher}'s {era:.2f} ERA is a full disaster-start — "
               f"no pitcher on today's board is more exploitable, and {venue} amplifies every elevated mistake.")
-    elif era >= 5.50 and wind_out:
+    elif era is not None and era >= 5.50 and wind_out:
         s2 = (f"{pitcher} is leaking runs at a {era:.2f} ERA clip, and {wind}mph outward wind at {venue} "
               f"turns any elevated contact into a HR — a double-context setup.")
-    elif era >= 5.50:
+    elif era is not None and era >= 5.50:
         s2 = (f"{pitcher}'s {era:.2f} ERA signals a broken approach — {name}'s pull power "
               f"exploits the pattern at {venue} for a premium HR setup today.")
     elif is_dome:
         s2 = (f"The closed dome at {venue} removes all weather variables — "
-              f"pure bat-to-ball execution against {pitcher} ({era:.2f} ERA) in a controlled environment.")
+              f"pure bat-to-ball execution against {pitcher}{stat_phrase} in a controlled environment.")
     elif wind_out:
         s2 = (f"With {wind}mph wind blowing out at {venue}, {name}'s natural pull power "
               f"gets an extra push — even a solid contact against {pitcher} can carry.")
     elif park_rank <= 3:
         s2 = (f"{venue} is the #{park_rank} HR park on today's slate — "
-              f"{name}'s power profile in this environment against {pitcher} ({era:.2f} ERA) is a strong HR context.")
+              f"{name}'s power profile in this environment against {pitcher}{stat_phrase} is a strong HR context.")
     elif temp is not None:
-        s2 = (f"Against {pitcher} ({era:.2f} ERA, {whip:.2f} WHIP) in a {temp}°F outdoor game, "
+        s2 = (f"Against {pitcher}{stat_phrase} in a {temp}°F outdoor game, "
               f"{name}'s {hr}-HR pace gives this prop real probability floor.")
     else:
-        s2 = (f"Against {pitcher} ({era:.2f} ERA, {whip:.2f} WHIP), "
+        s2 = (f"Against {pitcher}{stat_phrase}, "
               f"{name}'s {hr}-HR pace gives this prop real probability floor.")
 
     return f"{s1} {s2}"
@@ -268,8 +292,8 @@ def make_context_cards() -> list:
                 "venue":      venue,
                 "pitcher":    opp_pitcher,
                 "era":        era,
-                "whip":       opp_ps.get("whip", "?"),
-                "hr9":        opp_ps.get("hr9", "?"),
+                "whip":       opp_ps.get("whip"),
+                "hr9":        opp_ps.get("hr9"),
                 "is_dome":    is_dome,
                 "wind":       wind,
                 "wdir":       w.get("wind_dir"),
@@ -296,11 +320,12 @@ def make_context_cards() -> list:
         d = unique[0]
         names = ", ".join(p["playerName"].split()[0] for p in d["top_batters"][:3])
         hr_list = " / ".join(f"{p['hr']} HR" for p in d["top_batters"][:2])
+        whip_clause = f" and {d['whip']:.2f} WHIP" if d.get('whip') is not None else ""
         cards.append({
             "icon":  "💥",
             "label": f"{d['pitcher']} — SP Disaster",
             "note":  f"{d['era']:.2f} ERA — {d['game']} — Worst Arm on Today's Slate",
-            "sub":   (f"{d['pitcher']} has posted a {d['era']:.2f} ERA and {d['whip']:.2f} WHIP — "
+            "sub":   (f"{d['pitcher']} has posted a {d['era']:.2f} ERA{whip_clause} — "
                       f"the most exploitable arm on any board today. "
                       f"{names} all get multiple ABs against this disaster starter at "
                       f"{d['venue']} ({hr_list})."),
@@ -383,14 +408,16 @@ def make_context_cards() -> list:
     if value_players:
         vp  = value_players[0]
         ps  = vp.get("pitcherStats", {})
-        era = float(ps.get("era", 4.50) or 4.50)
+        era = ps.get("era")
+        era_clause = f"{vp['oppPitcherName']}'s {era:.2f} ERA and {vp['venue']} amplify" if era is not None \
+            else f"{vp['venue']} amplifies"
         cards.append({
             "icon":  "💰",
             "label": f"{vp['playerName']} — Best Value",
             "note":  f"{vp['estOdds']} Odds — {vp['tier']}-Tier vs {vp['oppPitcherName']}",
             "sub":   (f"{vp['playerName']} ({vp['team']}) carries {vp['hr']} HRs and a {vp['ops']:.3f} OPS "
                       f"into a {vp['matchupGrade']}-grade matchup at {vp['estOdds']} — heavily underpriced. "
-                      f"{vp['oppPitcherName']}'s {era:.2f} ERA and {vp['venue']} amplify the real HR probability above market."),
+                      f"{era_clause} the real HR probability above market."),
         })
     elif len(outdoor_venues) > 1:
         v2, rank2, w2 = outdoor_venues[1]
@@ -452,8 +479,11 @@ def make_parlay_strategy(par: dict, player_lookup: dict) -> tuple[str, str]:
     # Build enriched strategy by injecting real stats into the existing text
     if disaster:
         ps  = disaster.get("pitcherStats", {})
-        era = float(ps.get("era", 0) or 0)
-        disaster_str = f"{disaster['oppPitcherName']} ({era:.2f} ERA)"
+        era = ps.get("era")
+        disaster_str = (
+            f"{disaster['oppPitcherName']} ({era:.2f} ERA)" if era is not None
+            else disaster['oppPitcherName']
+        )
     else:
         disaster_str = "today's weakest arm"
 

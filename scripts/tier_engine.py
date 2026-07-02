@@ -132,25 +132,40 @@ def score_pitcher_disaster(stats, pitcher_id=None):
     falls back to season-stats-only when they don't."""
     if not stats:
         return 35  # unknown TBD arm — slight positive
-    era  = stats.get("era", 4.5)
-    whip = stats.get("whip", 1.30)
-    hr9  = stats.get("hr9", 1.1)
-    fip  = stats.get("fip", 4.5)
-    ip   = stats.get("ip", 0)
+    # Real value or None -- MLB Stats API leaves these blank when genuinely
+    # undefined (e.g. a true 0-IP call-up), never backfilled with a
+    # league-average placeholder (see fetch_slate.py's get_pitcher_stats).
+    era  = stats.get("era")
+    whip = stats.get("whip")
+    hr9  = stats.get("hr9")
+    fip  = stats.get("fip")
+    ip   = stats.get("ip") or 0.0
 
-    # ERA score: 9.0+ ERA = 100, 2.0 ERA = 0
-    era_s  = min(100, max(0, (era - 2.0) / 7.0 * 100))
-    # WHIP score: 1.8+ = 100, 0.9 = 0
-    whip_s = min(100, max(0, (whip - 0.9) / 0.9 * 100))
-    # HR/9 score: 2.5+ = 100, 0.5 = 0
-    hr9_s  = min(100, max(0, (hr9 - 0.5) / 2.0 * 100))
-    # FIP score: 6.0+ = 100, 3.0 = 0
-    fip_s  = min(100, max(0, (fip - 3.0) / 3.0 * 100))
+    # Weighted average over only the real components present, re-normalized
+    # -- a pitcher missing one real stat doesn't get a fabricated stand-in,
+    # and doesn't get penalized by silently zeroing that component either.
+    weighted = []
+    if era is not None:
+        # ERA score: 9.0+ ERA = 100, 2.0 ERA = 0
+        weighted.append((min(100, max(0, (era - 2.0) / 7.0 * 100)), 0.35))
+    if whip is not None:
+        # WHIP score: 1.8+ = 100, 0.9 = 0
+        weighted.append((min(100, max(0, (whip - 0.9) / 0.9 * 100)), 0.25))
+    if hr9 is not None:
+        # HR/9 score: 2.5+ = 100, 0.5 = 0
+        weighted.append((min(100, max(0, (hr9 - 0.5) / 2.0 * 100)), 0.25))
+    if fip is not None:
+        # FIP score: 6.0+ = 100, 3.0 = 0
+        weighted.append((min(100, max(0, (fip - 3.0) / 3.0 * 100)), 0.15))
 
     # Low innings pitched = less reliable sample, slight penalty
     ip_confidence = min(1.0, ip / 30.0)
 
-    season_composite = era_s * 0.35 + whip_s * 0.25 + hr9_s * 0.25 + fip_s * 0.15
+    if weighted:
+        total_weight = sum(w for _, w in weighted)
+        season_composite = sum(s * w for s, w in weighted) / total_weight
+    else:
+        season_composite = 35.0  # no real season stats at all -- same neutral default as the TBD case above
 
     savant_composite = None
     sv = savant_pitchers.get(str(pitcher_id), {}) if pitcher_id else {}

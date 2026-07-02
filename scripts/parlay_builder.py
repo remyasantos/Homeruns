@@ -86,7 +86,8 @@ SAB_pool = one_per_game(S + A + B)
 
 
 def is_disaster(p):
-    return p.get("pitcherStats", {}).get("era", 0) >= 5.50
+    era = p.get("pitcherStats", {}).get("era")
+    return era is not None and era >= 5.50
 
 def has_wind(p):
     return "💨 Wind Boost" in p.get("tags", [])
