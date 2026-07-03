@@ -1,6 +1,6 @@
 const MATCHUPS_DATE = "JULY 3, 2026";
 const MATCHUPS_LABEL = "FRIDAY MLB SLATE";
-const MATCHUPS_GENERATED_AT = "2026-07-03T14:10:44Z";
+const MATCHUPS_GENERATED_AT = "2026-07-03T15:22:11Z";
 const MATCHUPS_GAMES = [
   {
     "gamePk": 824659,
@@ -15,10 +15,10 @@ const MATCHUPS_GAMES = [
     "homeThrows": "L",
     "park": "Wrigley Field",
     "weather": {
-      "temp_f": 74,
-      "wind_mph": 9,
-      "wind_dir": "SSW",
-      "humidity": 87,
+      "temp_f": 77,
+      "wind_mph": 8,
+      "wind_dir": "SW",
+      "humidity": 82,
       "condition": "Overcast ",
       "roof": false
     },
@@ -966,10 +966,10 @@ const MATCHUPS_GAMES = [
     "homeThrows": "R",
     "park": "Nationals Park",
     "weather": {
-      "temp_f": 87,
+      "temp_f": 91,
       "wind_mph": 4,
       "wind_dir": "NNW",
-      "humidity": 65,
+      "humidity": 60,
       "condition": "Sunny",
       "roof": false
     },
@@ -1954,10 +1954,10 @@ const MATCHUPS_GAMES = [
     "homeThrows": "R",
     "park": "Yankee Stadium",
     "weather": {
-      "temp_f": 89,
-      "wind_mph": 7,
+      "temp_f": 91,
+      "wind_mph": 9,
       "wind_dir": "NW",
-      "humidity": 52,
+      "humidity": 50,
       "condition": "Sunny",
       "roof": false
     },
@@ -2905,14 +2905,14 @@ const MATCHUPS_GAMES = [
     "homeThrows": "R",
     "park": "Great American Ball Park",
     "weather": {
-      "temp_f": 80,
+      "temp_f": 86,
       "wind_mph": 2,
-      "wind_dir": "WSW",
-      "humidity": 85,
+      "wind_dir": "WNW",
+      "humidity": 77,
       "condition": "Sunny",
       "roof": false
     },
-    "parkHrPct": 0.26,
+    "parkHrPct": 0.2,
     "awayMatchups": [
       {
         "batterId": 624413,
@@ -3856,14 +3856,14 @@ const MATCHUPS_GAMES = [
     "homeThrows": "R",
     "park": "Progressive Field",
     "weather": {
-      "temp_f": 85,
-      "wind_mph": 8,
+      "temp_f": 87,
+      "wind_mph": 9,
       "wind_dir": "WSW",
-      "humidity": 68,
+      "humidity": 63,
       "condition": "Sunny",
       "roof": false
     },
-    "parkHrPct": 0.16,
+    "parkHrPct": 0.08,
     "awayMatchups": [
       {
         "batterId": 678246,
@@ -4851,7 +4851,7 @@ const MATCHUPS_GAMES = [
       "condition": "Sunny",
       "roof": false
     },
-    "parkHrPct": 0.06,
+    "parkHrPct": 0.1,
     "awayMatchups": [
       {
         "batterId": 665742,
@@ -5795,10 +5795,10 @@ const MATCHUPS_GAMES = [
     "homeThrows": "R",
     "park": "Coors Field",
     "weather": {
-      "temp_f": 72,
-      "wind_mph": 5,
+      "temp_f": 69,
+      "wind_mph": 6,
       "wind_dir": "SSW",
-      "humidity": 15,
+      "humidity": 32,
       "condition": "Sunny",
       "roof": false
     },
@@ -7771,10 +7771,10 @@ const MATCHUPS_GAMES = [
     "homeThrows": "R",
     "park": "Angel Stadium",
     "weather": {
-      "temp_f": 61,
+      "temp_f": 64,
       "wind_mph": 3,
       "wind_dir": "SSW",
-      "humidity": 87,
+      "humidity": 81,
       "condition": "Overcast",
       "roof": false
     },
@@ -8759,8 +8759,8 @@ const MATCHUPS_GAMES = [
     "homeThrows": "R",
     "park": "Sutter Health Park",
     "weather": {
-      "temp_f": 56,
-      "wind_mph": 5,
+      "temp_f": 57,
+      "wind_mph": 4,
       "wind_dir": "SSW",
       "humidity": 87,
       "condition": "Sunny",
@@ -10698,11 +10698,11 @@ const MATCHUPS_GAMES = [
     "homeThrows": "R",
     "park": "UNIQLO Field at Dodger Stadium",
     "weather": {
-      "temp_f": 63,
-      "wind_mph": 3,
+      "temp_f": 64,
+      "wind_mph": 4,
       "wind_dir": "SSE",
-      "humidity": 87,
-      "condition": "Fog",
+      "humidity": 84,
+      "condition": "Overcast",
       "roof": false
     },
     "parkHrPct": 0.09,
