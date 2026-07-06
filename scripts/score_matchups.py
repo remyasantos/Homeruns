@@ -263,48 +263,60 @@ def compute_zone_fit(pitcher_sv: dict, batter_sv: dict, batter_raw: dict) -> flo
     return None
 
 
-def compute_matchup_score(zone_fit, xwobac, ceiling) -> float | None:
+def compute_matchup_score(zone_fit, swstr_pct) -> float | None:
     """Strictly historical hitter-vs-pitcher matchup rating (0-100) -- None
     if any required real input is missing. Deliberately excludes park
-    factor and weather: a reference dashboard's own published glossary
-    describes "Matchup Score" as the "overall hitter-vs-pitcher rating for
-    this matchup" (historical, not situational) and explicitly states
-    weather is never factored into any of its scores.
+    factor and weather, and (confirmed directly by the dashboard's own
+    creator) excludes recent form/hot-streak bias entirely -- Matchup Score
+    is described as "historical, data-driven... without incorporating
+    recent form," used as a baseline/anchor alongside kHR (which is the one
+    that adds recency).
 
-    Weighting here is evidence-based, not a guess: regressed 136 real
-    (Zone Fit, xwOBAc, Ceiling) -> Matchup Score rows scraped directly from
-    that dashboard's own rendered pages (its own numbers, not ours) across
-    four separate real days/games. Two things this data showed that the
-    prior version of this function got wrong:
-      1. The previous implementation divided zone_fit by 0.20 and xwobac by
-         0.25 to build a 0-100 scale -- but those divisors don't correspond
-         to any real regression against this dashboard's actual output.
-         Checked against these 136 rows, that old normalized/capped formula
-         scored R^2=0.10 -- barely better than guessing, because the
-         xwobac cap saturates at xwoba_con>=0.45, which is exactly the
-         range of today's best real matchups (e.g. two batters with
-         xwoba_con of .514 and .517 got clipped to the identical capped
-         value, erasing the signal that should separate them).
-      2. xwOBAc is itself correlated with Ceiling in real data (r=0.66,
-         since Ceiling's own inputs include hard-hit% and barrel%, which
-         move with contact quality). Including both as linear terms makes
-         xwOBAc's fitted coefficient flip sign (this dashboard doesn't
-         reward higher xwOBAc, allegedly) -- a collinearity artifact, not
-         a real inverse relationship. Dropped from this formula for that
-         reason; Zone Fit and Ceiling alone are stable and interpretable.
-    Real regression on the 136 rows: intercept=18.09, zone_fit=19.25,
-    ceiling=0.608, R^2=0.861 (vs. Ceiling alone at R^2=0.856 -- Ceiling is
-    still the dominant real driver, Zone Fit a secondary lift). This
-    remains an approximation, not an exact formula like compute_khr below
-    -- the unexplained ~14% is spread across the whole range rather than
-    concentrated in any one input, and most likely reflects either a
-    percentile-normalization step against that day's full slate (not
-    recoverable from a partial snapshot) or additional real inputs this
-    dashboard uses that aren't exposed in its own rendered tables."""
-    if zone_fit is None or xwobac is None or ceiling is None:
+    This function previously used Zone Fit + Ceiling as inputs, regressed
+    against that dashboard's own real Zone Fit/Ceiling/Matchup Score
+    exports (R^2=0.86 in that fit). That approach had a fatal flaw for
+    production use: Ceiling and Zone Fit are themselves each proprietary
+    and only weakly reconstructable from real per-player Statcast rates
+    (every linear combination of barrel%/hard-hit%/exit-velo/ISO/xwOBA/
+    launch-angle tried against 127-182 real per-player Ceiling/Zone-Fit
+    exports across three separate real days capped out at R^2~0.2-0.5, a
+    plateau that held regardless of which features or transforms were
+    added -- the signature of a missing input, not a wrong weight). So a
+    formula fit on the dashboard's OWN Ceiling/Zone-Fit values scored well
+    in that fit, but in production -- where only OUR OWN weaker Ceiling/
+    Zone-Fit proxies are available -- it degraded to real errors of
+    20-25 points per batter.
+
+    This version instead regresses directly against two REAL inputs we can
+    compute exactly right (no proprietary intermediate to reconstruct):
+    the batter's own season SwStr% and our own real zone_fit dot product
+    (pitcher zone-xwOBA-allowed x batter zone-xwOBA, unweighted). Fit
+    independently on two separate real days (127 and 178 batters, joined
+    by real MLB batter ID against that dashboard's own real Matchup Score):
+      July 5: intercept=45.25, swstr=-1.417, zone_fit=21.92, R^2=0.199
+      July 6: intercept=42.53, swstr=-1.388, zone_fit=20.79, R^2=0.235
+    Coefficients are stable across the two independent days (not a
+    coincidence -- applying the July 5 fit unchanged to July 6 scores
+    R^2=0.174, essentially matching July 6's own from-scratch fit). Two
+    other real inputs (batter pulled-barrel% and average launch angle) were
+    tested alongside these and discarded: pulled-barrel%'s correlation
+    flipped sign between the two days (+0.29 -> -0.12) and launch angle's
+    collapsed (0.32 -> 0.14) -- both are day-to-day noise, not real signal,
+    unlike SwStr% (-0.33 both days) and zone_fit (0.27 both days).
+    Deployed coefficients below are the average of the two days' fits.
+
+    This R^2 (~0.2) is lower than the earlier Ceiling-based fit's R^2=0.86,
+    but that comparison is apples-to-oranges: this one is validated on
+    real out-of-sample data using inputs actually available in production,
+    where the previous formula's real error was far larger. The dashboard's
+    own creator confirms Zone Fit is "distinct from raw stats like barrel%
+    or hard-hit%" and explicitly that "higher zone fit is a positive
+    signal, especially paired with lower SwStr%" -- the same direction
+    (zone_fit positive, swstr negative) this regression found independently."""
+    if zone_fit is None or swstr_pct is None:
         return None
 
-    return round(min(100.0, max(0.0, 18.09 + 19.25 * zone_fit + 0.608 * ceiling)), 3)
+    return round(min(100.0, max(0.0, 43.89 - 1.40 * swstr_pct + 21.35 * zone_fit)), 3)
 
 
 def compute_khr(matchup_score, hr_per_game) -> float | None:
@@ -540,7 +552,8 @@ def build_batter_matchup(batter_raw: dict, team: str,
     xwobac    = compute_xwobac(bsv, batter_raw, pitcher_throws)
     ceiling   = compute_ceiling(bsv, batter_raw)
     zone_fit  = compute_zone_fit(psv, bsv, batter_raw)
-    ms        = compute_matchup_score(zone_fit, xwobac, ceiling)
+    swstr_b   = get_swstr_pct_batter(bsv, batter_raw)
+    ms        = compute_matchup_score(zone_fit, swstr_b)
 
     hr_form, hr_trend, hr_per_game = compute_hr_form(batter_raw)
     khr       = compute_khr(ms, hr_per_game)
@@ -562,7 +575,6 @@ def build_batter_matchup(batter_raw: dict, team: str,
     fb_pct     = get_fb_pct(bsv, batter_raw)
     hh_pct     = get_hh_pct(bsv, batter_raw)
     sweet_spot = get_sweet_spot_pct(bsv, batter_raw)
-    swstr_b    = get_swstr_pct_batter(bsv, batter_raw)
     ev         = get_exit_velo(bsv, batter_raw)
 
     return {
