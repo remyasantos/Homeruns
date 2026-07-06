@@ -271,36 +271,40 @@ def compute_matchup_score(zone_fit, xwobac, ceiling) -> float | None:
     this matchup" (historical, not situational) and explicitly states
     weather is never factored into any of its scores.
 
-    Weighting here is evidence-based, not a guess: joined 548 real batter
-    (Zone Fit, xwOBAc, Ceiling) + opposing-pitcher records exported from
-    that dashboard's own live data across two separate real days, then
-    ran least-squares regression of its real matchup_score against these
-    real inputs. Findings, in order of how they shaped this formula:
-      - The opposing pitcher's own quality score added ~zero explanatory
-        power once the batter's own real inputs were included (coefficient
-        ~-0.04) -- dropped entirely, since Zone Fit and xwOBAc already
-        encode the pitcher-specific interaction.
-      - Ceiling ALONE explains R^2=0.62 of real matchup_score variance;
-        adding Zone Fit + xwOBAc on top only lifts that to R^2=0.62
-        (effectively no improvement) -- Ceiling is the dominant real
-        driver, not a co-equal input, contrary to this file's earlier
-        design.
-      - Regression coefficients (real matchup_score ~ 19.6 + 19.8*zone_fit
-        + 13.6*xwoba_con + 0.48*ceiling) were stable across both days.
-    This remains an approximation (R^2~0.62, not an exact formula like
-    compute_khr below) -- the unexplained ~38% most likely reflects a
-    percentile-normalization step against a reference population not
-    recoverable from exported snapshots. But the relative weighting below
-    (Ceiling dominant, Zone Fit/xwOBAc secondary) is real evidence, not
-    an arbitrary split."""
+    Weighting here is evidence-based, not a guess: regressed 136 real
+    (Zone Fit, xwOBAc, Ceiling) -> Matchup Score rows scraped directly from
+    that dashboard's own rendered pages (its own numbers, not ours) across
+    four separate real days/games. Two things this data showed that the
+    prior version of this function got wrong:
+      1. The previous implementation divided zone_fit by 0.20 and xwobac by
+         0.25 to build a 0-100 scale -- but those divisors don't correspond
+         to any real regression against this dashboard's actual output.
+         Checked against these 136 rows, that old normalized/capped formula
+         scored R^2=0.10 -- barely better than guessing, because the
+         xwobac cap saturates at xwoba_con>=0.45, which is exactly the
+         range of today's best real matchups (e.g. two batters with
+         xwoba_con of .514 and .517 got clipped to the identical capped
+         value, erasing the signal that should separate them).
+      2. xwOBAc is itself correlated with Ceiling in real data (r=0.66,
+         since Ceiling's own inputs include hard-hit% and barrel%, which
+         move with contact quality). Including both as linear terms makes
+         xwOBAc's fitted coefficient flip sign (this dashboard doesn't
+         reward higher xwOBAc, allegedly) -- a collinearity artifact, not
+         a real inverse relationship. Dropped from this formula for that
+         reason; Zone Fit and Ceiling alone are stable and interpretable.
+    Real regression on the 136 rows: intercept=18.09, zone_fit=19.25,
+    ceiling=0.608, R^2=0.861 (vs. Ceiling alone at R^2=0.856 -- Ceiling is
+    still the dominant real driver, Zone Fit a secondary lift). This
+    remains an approximation, not an exact formula like compute_khr below
+    -- the unexplained ~14% is spread across the whole range rather than
+    concentrated in any one input, and most likely reflects either a
+    percentile-normalization step against that day's full slate (not
+    recoverable from a partial snapshot) or additional real inputs this
+    dashboard uses that aren't exposed in its own rendered tables."""
     if zone_fit is None or xwobac is None or ceiling is None:
         return None
 
-    zone_fit_norm = min(30.0, max(0.0, zone_fit / 0.20 * 30.0))
-    xwobac_norm   = min(20.0, max(0.0, (xwobac - 0.200) / 0.250 * 20.0))
-    ceiling_norm  = ceiling * 0.50
-
-    return round(min(100.0, zone_fit_norm + xwobac_norm + ceiling_norm), 3)
+    return round(min(100.0, max(0.0, 18.09 + 19.25 * zone_fit + 0.608 * ceiling)), 3)
 
 
 def compute_khr(matchup_score, hr_per_game) -> float | None:

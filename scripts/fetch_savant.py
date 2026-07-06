@@ -343,7 +343,18 @@ def _extract_player_id(row):
 
 
 def _build_bip_flags(df: "pd.DataFrame") -> "pd.DataFrame":
-    df = df.copy()
+    # Real balls in play only (Statcast type == "X"). Every caller pre-filters
+    # to launch_speed.notna() & launch_speed > 0, but Statcast also records
+    # real exit velocity on many foul balls (type == "S", description ==
+    # "foul") -- those aren't genuine batted-ball-in-play events. Confirmed
+    # empirically (Joc Pederson, 2026 season): 158 of 333 rows passing the
+    # launch-speed-only filter were fouls, not true BIP, nearly doubling the
+    # denominator and cutting hard_hit_pct/barrel_pct roughly in half (29.9%
+    # measured vs. a real reference dashboard's 59.4% for the same player;
+    # restricting to type == "X" alone closed most of that gap). Without this
+    # filter, gb_pct+fb_pct+ld_pct summed to ~49% instead of the ~100% they
+    # should when computed over real BIP only.
+    df = df[df.get("type", pd.Series(dtype=str)).astype(str).str.strip() == "X"].copy()
     df["hard_hit"]    = df["launch_speed"] >= 95
     df["barrel"]      = df["launch_speed_angle"].astype(str).str.strip() == "6"
     df["sweet_spot"]  = df["launch_angle"].between(8, 32)
@@ -503,7 +514,14 @@ def _fetch_batter_statcast_batched(bids, pitcher_throws=None, label_prefix="batt
             "batters_lookup[]": [str(b) for b in batch],
         }
         if pitcher_throws:
-            params["pitcherHand"] = pitcher_throws
+            # Confirmed live against Savant's own statcast_search/csv endpoint:
+            # "pitcherHand" is not a real param name there and was silently
+            # ignored, so the vs-RHP and vs-LHP fetches were both returning
+            # the exact same unfiltered rows as the overall fetch (e.g. Joc
+            # Pederson: pitcherHand=R and pitcherHand=L both returned all
+            # 1114 rows). The real param is "pitcher_throws" (R -> 1016 rows,
+            # L -> 98 rows, summing exactly to the unfiltered 1114).
+            params["pitcher_throws"] = pitcher_throws
         rows = get_csv(_ZONE_CSV_BASE, params, label=label)
 
         batter_rows: dict = {}
