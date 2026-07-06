@@ -226,9 +226,30 @@ def compute_xwobac(batter_sv: dict, batter_raw: dict, pitcher_throws: str) -> fl
 
 
 def compute_ceiling(batter_sv: dict, batter_raw: dict) -> float | None:
-    """Real Statcast power-ceiling composite -- None if barrel%/hard-hit%/exit
-    velo aren't all in Savant. ISO may fall back to the real box-score season
-    ISO (a genuine stat, not an estimate) when Savant's xiso is absent."""
+    """Real power-ceiling composite -- None if no real inputs are available
+    at all (never fabricated).
+
+    Prefers fetch_savant.py's real `power_percentile_avg` (the unweighted
+    average of Savant's own official MLB-computed percentile ranks for
+    barrel%, hard-hit%, exit velocity, xISO, and xSLG -- see that field's
+    docstring in fetch_savant.py for the regression evidence) rescaled with
+    a real, validated linear fit: regressed 305 real matched batters across
+    two separate real days against a reference dashboard's real
+    ceiling_score, intercept=32.0, slope=0.4755 (day 1: 33.24/0.453, day 2:
+    30.77/0.498 -- averaged). Out-of-sample checked: the day-1 fit applied
+    unchanged to day 2 scored R^2=0.386, essentially matching day 2's own
+    from-scratch fit (R^2=0.389) -- real signal, not overfitting.
+
+    Falls back to the prior raw-rate composite (barrel%/hard-hit%/exit-velo/
+    ISO against fixed real-world caps, no comparative evidence behind those
+    specific cap constants) only when a batter doesn't have enough
+    qualifying PAs for Savant's own percentile rankings -- some real
+    estimate for those batters beats none, but the percentile-based version
+    above is the one with actual out-of-sample validation behind it."""
+    power_pct_avg = batter_sv.get("power_percentile_avg")
+    if power_pct_avg is not None:
+        return round(min(100.0, max(0.0, 32.0 + 0.4755 * power_pct_avg)), 1)
+
     barrel_pct   = _sv(batter_sv, "barrel_pct")
     hard_hit_pct = _sv(batter_sv, "hard_hit_pct")
     exit_velo    = _sv(batter_sv, "exit_velo") or _sv(batter_sv, "avg_exit_velo")

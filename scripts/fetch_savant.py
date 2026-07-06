@@ -264,6 +264,75 @@ def fetch_batter_quality_leaderboard():
 
 
 # ---------------------------------------------------------------------------
+# Batter percentile rankings (bulk, official MLB-computed)
+# ---------------------------------------------------------------------------
+# Real MLB-computed percentile ranks (0-100, against the qualified-hitter
+# population) from Savant's own /leaderboard/percentile-rankings CSV export.
+# Distinct from -- and confirmed a better real proxy for -- a reference
+# dashboard's "Ceiling" ("power indicator overall") than any combination of
+# our own raw per-batter rates: regressed 305 real matched batters across
+# two separate real days against that dashboard's real ceiling_score, and
+# an unweighted average of five of these percentile columns (barrel%,
+# hard-hit%, exit velocity, xISO, xSLG) scored R^2=0.31 (day 1) / R^2=0.39
+# (day 2), with the day-1 fit applied unchanged to day 2 scoring R^2=0.386
+# -- essentially matching day 2's own from-scratch fit, i.e. real signal,
+# not overfitting. Every combination of our own computed season rates
+# topped out around R^2~0.2-0.3 no matter the transform tried (raw,
+# z-score, percentile-vs-own-pool) -- these official percentiles do
+# noticeably better. A same-player rolling-30-day version of these same
+# rates was also tested and performs *worse* (e.g. hard-hit%: 0.44 vs 0.58
+# using season-long), so this stays season-long, not a recent-form window.
+# None on any batter Savant doesn't have enough qualifying PAs to rank
+# (real gap, never backfilled with a league-average placeholder).
+
+_PERCENTILE_RANKINGS_URL = "https://baseballsavant.mlb.com/leaderboard/percentile-rankings"
+
+
+def fetch_batter_percentile_rankings():
+    params = {"type": "batter", "year": "2026", "csv": "true"}
+    rows = get_csv(_PERCENTILE_RANKINGS_URL, params, label="batter percentile rankings")
+
+    def _f(row, key):
+        v = row.get(key)
+        if v is None or str(v).strip() in ("", "null", "None", "-"):
+            return None
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    result = {}
+    for row in rows:
+        pid_raw = row.get("player_id")
+        try:
+            pid = int(safe_float(pid_raw))
+        except Exception:
+            continue
+        if pid <= 0:
+            continue
+        result[pid] = {
+            "brl_percent":      _f(row, "brl_percent"),
+            "hard_hit_percent": _f(row, "hard_hit_percent"),
+            "exit_velocity":    _f(row, "exit_velocity"),
+            "xiso":             _f(row, "xiso"),
+            "xslg":             _f(row, "xslg"),
+        }
+
+    print(f"  Batter percentile rankings: {len(result)} batters", file=sys.stderr)
+    return result
+
+
+def power_percentile_avg(pr: dict) -> float | None:
+    """Average of the 5 percentile columns above -- None unless all 5 are
+    real (never a partial average standing in for the full composite)."""
+    keys = ("brl_percent", "hard_hit_percent", "exit_velocity", "xiso", "xslg")
+    vals = [pr.get(k) for k in keys]
+    if any(v is None for v in vals):
+        return None
+    return sum(vals) / len(vals)
+
+
+# ---------------------------------------------------------------------------
 # Pitch arsenal (bulk leaderboard)
 # ---------------------------------------------------------------------------
 
@@ -954,6 +1023,10 @@ def main():
     batter_quality = fetch_batter_quality_leaderboard()
 
     time.sleep(5)
+    print("\n--- Fetching batter percentile rankings ---", file=sys.stderr)
+    batter_percentiles = fetch_batter_percentile_rankings()
+
+    time.sleep(5)
     print("\n--- Fetching pitch arsenal ---", file=sys.stderr)
     arsenal_by_pitcher = fetch_pitch_arsenal()
 
@@ -1051,6 +1124,9 @@ def main():
             base["popup_pct"] = bq["popup_pct"]
         if bq.get("straightaway_pct") is not None:
             base["straightaway_pct"] = bq["straightaway_pct"]
+
+        pr = batter_percentiles.get(bid, {})
+        base["power_percentile_avg"] = power_percentile_avg(pr)
 
         out_batters[str(bid)] = base
 
