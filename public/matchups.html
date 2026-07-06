@@ -97,7 +97,12 @@
     .badge-cold { background: #cce5ff; color: #004085; }
 
     .tip { position: relative; cursor: help; }
-    .tip::after { content: attr(data-tip); position: absolute; bottom: 125%; left: 50%; transform: translateX(-50%); white-space: nowrap; background: #1a1f2e; color: white; padding: 3px 7px; border-radius: 3px; font-size: 10px; visibility: hidden; opacity: 0; transition: opacity 0.15s; z-index: 999; pointer-events: none; }
+    /* Tooltip renders below (not above) the header text: .table-wrap sets
+       overflow-x:auto, which per spec forces overflow-y to compute as
+       'auto' too, clipping anything positioned above the header (bottom:125%)
+       since there's no room there within the scroll container. Below the
+       header is always inside the table's own rendered bounds. */
+    .tip::after { content: attr(data-tip); position: absolute; top: 125%; left: 50%; transform: translateX(-50%); white-space: nowrap; background: #1a1f2e; color: white; padding: 3px 7px; border-radius: 3px; font-size: 10px; visibility: hidden; opacity: 0; transition: opacity 0.15s; z-index: 999; pointer-events: none; }
     .tip:hover::after { visibility: visible; opacity: 1; }
 
     body.dark { background: #0d1117; color: #c9d1d9; }
@@ -185,9 +190,9 @@ function isGameLive(g) {
 }
 
 var BATTER_COLS = [
-  {key:'matchup_score',label:'MSCORE',  d:1,  invert:false,min:0,    max:100,  tip:'Strictly historical hitter-vs-pitcher rating (power ceiling, dominant weight, plus zone fit + xwOBA vs. pitcher hand) -- no park/weather/recent-form input, so a good matchup batter can still be cold.'},
+  {key:'matchup_score',label:'MSCORE',  d:1,  invert:false,min:0,    max:100,  tip:'Strictly historical hitter-vs-pitcher rating, from real season SwStr% (lower is better) plus zone fit (pitcher zone-frequency x batter zone-xwOBA) -- no park/weather/recent-form input, so a good matchup batter can still be cold.'},
   {key:'khr',          label:'KHR',     d:1,  invert:false,min:30,   max:90,   tip:'Matchup Score buffed/nerfed by recent HR form: 0.6×Matchup + 40×HR-rate -- identifies hot bats in good matchups, not just good matchups alone.'},
-  {key:'ceiling',      label:'CEIL',    d:1,  invert:false,min:0,    max:100,  tip:'Power ceiling: a 0-100 read on overall raw power from barrel rate, exit velocity, and ISO -- independent of today’s specific matchup.'},
+  {key:'ceiling',      label:'CEIL',    d:1,  invert:false,min:0,    max:100,  tip:'Power ceiling: a 0-100 read on overall raw power, from Statcast’s own official percentile ranks for barrel rate, hard-hit%, exit velocity, xISO, and xSLG -- independent of today’s specific matchup.'},
   {key:'zone_fit',     label:'ZNFIT',   d:3,  invert:false,min:0.04, max:0.20, tip:'How well this batter’s hot zones line up with the pitcher’s pitch-location tendencies (pitcher zone-frequency x batter zone-xwOBA).'},
   {key:'pit',          label:'PIT',     d:0,  invert:false,min:200,  max:15000,tip:'Real total pitches seen this season -- sample-size context for the rest of this row.'},
   {key:'bip',          label:'BIP',     d:0,  invert:false,min:100,  max:3000, tip:'Real total balls in play this season -- sample-size context for the batted-ball stats in this row.'},
