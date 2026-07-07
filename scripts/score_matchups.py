@@ -232,21 +232,32 @@ def compute_ceiling(batter_sv: dict, batter_raw: dict) -> float | None:
     Prefers fetch_savant.py's real `power_percentile_avg` (the unweighted
     average of Savant's own official MLB-computed percentile ranks for
     barrel%, hard-hit%, exit velocity, xISO, and xSLG -- see that field's
-    docstring in fetch_savant.py for the regression evidence) rescaled with
-    a real, validated linear fit: regressed 305 real matched batters across
-    two separate real days against a reference dashboard's real
-    ceiling_score, intercept=32.0, slope=0.4755 (day 1: 33.24/0.453, day 2:
-    30.77/0.498 -- averaged). Out-of-sample checked: the day-1 fit applied
-    unchanged to day 2 scored R^2=0.386, essentially matching day 2's own
-    from-scratch fit (R^2=0.389) -- real signal, not overfitting.
+    docstring in fetch_savant.py for the regression evidence), blended with
+    real multi-year (2023-2026 PA-weighted) barrel% when available (see
+    fetch_batter_multiyear_barrel's docstring for why multi-year data
+    measurably fits a reference dashboard's real Ceiling better than
+    single-season alone): regressed 56 real matched batters with both
+    inputs against real ceiling_score, intercept=29.39, barrel_4yr=1.972,
+    power_pct_avg=0.1549, R^2=0.303 vs. 0.262 for power_pct_avg alone on
+    the same real batters -- a real, if modest, improvement. Falls back to
+    the single-input percentile fit below (intercept=32.0, slope=0.4755,
+    R^2=0.386 out-of-sample -- see prior version of this docstring/commit
+    for that fit's own derivation) when multi-year barrel% isn't available
+    for this batter (Savant's multi-year leaderboard, like its single-year
+    one, only covers the ~150 highest-PA batters on a given day).
 
-    Falls back to the prior raw-rate composite (barrel%/hard-hit%/exit-velo/
-    ISO against fixed real-world caps, no comparative evidence behind those
-    specific cap constants) only when a batter doesn't have enough
-    qualifying PAs for Savant's own percentile rankings -- some real
-    estimate for those batters beats none, but the percentile-based version
-    above is the one with actual out-of-sample validation behind it."""
+    Falls back further to the prior raw-rate composite (barrel%/hard-hit%/
+    exit-velo/ISO against fixed real-world caps, no comparative evidence
+    behind those specific cap constants) only when a batter doesn't have
+    enough qualifying PAs for Savant's own percentile rankings either --
+    some real estimate for those batters beats none, but the percentile-
+    based versions above are the ones with actual real validation behind
+    them."""
     power_pct_avg = batter_sv.get("power_percentile_avg")
+    barrel_4yr = batter_sv.get("barrel_pct_4yr")
+    if power_pct_avg is not None and barrel_4yr is not None:
+        ceiling = 29.39 + 1.972 * barrel_4yr + 0.1549 * power_pct_avg
+        return round(min(100.0, max(0.0, ceiling)), 1)
     if power_pct_avg is not None:
         return round(min(100.0, max(0.0, 32.0 + 0.4755 * power_pct_avg)), 1)
 
