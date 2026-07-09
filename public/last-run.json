@@ -1,18 +1,10 @@
 {
   "status": "success",
-  "date": "JULY 8, 2026",
-  "label": "WEDNESDAY MLB SLATE",
-  "games": 15,
+  "date": "JULY 9, 2026",
+  "label": "THURSDAY MLB SLATE",
+  "games": 13,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-07-08T14:52:00Z",
-  "source": "mlb-stats-api",
-  "quality_check": "2026-07-08T14:52:00Z",
-  "quality_check_fixes": [
-    "C-tier count corrected (14->10): promoted IDs 17-20 B->A, IDs 47-50 C->B",
-    "CIN pitcher fixed: TBD -> Aaron Nola (6.04 ERA, 1.49 WHIP)",
-    "S/A-tier notes enhanced with sharp betting copy",
-    "Top-5 parlay strategies rewritten with player-level detail",
-    "Context cards corrected: Nola disaster + loanDepot dome (SEA@MIA)"
-  ]
+  "timestamp": "2026-07-09T14:17:40Z",
+  "source": "mlb-stats-api"
 }
