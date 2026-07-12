@@ -101,8 +101,16 @@
        overflow-x:auto, which per spec forces overflow-y to compute as
        'auto' too, clipping anything positioned above the header (bottom:125%)
        since there's no room there within the scroll container. Below the
-       header is always inside the table's own rendered bounds. */
-    .tip::after { content: attr(data-tip); position: absolute; top: 125%; left: 50%; transform: translateX(-50%); white-space: nowrap; background: #1a1f2e; color: white; padding: 3px 7px; border-radius: 3px; font-size: 10px; visibility: hidden; opacity: 0; transition: opacity 0.15s; z-index: 999; pointer-events: none; }
+       header is always inside the table's own rendered bounds.
+       white-space:nowrap plus centering (left:50%/translateX(-50%)) made
+       long tooltip text (e.g. MSCORE/KHR/CEIL's full descriptions) run far
+       past both edges of the viewport when the anchor column sits near the
+       left edge of the horizontally-scrolling table -- with no way to
+       scroll to the clipped portion, since an absolutely-positioned
+       tooltip doesn't expand the table-wrap's own scrollable width.
+       Wrapping into a fixed-width box keeps the whole tooltip on-screen
+       regardless of which column it's anchored to. */
+    .tip::after { content: attr(data-tip); position: absolute; top: 125%; left: 50%; transform: translateX(-50%); white-space: normal; width: 220px; max-width: 60vw; background: #1a1f2e; color: white; padding: 5px 8px; border-radius: 3px; font-size: 10px; line-height: 1.35; text-align: left; visibility: hidden; opacity: 0; transition: opacity 0.15s; z-index: 999; pointer-events: none; }
     .tip:hover::after { visibility: visible; opacity: 1; }
 
     body.dark { background: #0d1117; color: #c9d1d9; }
