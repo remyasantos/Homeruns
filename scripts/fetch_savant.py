@@ -7,6 +7,8 @@ INPUTS:  scripts/raw_slate.json  (written by fetch_slate.py)
 OUTPUTS: scripts/savant_data.json
 """
 
+from __future__ import annotations
+
 import csv
 import io
 import json
@@ -573,9 +575,16 @@ def _aggregate_batter_rows(rows, include_meta=False):
     pull_pct     = _pct(bip_df["pull"].sum(),        bip_count)
     oppo_pct     = _pct(bip_df["oppo"].sum(),        bip_count)
 
-    barrel_n = int(bip_df["barrel"].sum())
-    pull_n   = int(bip_df["pull"].sum())
-    pull_brl = round(barrel_n * pull_n / bip_count ** 2, 2) if bip_count > 0 else 0.0
+    # Real pulled-barrel% = real batted balls that are BOTH a barrel AND
+    # pulled, over real BIP -- NOT barrel_pct * pull_pct (that treats the
+    # two as independent events and multiplies probabilities, which both
+    # gets the statistics wrong -- barrels are pulled far more often than
+    # average contact, not independently of it -- and was missing the
+    # x100 scaling _pct() applies, so it silently displayed as ~0.0-0.1%
+    # for every real batter instead of the real high-single-digit to
+    # teens range). Mirrors the already-correct pitcher-side computation
+    # in _aggregate_pitcher_rows below.
+    pull_brl = _pct((bip_df["barrel"] & bip_df["pull"]).sum(), bip_count)
 
     # SwStr% computed directly from real pitch-level outcomes the batter saw
     # (swinging strikes / total pitches faced) -- the real definition, not a
