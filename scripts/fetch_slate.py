@@ -480,7 +480,12 @@ def get_team_batters(team_id, season=2026, top_n=15):
     batters = []
     for player in roster_data.get("roster", []):
         pos = player.get("position", {}).get("abbreviation", "")
-        if pos in ("P", "RP", "SP", "TWP"):
+        # "TWP" (Two-Way Player, e.g. Shohei Ohtani) was excluded alongside
+        # pure-pitcher codes -- wrongly, since two-way players have real,
+        # often elite, hitting stats and can appear as a batter on any game
+        # (not just the ones they start on the mound). This silently
+        # dropped every two-way player from the entire batter pool.
+        if pos in ("P", "RP", "SP"):
             continue
         pid  = player["person"]["id"]
         name = player["person"]["fullName"]
