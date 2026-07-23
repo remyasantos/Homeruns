@@ -1,5 +1,8 @@
 {
-  "status": "validation-failed",
+  "status": "success",
   "date": "JULY 23, 2026",
-  "timestamp": "2026-07-23T12:34:55Z"
+  "timestamp": "2026-07-23T14:05:00Z",
+  "players": 50,
+  "parlays": 15,
+  "games": 5
 }
