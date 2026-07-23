@@ -1,6 +1,6 @@
 const MATCHUPS_DATE = "JULY 23, 2026";
 const MATCHUPS_LABEL = "THURSDAY MLB SLATE";
-const MATCHUPS_GENERATED_AT = "2026-07-23T14:38:39Z";
+const MATCHUPS_GENERATED_AT = "2026-07-23T15:16:30Z";
 const MATCHUPS_GAMES = [
   {
     "gamePk": 824893,
@@ -15,11 +15,11 @@ const MATCHUPS_GAMES = [
     "homeThrows": "R",
     "park": "Truist Park",
     "weather": {
-      "temp_f": 86,
-      "wind_mph": 8,
-      "wind_dir": "In From RF",
-      "humidity": 88,
-      "condition": "Partly Cloudy",
+      "temp_f": 81,
+      "wind_mph": 6,
+      "wind_dir": "Out To LF",
+      "humidity": 77,
+      "condition": "Cloudy",
       "roof": false
     },
     "parkHrPct": 0,
@@ -2979,10 +2979,10 @@ const MATCHUPS_GAMES = [
     "homeThrows": "R",
     "park": "Busch Stadium",
     "weather": {
-      "temp_f": 69,
+      "temp_f": 70,
       "wind_mph": 5,
       "wind_dir": "ENE",
-      "humidity": 70,
+      "humidity": 68,
       "condition": "Partly cloudy",
       "roof": false
     },
