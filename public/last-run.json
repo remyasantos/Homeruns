@@ -5,6 +5,8 @@
   "games": 15,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-07-24T12:51:21Z",
-  "source": "mlb-stats-api"
+  "tiers": { "S": 4, "A": 16, "B": 20, "C": 10 },
+  "timestamp": "2026-07-24T14:40:00Z",
+  "source": "mlb-stats-api",
+  "quality_check": "pass"
 }
