@@ -1,12 +1,5 @@
 {
-  "status": "success",
-  "date": "JULY 24, 2026",
-  "label": "FRIDAY MLB SLATE",
-  "games": 15,
-  "players": 50,
-  "parlays": 15,
-  "tiers": { "S": 4, "A": 16, "B": 20, "C": 10 },
-  "timestamp": "2026-07-24T14:40:00Z",
-  "source": "mlb-stats-api",
-  "quality_check": "pass"
+  "status": "validation-failed",
+  "date": "JULY 25, 2026",
+  "timestamp": "2026-07-25T12:43:47Z"
 }
