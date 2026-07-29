@@ -1,12 +1,10 @@
 {
   "status": "success",
-  "date": "JULY 28, 2026",
-  "label": "TUESDAY MLB SLATE",
+  "date": "JULY 29, 2026",
+  "label": "WEDNESDAY MLB SLATE",
   "games": 15,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-07-28T13:33:04Z",
-  "source": "mlb-stats-api",
-  "qualityCheck": "2026-07-28T14:45:00Z",
-  "qualityCheckNote": "Tier fix (C 12→10). Research corrections: CIN pitcher Gavin Williams→Slade Cecconi (4.60 ERA disaster), CLE→Chase Burns (ace), Comerica wind label (18mph OUT), rain alerts WSH/NYM. Validation clean."
+  "timestamp": "2026-07-29T13:35:56Z",
+  "source": "mlb-stats-api"
 }
