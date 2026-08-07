@@ -1,12 +1,10 @@
 {
   "status": "success",
-  "date": "AUGUST 6, 2026",
-  "label": "THURSDAY MLB SLATE",
-  "games": 11,
+  "date": "AUGUST 7, 2026",
+  "label": "FRIDAY MLB SLATE",
+  "games": 15,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-08-06T14:55:00Z",
-  "source": "mlb-stats-api",
-  "enhancement": "quality-check-agent",
-  "push_blocked": "session-proxy: repo not in authorized sources — add remyasantos/Homeruns to session sources to enable push"
+  "timestamp": "2026-08-07T12:19:07Z",
+  "source": "mlb-stats-api"
 }
