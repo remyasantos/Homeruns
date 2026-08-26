@@ -1,9 +1,10 @@
 {
   "status": "success",
-  "date": "AUGUST 25, 2026",
-  "timestamp": "2026-08-25T14:39:00Z",
+  "date": "AUGUST 26, 2026",
+  "label": "WEDNESDAY MLB SLATE",
   "games": 15,
   "players": 50,
   "parlays": 15,
-  "note": "Quality-check pass: tier distribution fixed (C:14->10), 7 TBD pitchers resolved (BAL->Liberatore 5.04ERA, BOS->Tolle 3.08ERA), S/A/B-tier notes enhanced. Push blocked by session proxy \u2014 repo not in authorized push set."
+  "timestamp": "2026-08-26T12:06:07Z",
+  "source": "mlb-stats-api"
 }
