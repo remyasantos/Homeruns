@@ -1,10 +1,10 @@
 {
   "status": "success",
-  "date": "AUGUST 27, 2026",
-  "label": "THURSDAY MLB SLATE",
-  "games": 7,
+  "date": "AUGUST 28, 2026",
+  "label": "FRIDAY MLB SLATE",
+  "games": 15,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-08-27T21:13:23Z",
+  "timestamp": "2026-08-28T22:03:36Z",
   "source": "mlb-stats-api"
 }
