@@ -5,6 +5,6 @@
   "games": 14,
   "players": 50,
   "parlays": 15,
-  "generatedAt": "2026-08-30T14:45:00Z",
-  "source": "claude-agent"
+  "timestamp": "2026-08-30T15:50:03Z",
+  "source": "mlb-stats-api"
 }
