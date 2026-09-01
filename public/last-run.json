@@ -1,11 +1,10 @@
 {
   "status": "success",
-  "date": "2026-09-01",
-  "slateLabel": "TUESDAY MLB SLATE",
+  "date": "SEPTEMBER 1, 2026",
+  "label": "TUESDAY MLB SLATE",
+  "games": 15,
   "players": 50,
   "parlays": 15,
-  "games": 15,
-  "runAt": "2026-09-01T00:00:00Z",
-  "topStack": "Hughes Disaster Stack (BAL @ COL — Gabriel Hughes 0-6, 6.61 ERA)",
-  "notes": "Validation passed. 15-game slate. S=6, A=14, B=20, C=10."
+  "timestamp": "2026-09-01T16:12:02Z",
+  "source": "mlb-stats-api"
 }
