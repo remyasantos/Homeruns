@@ -5,7 +5,6 @@
   "games": 11,
   "players": 50,
   "parlays": 15,
-  "generatedAt": "2026-09-07T09:30:00Z",
-  "commit": "d5b6d64",
-  "note": "Data generated and validated locally. Push blocked by session proxy — remyasantos/Homeruns not in authorized repository set."
+  "timestamp": "2026-09-07T16:50:39Z",
+  "source": "mlb-stats-api"
 }
