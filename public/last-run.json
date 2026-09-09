@@ -1,10 +1,9 @@
 {
   "status": "success",
-  "date": "SEPTEMBER 8, 2026",
-  "label": "TUESDAY MLB SLATE",
-  "games": 11,
+  "date": "2026-09-09",
+  "games": 15,
   "players": 50,
   "parlays": 15,
-  "timestamp": "2026-09-08T15:02:00Z",
-  "source": "manual-agent"
+  "generatedAt": "2026-09-09T09:30:00Z",
+  "source": "daily-quality-check-agent"
 }
