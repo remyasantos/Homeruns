@@ -1,9 +1,5 @@
 {
-  "status": "success",
-  "date": "2026-09-09",
-  "games": 15,
-  "players": 50,
-  "parlays": 15,
-  "generatedAt": "2026-09-09T09:30:00Z",
-  "source": "daily-quality-check-agent"
+  "status": "validation-failed",
+  "date": "SEPTEMBER 10, 2026",
+  "timestamp": "2026-09-10T15:04:06Z"
 }
