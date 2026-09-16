@@ -1,11 +1,10 @@
 {
   "status": "success",
-  "date": "2026-09-16",
-  "slate_date": "SEPTEMBER 16, 2026",
-  "slate_label": "WEDNESDAY MLB SLATE",
+  "date": "SEPTEMBER 16, 2026",
+  "label": "WEDNESDAY MLB SLATE",
   "games": 15,
   "players": 50,
   "parlays": 15,
-  "generated_at": "2026-09-16T14:40:00Z",
-  "pipeline": "agent-manual"
+  "timestamp": "2026-09-16T16:13:04Z",
+  "source": "mlb-stats-api"
 }
